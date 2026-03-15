@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package ledger;
+
+import "balance.proto";
+
+service Ledger {
+  rpc GetBalance (GetBalancesRequest) returns (GetBalancesResponse);
+}

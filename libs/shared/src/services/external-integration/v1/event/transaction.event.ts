@@ -1,0 +1,149 @@
+import {
+  BasicEvent,
+  Id,
+  type IntegrationAccount,
+  type SourceTransactionId,
+  type IntegrationCurrency,
+  UUID,
+} from '@app/types'
+import {
+  IsString,
+  IsEnum,
+  IsNumberString,
+  IsArray,
+  ValidateNested,
+  IsOptional,
+  IsInt,
+  IsISO8601,
+} from 'class-validator'
+import crypto from 'crypto'
+import { Type } from 'class-transformer'
+import { IntegrationType, TransactionStatus, IntentType } from '@app/shared/types'
+
+export class TransferEventIntentData {
+  @IsNumberString({ no_symbols: true })
+  readonly id: Id
+
+  @IsEnum(IntentType)
+  readonly intentType: IntentType
+
+  @IsString()
+  readonly intentId: UUID | Id
+
+  constructor(id: Id, intentType: IntentType, intentId: UUID | Id) {
+    this.id = id
+    this.intentType = intentType
+    this.intentId = intentId
+  }
+}
+
+export class TransferEventData {
+  @IsNumberString({ no_symbols: true })
+  readonly id: Id
+
+  @IsInt()
+  readonly index: number
+
+  @IsString()
+  readonly initiator: IntegrationAccount
+
+  @IsString() // some smart validator
+  readonly from: IntegrationAccount
+
+  @IsString() // some smart validator
+  readonly to: IntegrationAccount
+
+  @IsNumberString()
+  readonly rawAmount: string
+
+  @IsString()
+  @IsOptional()
+  readonly currency: IntegrationCurrency
+
+  @ValidateNested()
+  @Type(() => TransferEventIntentData)
+  @IsOptional()
+  readonly intent: TransferEventIntentData | null
+
+  constructor(
+    id: Id,
+    index: number,
+    initiator: IntegrationAccount,
+    from: IntegrationAccount,
+    to: IntegrationAccount,
+    rawAmount: string,
+    currency: IntegrationCurrency,
+    intent: TransferEventIntentData | null,
+  ) {
+    this.id = id
+    this.index = index
+    this.initiator = initiator
+    this.from = from
+    this.to = to
+    this.rawAmount = rawAmount
+    this.currency = currency
+    this.intent = intent
+  }
+}
+
+export class TransactionEvent extends BasicEvent {
+  @IsNumberString({ no_symbols: true })
+  readonly id: Id
+
+  @IsString() // special validator need
+  readonly sourceTxId: SourceTransactionId
+
+  @IsEnum(IntegrationType)
+  readonly integration: IntegrationType
+
+  @IsEnum(TransactionStatus)
+  readonly status: TransactionStatus
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TransferEventData)
+  readonly transfers: TransferEventData[]
+
+  @IsNumberString()
+  @IsOptional()
+  readonly fee: string | null
+
+  @IsString()
+  readonly feeCurrency: IntegrationCurrency
+
+  @IsISO8601()
+  @IsOptional()
+  readonly executedDate: Date | null
+
+  constructor(
+    id: Id,
+    sourceTxId: SourceTransactionId,
+    integration: IntegrationType,
+    status: TransactionStatus,
+    transfers: TransferEventData[],
+    fee: string | null,
+    feeCurrency: IntegrationCurrency,
+    executedDate: Date | null,
+  ) {
+    // todo signature!
+    super(TransactionEvent.createUniqueKey(integration, sourceTxId, status), 1, null)
+
+    this.id = id
+    this.sourceTxId = sourceTxId
+    this.integration = integration
+    this.status = status
+    this.transfers = transfers
+    this.fee = fee
+    this.feeCurrency = feeCurrency
+    this.executedDate = executedDate
+  }
+
+  static createUniqueKey(
+    integration: IntegrationType,
+    sourceTxId: SourceTransactionId,
+    status: TransactionStatus,
+  ): string {
+    const uniqueData = `${integration}:${sourceTxId}:${status}`
+    return crypto.createHash('sha256').update(uniqueData).digest('base64').slice(0, 32)
+  }
+}

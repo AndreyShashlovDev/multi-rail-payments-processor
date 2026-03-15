@@ -1,0 +1,14 @@
+import { Module, Logger } from '@nestjs/common'
+import { ChangePaymentStatusInteractor } from './change-payment-status.interactor'
+import {
+  PaymentIntentRepositoryModule,
+} from '../../../../data/repository/payment-intent/payment-intent-repository.module'
+import { TxContextModule } from '../../../../shared/tx-context/tx-context.module'
+import { InboxRepositoryModule } from '../../../../data/repository/inbox/inbox-repository.module'
+
+@Module({
+  imports: [TxContextModule, PaymentIntentRepositoryModule, InboxRepositoryModule],
+  providers: [Logger, ChangePaymentStatusInteractor],
+  exports: [ChangePaymentStatusInteractor],
+})
+export class ChangePaymentStatusInteractorModule {}

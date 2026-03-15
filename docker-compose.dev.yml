@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: multi-rail-payments-postgres-dev
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: eventsourcing
+    ports:
+      - "15432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - multi-rail-payments-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: multi-rail-payments-nats-dev
+    command:
+      - "-js"
+      - "-sd"
+      - "/data"
+      - "-m"
+      - "8222"
+    ports:
+      - "14222:4222"
+      - "18222:8222"
+    volumes:
+      - nats_data_dev:/data
+    networks:
+      - multi-rail-payments-network
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:8222/healthz" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  multi-rail-payments-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+volumes:
+  postgres_data_dev:
+    driver: local
+  nats_data_dev:
+    driver: local

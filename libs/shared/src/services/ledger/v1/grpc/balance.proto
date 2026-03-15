@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package ledger;
+
+message IntegrationAccountBalancesQuery {
+  string account = 1;
+  string integration = 2;
+  repeated string currencies = 3;
+}
+
+message IntegrationAccountBalancesResponse {
+  string account = 1;
+  string integration = 2;
+  string currency = 3;
+  string balance = 4;
+  string available = 5;
+  string hold = 6;
+  string hold_in = 7;
+}
+
+message PlatformAccountBalancesQuery {
+  string account_id = 1;
+  string integration = 2;
+  repeated string currencies = 3;
+}
+
+message PlatformAccountBalancesResponse {
+  string account_id = 1;
+  string integration = 2;
+  string currency = 3;
+  string balance = 4;
+  string available = 5;
+  string hold = 6;
+  string hold_in = 7;
+}
+
+
+message GetBalancesRequest {
+  repeated PlatformAccountBalancesQuery platform = 1;
+  repeated IntegrationAccountBalancesQuery integration = 2;
+}
+
+message GetBalancesResponse {
+  repeated PlatformAccountBalancesResponse platform = 1;
+  repeated IntegrationAccountBalancesResponse integration = 2;
+}

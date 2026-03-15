@@ -1,0 +1,63 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "target": "ES2021",
+    "lib": [
+      "ES2021"
+    ],
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "isolatedModules": false,
+    "baseUrl": "./",
+    "paths": {
+      "@app/database": [
+        "libs/database/src"
+      ],
+      "@app/database/*": [
+        "libs/database/src/*"
+      ],
+      "@app/shared": [
+        "libs/shared/src"
+      ],
+      "@app/shared/*": [
+        "libs/shared/src/*"
+      ],
+      "@app/types": [
+        "libs/types/src/"
+      ],
+      "@app/types/*": [
+        "libs/types/src/*"
+      ],
+      "@app/utils": [
+        "libs/utils/src/"
+      ],
+      "@app/utils/*": [
+        "libs/utils/src/*"
+      ]
+    }
+  },
+  "ts-node": {
+    "require": [
+      "tsconfig-paths/register"
+    ],
+    "transpileOnly": true,
+    "files": true,
+    "compilerOptions": {
+      "module": "commonjs",
+      "moduleResolution": "node"
+    }
+  },
+  "include": [
+    "apps/**/*",
+    "libs/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

@@ -1,0 +1,9 @@
+export enum TransactionStatus {
+  PREPARED = 'PREPARED',
+  PROMOTED = 'PROMOTED',
+  ACCEPTED = 'ACCEPTED',
+  CONFIRMED = 'CONFIRMED',
+  REJECTED = 'REJECTED',
+  FAILED = 'FAILED',
+  REORG = 'REORG',
+}
