@@ -44,7 +44,7 @@ export interface BalanceChangeMetadata {
   readonly txStatus?: BalanceChangeTxStatus
   readonly transferIds?: ReadonlyArray<Id>
 
-  // payment - вынести в отдельный тип?
+  // payment
   readonly overpay?: Numeric
   readonly actualAmount?: Numeric
   readonly expectedAmount?: Numeric
@@ -59,7 +59,7 @@ export interface BalanceChangeMetadata {
 export interface BalanceChange<T extends BalanceChangeMetadata = BalanceChangeMetadata> {
   readonly type: BalanceChangeType
   readonly platformAccountId: UUID | null
-  readonly integrationAccount: IntegrationAccount | null // null если используется для сжигания средств или внутренний перевод между юзерами
+  readonly integrationAccount: IntegrationAccount | null
   readonly currency: IntegrationCurrency
   readonly integration: IntegrationType
   readonly amount: Numeric

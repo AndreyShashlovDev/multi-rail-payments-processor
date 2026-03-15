@@ -11,7 +11,7 @@ export class EscrowController {
     private readonly createEscrowInteractor: CreateEscrowInteractor,
   ) {
     ledgerRepository.subscribeToChangeBalance({
-      handler: async (data) => this.handleEscrowBalanceChangeEvents(data),
+      handler: async (data) => await this.handleEscrowBalanceChangeEvents(data),
       filter: {
         status: new Set([
           BalanceChangeType.HOLD,

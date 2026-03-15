@@ -17,7 +17,7 @@ export class PayoutController {
     private readonly createPayoutIntentInteractor: CreatePayoutIntentInteractor,
   ) {
     ledgerRepository.subscribeToChangeBalance({
-      handler: async (data) => this.handlePayoutBalanceChangeEvents(data),
+      handler: async (data) => await this.handlePayoutBalanceChangeEvents(data),
       filter: { intentType: IntentType.PAYOUT },
     })
   }

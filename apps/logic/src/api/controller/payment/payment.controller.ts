@@ -17,7 +17,7 @@ export class PaymentController {
     private readonly createPaymentIntentInteractor: CreatePaymentIntentInteractor,
   ) {
     ledgerRepository.subscribeToChangeBalance({
-      handler: async (data) => this.handlePaymentBalanceChangeEvents(data),
+      handler: async (data) => await this.handlePaymentBalanceChangeEvents(data),
       filter: {
         intentType: IntentType.PAYMENT,
         status: new Set([BalanceChangeType.CREDIT, BalanceChangeType.HOLD, BalanceChangeType.HOLD_IN]),
