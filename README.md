@@ -503,11 +503,11 @@ The pipeline architecture creates a clear separation: the **core is stable**, an
 ```mermaid
 pie title Development effort distribution
     "External Integration (new integrations, parsers)" : 40
-    "BFF (new API endpoints, auth)" : 20
-    "Custody (new signing schemes)" : 15
+    "BFF (new API endpoints, auth)" : 25
+    "Custody (new signing schemes)" : 20
     "Logic — new Converters / Handlers" : 15
     "Logic — core pipeline" : 5
-    "Ledger" : 5
+    "Ledger" : 1
 ```
 
 The pipeline in Logic is a stable core. It doesn't change when adding new integrations. All new work happens either at the edges of the system (EIS, BFF, Custody) or by adding new converters and handlers into the existing pipeline — without modifying existing code.
