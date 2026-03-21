@@ -5,7 +5,8 @@ import {
 import {
   TransactionIntentModel,
   TransactionIntentStatus,
-  TransactionIntentData, TransactionIntentMetadata,
+  TransactionIntentData,
+  TransactionIntentMetadata,
 } from '../../../module/transaction-intent/model/transaction-intent.model'
 import { TransferIntentEntity } from '../../data-source/postgres/entities/transfer-intent.entity'
 import { TransferIntentRepositoryMapper } from '../transfer-intent/transfer-intent-repository.mapper'

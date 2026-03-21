@@ -3,7 +3,7 @@ import {
   TransferIntentCreateEventModel,
 } from '../../../module/transfer-intent/model/transfer-intent.create-event.model'
 import { IntentType } from '@app/shared'
-import type { UUID } from '@app/types'
+import type { UUID, Id } from '@app/types'
 
 export type TransferIntentEventModelType = {
   readonly create: TransferIntentCreateEventModel
@@ -17,4 +17,8 @@ export type TransferIntentEventModel<T extends TransferIntentEventKeyType> = Tra
 export interface MarkAsPreparedParams {
   readonly intentType: IntentType
   readonly intentIds: ReadonlySet<UUID>
+}
+
+export interface MarkAsProcessingParams {
+  readonly transactionIntentId: Id
 }

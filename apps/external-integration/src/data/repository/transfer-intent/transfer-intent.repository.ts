@@ -24,6 +24,7 @@ import {
   TransferIntentEventModel,
   MarkAsPreparedParams,
   TransferIntentEventKeyType,
+  MarkAsProcessingParams,
 } from './transfer-intent-repository.types'
 import { intentTypeFromDomain } from '@app/shared'
 
@@ -146,5 +147,15 @@ export class TransferIntentRepository implements LogicJetstreamHandler {
     )
 
     return result.affected === params.intentIds.size
+  }
+
+  async markAsProcessing(params: MarkAsProcessingParams, ctx: TxContext): Promise<boolean> {
+    const result = await ctx.em.update(
+      TransferIntentEntity,
+      { transactionIntentId: params.transactionIntentId, status: TransferIntentEntityStatus.PREPARED },
+      { status: TransferIntentEntityStatus.PROCESSING },
+    )
+
+    return (result.affected ?? 0) > 0
   }
 }

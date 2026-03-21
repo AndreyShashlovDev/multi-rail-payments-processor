@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
-import { IntegrationPostgresConfig, APP_SCHEMA } from '../../data-source/postgres/integration-postgres.config'
+import { IntegrationPostgresConfig } from '../../data-source/postgres/integration-postgres.config'
 import { DataSource } from 'typeorm'
 import {
   TransactionIntentData,
@@ -18,6 +18,7 @@ import {
   TransferIntentEntity,
 } from '../../data-source/postgres/entities/transfer-intent.entity'
 import { integrationTypeFromDomain } from '@app/shared'
+import { Id } from '@app/types'
 
 @Injectable()
 export class TransactionIntentRepository {
@@ -124,35 +125,24 @@ export class TransactionIntentRepository {
     return result.affected === 1
   }
 
-  async markPromoted(params: Pick<TransactionIntentModel, 'txId' | 'integration'>, ctx?: TxContext): Promise<boolean> {
+  async markPromoted(
+    params: Pick<TransactionIntentModel, 'txId' | 'integration'>,
+    ctx?: TxContext,
+  ): Promise<Id | null> {
     const em = ctx?.em ?? this.datasource.manager
 
-    const result: { count: number }[] = await em.query(
-      `
-        WITH updated_intent AS (
-        UPDATE ${APP_SCHEMA}.${TransactionIntentEntity.NAME}
-        SET status = $1
-        WHERE tx_id = $2
-          AND integration = $3
-          AND status = $4 RETURNING id
-    ),
-    updated_transfers AS (
-        UPDATE ${APP_SCHEMA}.${TransferIntentEntity.NAME}
-        SET status = $5
-        WHERE transaction_intent_id IN (SELECT id FROM updated_intent)
-          )
-        SELECT COUNT(*)
-        FROM updated_intent
-      `,
-      [
-        TransactionIntentEntityStatus.PROMOTED,
-        params.txId,
-        integrationTypeFromDomain(params.integration),
-        TransactionIntentEntityStatus.READY_TO_PROMOTE,
-        TransferIntentEntityStatus.PROCESSING,
-      ],
-    )
+    const result: { raw: { id: Id }[] } = await em
+      .createQueryBuilder()
+      .update(TransactionIntentEntity)
+      .set({ status: TransactionIntentEntityStatus.PROMOTED })
+      .where({
+        txId: params.txId,
+        integration: integrationTypeFromDomain(params.integration),
+        status: TransactionIntentEntityStatus.READY_TO_PROMOTE,
+      })
+      .returning('id')
+      .execute()
 
-    return Number(result[0].count) === 1
+    return result.raw[0]?.id ?? null
   }
 }

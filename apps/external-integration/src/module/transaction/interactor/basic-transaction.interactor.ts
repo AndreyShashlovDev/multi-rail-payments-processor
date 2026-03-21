@@ -5,7 +5,7 @@ import { TransferIntentRepository } from '../../../data/repository/transfer-inte
 import { TxContext } from '@app/shared/types/tx-context.type'
 
 export abstract class BasicTransactionInteractor<T> extends AbstractInteractor<T, Promise<void>> {
-  protected constructor(private readonly transferIntentRepository: TransferIntentRepository) {
+  protected constructor(protected readonly transferIntentRepository: TransferIntentRepository) {
     super()
   }
 

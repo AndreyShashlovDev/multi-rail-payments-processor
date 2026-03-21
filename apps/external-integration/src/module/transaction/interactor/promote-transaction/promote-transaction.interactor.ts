@@ -18,6 +18,9 @@ import { TransactionModel } from '../../model/transaction.model'
 import {
   TransferEventWithIntent,
 } from '../../../../data/repository/transaction-event/transaction-event-repository.types'
+import {
+  TransferIntentsNotMarkedAsProcessingException
+} from '../../exception/transfer-intents-not-marked-as-processing.exception'
 
 export interface PromoteTransactionParams {
   readonly sourceTxId: SourceTransactionId
@@ -42,21 +45,31 @@ export class PromoteTransactionInteractor extends BasicTransactionInteractor<Pro
     const result = await this.txRunner
       .createWithData<{ tx: TransactionModel; transfers: ReadonlyArray<TransferEventWithIntent> }>(undefined, ctx)
       .pipeline(async (ctx) => {
-        const updateTransactionIntent = await this.transactionIntentRepository.markPromoted(
+        const updatedTransactionIntentId = await this.transactionIntentRepository.markPromoted(
           { txId: sourceTxId, integration },
           ctx,
         )
-        const updateTransaction = await this.transactionRepository.markAsPromoted({ sourceTxId, integration }, ctx)
 
-        if (!updateTransactionIntent) {
+        if (!updatedTransactionIntentId) {
           throw new TransactionIntentNotMarkAsPromotedException(sourceTxId, integration)
         }
+
+        const updateTransaction = await this.transactionRepository.markAsPromoted({ sourceTxId, integration }, ctx)
 
         if (!updateTransaction) {
           throw new TransactionNotMarkAsPromotedException(sourceTxId, integration)
         }
 
-        const tx = await this.transactionRepository.getBySourceId({ sourceTxId, integration }, ctx)
+        const updateTransferIntents = await this.transferIntentRepository.markAsProcessing(
+          { transactionIntentId: updatedTransactionIntentId },
+          ctx,
+        )
+
+        if (!updateTransferIntents) {
+          throw new TransferIntentsNotMarkedAsProcessingException(updatedTransactionIntentId)
+        }
+
+        const tx = await this.transactionRepository.get({ sourceTxId, integration }, ctx)
 
         if (!tx) {
           throw new TransactionNotFoundException(sourceTxId, integration)

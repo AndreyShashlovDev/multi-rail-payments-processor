@@ -47,7 +47,7 @@ export class ProcessApplyBalanceInteractor extends AbstractInteractor<ProcessApp
       .execute()
 
     if (result.success) {
-      this.balanceEventRepository.publish({ uniqueKey, changes }).catch((e) => this.logger.error(e))
+      await this.balanceEventRepository.publish({ uniqueKey, changes })
     }
   }
 }

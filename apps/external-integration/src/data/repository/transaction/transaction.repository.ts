@@ -123,7 +123,7 @@ export class TransactionRepository {
     return result.affected === 1
   }
 
-  async getBySourceId(
+  async get(
     params: Pick<TransactionData, 'sourceTxId' | 'integration'>,
     ctx?: TxContext,
   ): Promise<TransactionModel | null> {
