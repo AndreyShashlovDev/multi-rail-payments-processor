@@ -1,4 +1,4 @@
-import { BalanceChange, BalanceChangeTxStatus } from '@app/shared/types/balance-change'
+import { BalanceChange, BalanceChangeTxStatus, BalanceChangeReason } from '@app/shared/types/balance-change'
 import { PaymentIntentModel } from '../../../../payment-intent/model/payment-intent.model'
 import { Numeric, Id, AbstractInteractor, UUID } from '@app/types'
 import { IntentType, BalanceChangeType, IntegrationType } from '@app/shared'
@@ -34,6 +34,7 @@ export class PaymentOperation extends AbstractInteractor<PaymentOperationParams,
           intentId: payment.id,
           relatedIntentType: payoutId ? IntentType.PAYOUT : undefined,
           relatedIntentId: payoutId,
+          reason: BalanceChangeReason.AMOUNT,
           txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
         },
       },
