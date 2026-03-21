@@ -42,7 +42,7 @@ export class PayoutHoldsOperation extends AbstractInteractor<PayoutHoldsOperatio
 
     if (payout.integrationFee && payout.integrationFee.gt(0)) {
       const convertedIntegrationFee = payout.integrationFee.mul(payout.integrationFeeRate)
-      const diff = convertedIntegrationFee.minus(payout.estimatedFee).div(payout.integrationFeeRate)
+      const diff = payout.estimatedFee.minus(convertedIntegrationFee).div(payout.integrationFeeRate)
 
       optionalHolds.push({
         type: BalanceChangeType.HOLD,
