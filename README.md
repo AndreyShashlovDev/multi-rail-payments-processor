@@ -16,6 +16,8 @@ This project demonstrates a clean, scalable payment infrastructure built with Ev
 - **Transparent data flows** - easy to understand and trace
 - **Isolated services** - no tight coupling between components
 
+> 📊 See [Data Examples](example/docs/FLOW_DATA_EXAMPLE.md) — a complete payout + payment cycle with real database state across all tables (intents, transactions, escrow, event store, projections) and balance verification.
+
 ## Quick Start
 
 ### Prerequisites
