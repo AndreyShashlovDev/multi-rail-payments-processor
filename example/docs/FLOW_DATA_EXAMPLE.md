@@ -227,7 +227,7 @@ Service: **External Integration** · Schema: `external_integration` · Tables: `
 
 Service: **Logic** · Schema: `logic` · Table: `escrow`
 
-Escrow records track every balance change event that needs lifecycle management — holds, fees, credits. Each record links to a specific intent and tracks its resolution status.
+Escrow is a live operational view of holds in the system. Records are created in response to ledger hold confirmation events (via JetStream) and reflect the current hold state from the ledger. It enables monitoring and decision-making: detecting stale holds that signal bugs or unresolved mispayments, and identifying accrued platform fees ready for consolidation. Resolved records are periodically cleaned up
 
 | # | type | amount | account | int_account | intent_type | intent_id | status | txStatus |
 |---|------|--------|---------|-------------|-------------|-----------|--------|----------|
