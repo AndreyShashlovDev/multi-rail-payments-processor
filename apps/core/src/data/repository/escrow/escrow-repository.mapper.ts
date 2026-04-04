@@ -21,7 +21,7 @@ export class EscrowRepositoryMapper {
 
   static toDomain(entity: EscrowEntity): EscrowModel {
     return {
-      ...entity,
+      ...entity, // fixme remove it. need clear mapping
       integration: integrationTypeToDomain(entity.integration),
       type: EscrowRepositoryMapper.toDomainType(entity.type),
       status: EscrowRepositoryMapper.toDomainStatus(entity.status),

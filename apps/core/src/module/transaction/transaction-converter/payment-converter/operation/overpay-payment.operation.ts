@@ -2,6 +2,7 @@ import { BalanceChange, BalanceChangeReason, BalanceChangeTxStatus } from '@app/
 import { PaymentIntentModel } from '../../../../payment-intent/model/payment-intent.model'
 import { Numeric, Id, AbstractInteractor } from '@app/types'
 import { IntentType, BalanceChangeType, IntegrationType } from '@app/shared'
+import { OperationTypeMapper } from '../../../../../shared/converter/operation-type.mapper'
 
 export interface OverpayPaymentOperationParams {
   readonly payment: PaymentIntentModel
@@ -26,6 +27,9 @@ export class OverpayPaymentOperation extends AbstractInteractor<
     return [
       {
         type: BalanceChangeType.HOLD,
+        intentType: IntentType.PAYMENT,
+        intentId: payment.id,
+        operationType: OperationTypeMapper.toBalanceChange(payment.operationType),
         platformAccountId: payment.to.platformAccountId,
         integrationAccount,
         currency: payment.currency,
@@ -34,8 +38,6 @@ export class OverpayPaymentOperation extends AbstractInteractor<
         metadata: {
           txId: txId,
           transferIds: Array.from(transferIds),
-          intentType: IntentType.PAYMENT,
-          intentId: payment.id,
           reason: BalanceChangeReason.OVERPAY,
           overpay,
           expectedAmount: payment.amount,

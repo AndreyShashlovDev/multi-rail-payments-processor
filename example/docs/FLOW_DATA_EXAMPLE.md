@@ -3,6 +3,8 @@
 > This document shows **real database state** after a complete payout → payment cycle.
 > All numeric enum values are replaced with human-readable names for clarity.
 
+---
+
 ## Scenario
 
 A user (`42cf2c08`) initiates a **payout of 5 ETH** from the platform hot wallet (`0x1`) to an external address (`0x2`).
@@ -60,6 +62,7 @@ Service: **Core** · Schema: `core` · Table: `payout_intent`
 [
   {
     "id": "b6ab9111-bbf5-484d-bea4-f9e4b4b8895c",
+    "operation_type": "USER_REQUEST",
     "status": "SUCCESS",
     "initiator_account_id": "42cf2c08-fe39-4933-b3ee-2ed547be9e08",
     "initiator_user_id": "6cd9b891-acf3-4a63-b28c-7c6bc48483e5",
@@ -98,6 +101,7 @@ Service: **Core** · Schema: `core` · Table: `payout_intent`
 </details>
 
 **Key points:**
+- `operation_type = USER_REQUEST` — standard user-initiated payout. Would be `CONSOLIDATION` for system-initiated fee sweeps.
 - `from` = platform hot wallet (`0x1`, account `cf0104f7`). This is where funds leave from on-chain.
 - `to` = destination address (`0x2`). Receiver of the transfer.
 - `estimated_fee` (0.2) > actual `integration_fee` (0.1) — sender is charged `min(estimated, actual)` = 0.1, the rest is refunded during CONFIRMED.
@@ -118,6 +122,7 @@ Service: **Core** · Schema: `core` · Table: `payment_intent`
 [
   {
     "id": "f05d4900-97ae-485b-9068-00d3d58860a7",
+    "operation_type": "USER_REQUEST",
     "status": "COMPLETED",
     "initiator_account_id": "6093e1f8-c64c-48b8-9751-e0be36f400cd",
     "initiator_user_id": "ea5bad60-80c2-4abf-ad13-66a4dbf8409d",
@@ -145,6 +150,7 @@ Service: **Core** · Schema: `core` · Table: `payment_intent`
 </details>
 
 **Key points:**
+- `operation_type = USER_REQUEST` — standard user-initiated payment. Would be `CONSOLIDATION` for system-initiated fee sweeps.
 - `to` = the deposit address (`0x2`) assigned to user `6093e1f8`.
 - `from` is null — for incoming payments, the sender is external (unknown until the transaction arrives).
 - `platform_fee_payer = CLIENT` — the platform fee (0.1 ETH) is deducted from the receiver's credited amount.
@@ -227,7 +233,7 @@ Service: **External Integration** · Schema: `external_integration` · Tables: `
 
 Service: **Core** · Schema: `core` · Table: `escrow`
 
-Escrow is a live operational view of holds in the system. Records are created in response to ledger hold confirmation events (via JetStream) and reflect the current hold state from the ledger. It enables monitoring and decision-making: detecting stale holds that signal bugs or unresolved mispayments, and identifying accrued platform fees ready for consolidation. Resolved records are periodically cleaned up
+Escrow is a live operational view of holds in the system. Records are created in response to ledger hold confirmation events (via JetStream) and reflect the current hold state from the ledger. It enables monitoring and decision-making: detecting stale holds that signal bugs or unresolved mispayments, and identifying accrued platform fees ready for consolidation. Resolved records are periodically cleaned up.
 
 | # | type | amount | account | int_account | intent_type | intent_id | status | txStatus |
 |---|------|--------|---------|-------------|-------------|-----------|--------|----------|
@@ -352,7 +358,7 @@ Escrow is a live operational view of holds in the system. Records are created in
     - id=3: `INTEGRATION_FEE` hold of 0.2 (estimated), but actual fee was 0.1 → `integrationFeeDiff: "0.1"` means estimated exceeded actual by 0.1 (refunded on CONFIRMED).
     - id=4: separate `INTEGRATION_FEE` record for the hot wallet account (`cf0104f7`) — fee payer.
 - Record 5 (PAYMENT): `AMOUNT` hold placed at `TX_ACCEPTED`, `RESOLVED` after confirmation.
-- Records 6–7: `PLATFORM_FEE_ACCRUED` — these are **still `CREATED`**, not yet resolved. They represent accrued platform fees waiting for consolidation (a separate process that sweeps fees from integration accounts to a treasury).
+- Records 6–7: `PLATFORM_FEE_ACCRUED` — still `CREATED`, not yet resolved. They represent accrued platform fees waiting for consolidation. A separate payout intent with `operation_type = CONSOLIDATION` will sweep these fees to the platform treasury, at which point these records transition to `RESOLVED`.
 - `metadata_hash` ensures idempotency — same event won't create duplicate escrow records.
 
 ---
@@ -369,65 +375,65 @@ Account aliases: **sender** = `42cf2c08`, **hot wallet** = `cf0104f7`, **receive
 
 ### t0 — Fixtures (seed balances)
 
-| # | account | change_type | amount | available | hold | hold_in | reason | intent_type | intent_id | txId |
-|---|---------|-------------|--------|-----------|------|---------|--------|-------------|-----------|------|
-| 1 | hot wallet | CREDIT | 50.0 | 50.0 | 0.0 | 0.0 | MANUAL_CORRECTION | — | — | — |
-| 2 | sender | CREDIT | 20.0 | 20.0 | 0.0 | 0.0 | MANUAL_CORRECTION | — | — | — |
+| # | account | change_type | amount | available | hold | hold_in | intent_type | intent_operation_type | intent_id | reason |
+|---|---------|-------------|--------|-----------|------|---------|-------------|----------------------|-----------|--------|
+| 1 | hot wallet | CREDIT | 50.0 | 50.0 | 0.0 | 0.0 | — | — | — | MANUAL_CORRECTION |
+| 2 | sender | CREDIT | 20.0 | 20.0 | 0.0 | 0.0 | — | — | — | MANUAL_CORRECTION |
 
 ### t3 — PREPARED (payout holds)
 
-| # | account | change_type | amount | available | hold | hold_in | reason | intent_type | intent_id | txId |
-|---|---------|-------------|--------|-----------|------|---------|--------|-------------|-----------|------|
-| 3 | sender | HOLD | 5.0 | 15.0 | 5.0 | 0.0 | AMOUNT | PAYOUT | `b6ab9111` | 1 |
-| 4 | sender | HOLD | 0.1 | 14.9 | 5.1 | 0.0 | FEE | PAYOUT | `b6ab9111` | 1 |
-| 5 | sender | HOLD | 0.2 | 14.7 | 5.3 | 0.0 | INTEGRATION_FEE | PAYOUT | `b6ab9111` | 1 |
-| 6 | hot wallet | HOLD | 0.1 | 49.9 | 0.1 | 0.0 | INTEGRATION_FEE | PAYOUT | `b6ab9111` | 1 |
+| # | account | change_type | amount | available | hold | hold_in | intent_type | intent_operation_type | intent_id | reason |
+|---|---------|-------------|--------|-----------|------|---------|-------------|----------------------|-----------|--------|
+| 3 | sender | HOLD | 5.0 | 15.0 | 5.0 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | AMOUNT |
+| 4 | sender | HOLD | 0.1 | 14.9 | 5.1 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | FEE |
+| 5 | sender | HOLD | 0.2 | 14.7 | 5.3 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | INTEGRATION_FEE |
+| 6 | hot wallet | HOLD | 0.1 | 49.9 | 0.1 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | INTEGRATION_FEE |
 
 ### t5 — ACCEPTED (incoming payment hold)
 
-| # | account | change_type | amount | available | hold | hold_in | reason | intent_type | intent_id | txId |
-|---|---------|-------------|--------|-----------|------|---------|--------|-------------|-----------|------|
-| 7 | receiver | HOLD_IN | 5.0 | 0.0 | 0.0 | 5.0 | AMOUNT | PAYMENT | `f05d4900` | 1 |
+| # | account | change_type | amount | available | hold | hold_in | intent_type | intent_operation_type | intent_id | reason |
+|---|---------|-------------|--------|-----------|------|---------|-------------|----------------------|-----------|--------|
+| 7 | receiver | HOLD_IN | 5.0 | 0.0 | 0.0 | 5.0 | PAYMENT | USER_REQUEST | `f05d4900` | AMOUNT |
 
 ### t6 — CONFIRMED (release holds + final debits/credits)
 
-| # | account | change_type | amount | available | hold | hold_in | reason | intent_type | intent_id | txId |
-|---|---------|-------------|--------|-----------|------|---------|--------|-------------|-----------|------|
-| 8 | sender | RELEASE_HOLD | 5.0 | 19.7 | 0.3 | 0.0 | AMOUNT | PAYOUT | `b6ab9111` | 1 |
-| 9 | sender | RELEASE_HOLD | 0.1 | 19.8 | 0.2 | 0.0 | FEE | PAYOUT | `b6ab9111` | 1 |
-| 10 | sender | RELEASE_HOLD | 0.2 | 20.0 | 0.0 | 0.0 | INTEGRATION_FEE | PAYOUT | `b6ab9111` | 1 |
-| 11 | hot wallet | RELEASE_HOLD | 0.1 | 50.0 | 0.0 | 0.0 | INTEGRATION_FEE | PAYOUT | `b6ab9111` | 1 |
-| 12 | receiver | RELEASE_HOLD_IN | 5.0 | 0.0 | 0.0 | 0.0 | AMOUNT | PAYMENT | `f05d4900` | 1 |
-| 13 | receiver | CREDIT | 5.0 | 5.0 | 0.0 | 0.0 | AMOUNT | PAYMENT | `f05d4900` | 1 |
-| 14 | receiver | DEBIT | 0.1 | 4.9 | 0.0 | 0.0 | FEE | PAYMENT | `f05d4900` | 1 |
-| 15 | sender | DEBIT | 5.0 | 15.0 | 0.0 | 0.0 | AMOUNT | PAYOUT | `b6ab9111` | 1 |
-| 16 | sender | DEBIT | 0.1 | 14.9 | 0.0 | 0.0 | FEE | PAYOUT | `b6ab9111` | 1 |
-| 17 | sender | DEBIT | 0.1 | 14.8 | 0.0 | 0.0 | INTEGRATION_FEE | PAYOUT | `b6ab9111` | 1 |
-| 18 | hot wallet | DEBIT | 0.1 | 49.9 | 0.0 | 0.0 | INTEGRATION_FEE | PAYOUT | `b6ab9111` | 1 |
+| # | account | change_type | amount | available | hold | hold_in | intent_type | intent_operation_type | intent_id | reason |
+|---|---------|-------------|--------|-----------|------|---------|-------------|----------------------|-----------|--------|
+| 8 | sender | RELEASE_HOLD | 5.0 | 19.7 | 0.3 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | AMOUNT |
+| 9 | sender | RELEASE_HOLD | 0.1 | 19.8 | 0.2 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | FEE |
+| 10 | sender | RELEASE_HOLD | 0.2 | 20.0 | 0.0 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | INTEGRATION_FEE |
+| 11 | hot wallet | RELEASE_HOLD | 0.1 | 50.0 | 0.0 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | INTEGRATION_FEE |
+| 12 | receiver | RELEASE_HOLD_IN | 5.0 | 0.0 | 0.0 | 0.0 | PAYMENT | USER_REQUEST | `f05d4900` | AMOUNT |
+| 13 | receiver | CREDIT | 5.0 | 5.0 | 0.0 | 0.0 | PAYMENT | USER_REQUEST | `f05d4900` | AMOUNT |
+| 14 | receiver | DEBIT | 0.1 | 4.9 | 0.0 | 0.0 | PAYMENT | USER_REQUEST | `f05d4900` | FEE |
+| 15 | sender | DEBIT | 5.0 | 15.0 | 0.0 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | AMOUNT |
+| 16 | sender | DEBIT | 0.1 | 14.9 | 0.0 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | FEE |
+| 17 | sender | DEBIT | 0.1 | 14.8 | 0.0 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | INTEGRATION_FEE |
+| 18 | hot wallet | DEBIT | 0.1 | 49.9 | 0.0 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | INTEGRATION_FEE |
 
 <details>
 <summary>Full JSON with metadata (18 events)</summary>
 
 ```json
 [
-  {"id":1, "account_id":"cf0104f7", "change_type":"CREDIT", "amount":"50.0", "available_after":"50.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":null, "intent_type":null, "metadata":{"reason":"MANUAL_CORRECTION"}},
-  {"id":2, "account_id":"42cf2c08", "change_type":"CREDIT", "amount":"20.0", "available_after":"20.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":null, "intent_type":null, "metadata":{"reason":"MANUAL_CORRECTION"}},
-  {"id":3, "account_id":"42cf2c08", "change_type":"HOLD", "amount":"5.0", "available_after":"15.0", "hold_after":"5.0", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_PREPARED", "transferIds":["1"]}},
-  {"id":4, "account_id":"42cf2c08", "change_type":"HOLD", "amount":"0.1", "available_after":"14.9", "hold_after":"5.1", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"FEE", "txStatus":"TX_PREPARED", "transferIds":["1"]}},
-  {"id":5, "account_id":"42cf2c08", "change_type":"HOLD", "amount":"0.2", "available_after":"14.7", "hold_after":"5.3", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"INTEGRATION_FEE", "txStatus":"TX_PREPARED", "transferIds":["1"], "integrationFeeDiff":"0.1"}},
-  {"id":6, "account_id":"cf0104f7", "change_type":"HOLD", "amount":"0.1", "available_after":"49.9", "hold_after":"0.1", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"INTEGRATION_FEE", "txStatus":"TX_PREPARED", "transferIds":["1"], "integrationFeeDiff":"0.1"}},
-  {"id":7, "account_id":"6093e1f8", "change_type":"HOLD_IN", "amount":"5.0", "available_after":"0.0", "hold_after":"0.0", "hold_in_after":"5.0", "intent_id":"f05d4900", "intent_type":"PAYMENT", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_ACCEPTED", "transferIds":["1"], "relatedIntentId":"b6ab9111", "relatedIntentType":"PAYOUT"}},
-  {"id":8, "account_id":"42cf2c08", "change_type":"RELEASE_HOLD", "amount":"5.0", "available_after":"19.7", "hold_after":"0.3", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_CONFIRMED", "transferIds":["1"]}},
-  {"id":9, "account_id":"42cf2c08", "change_type":"RELEASE_HOLD", "amount":"0.1", "available_after":"19.8", "hold_after":"0.2", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"FEE", "txStatus":"TX_CONFIRMED", "transferIds":["1"]}},
-  {"id":10, "account_id":"42cf2c08", "change_type":"RELEASE_HOLD", "amount":"0.2", "available_after":"20.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"INTEGRATION_FEE", "txStatus":"TX_CONFIRMED", "transferIds":["1"], "integrationFeeDiff":"0.1"}},
-  {"id":11, "account_id":"cf0104f7", "change_type":"RELEASE_HOLD", "amount":"0.1", "available_after":"50.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"INTEGRATION_FEE", "txStatus":"TX_CONFIRMED", "transferIds":["1"], "integrationFeeDiff":"0.1"}},
-  {"id":12, "account_id":"6093e1f8", "change_type":"RELEASE_HOLD_IN", "amount":"5.0", "available_after":"0.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"f05d4900", "intent_type":"PAYMENT", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_CONFIRMED", "transferIds":["1"], "relatedIntentId":"b6ab9111", "relatedIntentType":"PAYOUT"}},
-  {"id":13, "account_id":"6093e1f8", "change_type":"CREDIT", "amount":"5.0", "available_after":"5.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"f05d4900", "intent_type":"PAYMENT", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_CONFIRMED", "transferIds":["1"], "relatedIntentId":"b6ab9111", "relatedIntentType":"PAYOUT"}},
-  {"id":14, "account_id":"6093e1f8", "change_type":"DEBIT", "amount":"0.1", "available_after":"4.9", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"f05d4900", "intent_type":"PAYMENT", "metadata":{"txId":"1", "reason":"FEE", "txStatus":"TX_CONFIRMED", "transferIds":["1"]}},
-  {"id":15, "account_id":"42cf2c08", "change_type":"DEBIT", "amount":"5.0", "available_after":"15.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_CONFIRMED", "transferIds":["1"]}},
-  {"id":16, "account_id":"42cf2c08", "change_type":"DEBIT", "amount":"0.1", "available_after":"14.9", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"FEE", "txStatus":"TX_CONFIRMED", "transferIds":["1"]}},
-  {"id":17, "account_id":"42cf2c08", "change_type":"DEBIT", "amount":"0.1", "available_after":"14.8", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"INTEGRATION_FEE", "txStatus":"TX_CONFIRMED", "transferIds":["1"], "integrationFeeDiff":"0.1"}},
-  {"id":18, "account_id":"cf0104f7", "change_type":"DEBIT", "amount":"0.1", "available_after":"49.9", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"INTEGRATION_FEE", "txStatus":"TX_CONFIRMED", "transferIds":["1"], "integrationFeeDiff":"0.1"}}
+  {"id":1, "account_id":"cf0104f7", "change_type":"CREDIT", "amount":"50.0", "available_after":"50.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":null, "intent_type":null, "intent_operation_type":null, "metadata":{"reason":"MANUAL_CORRECTION"}},
+  {"id":2, "account_id":"42cf2c08", "change_type":"CREDIT", "amount":"20.0", "available_after":"20.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":null, "intent_type":null, "intent_operation_type":null, "metadata":{"reason":"MANUAL_CORRECTION"}},
+  {"id":3, "account_id":"42cf2c08", "change_type":"HOLD", "amount":"5.0", "available_after":"15.0", "hold_after":"5.0", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_PREPARED", "transferIds":["1"]}},
+  {"id":4, "account_id":"42cf2c08", "change_type":"HOLD", "amount":"0.1", "available_after":"14.9", "hold_after":"5.1", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"FEE", "txStatus":"TX_PREPARED", "transferIds":["1"]}},
+  {"id":5, "account_id":"42cf2c08", "change_type":"HOLD", "amount":"0.2", "available_after":"14.7", "hold_after":"5.3", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"INTEGRATION_FEE", "txStatus":"TX_PREPARED", "transferIds":["1"], "integrationFeeDiff":"0.1"}},
+  {"id":6, "account_id":"cf0104f7", "change_type":"HOLD", "amount":"0.1", "available_after":"49.9", "hold_after":"0.1", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"INTEGRATION_FEE", "txStatus":"TX_PREPARED", "transferIds":["1"], "integrationFeeDiff":"0.1"}},
+  {"id":7, "account_id":"6093e1f8", "change_type":"HOLD_IN", "amount":"5.0", "available_after":"0.0", "hold_after":"0.0", "hold_in_after":"5.0", "intent_id":"f05d4900", "intent_type":"PAYMENT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_ACCEPTED", "transferIds":["1"], "relatedIntentId":"b6ab9111", "relatedIntentType":"PAYOUT"}},
+  {"id":8, "account_id":"42cf2c08", "change_type":"RELEASE_HOLD", "amount":"5.0", "available_after":"19.7", "hold_after":"0.3", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_CONFIRMED", "transferIds":["1"]}},
+  {"id":9, "account_id":"42cf2c08", "change_type":"RELEASE_HOLD", "amount":"0.1", "available_after":"19.8", "hold_after":"0.2", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"FEE", "txStatus":"TX_CONFIRMED", "transferIds":["1"]}},
+  {"id":10, "account_id":"42cf2c08", "change_type":"RELEASE_HOLD", "amount":"0.2", "available_after":"20.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"INTEGRATION_FEE", "txStatus":"TX_CONFIRMED", "transferIds":["1"], "integrationFeeDiff":"0.1"}},
+  {"id":11, "account_id":"cf0104f7", "change_type":"RELEASE_HOLD", "amount":"0.1", "available_after":"50.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"INTEGRATION_FEE", "txStatus":"TX_CONFIRMED", "transferIds":["1"], "integrationFeeDiff":"0.1"}},
+  {"id":12, "account_id":"6093e1f8", "change_type":"RELEASE_HOLD_IN", "amount":"5.0", "available_after":"0.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"f05d4900", "intent_type":"PAYMENT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_CONFIRMED", "transferIds":["1"], "relatedIntentId":"b6ab9111", "relatedIntentType":"PAYOUT"}},
+  {"id":13, "account_id":"6093e1f8", "change_type":"CREDIT", "amount":"5.0", "available_after":"5.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"f05d4900", "intent_type":"PAYMENT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_CONFIRMED", "transferIds":["1"], "relatedIntentId":"b6ab9111", "relatedIntentType":"PAYOUT"}},
+  {"id":14, "account_id":"6093e1f8", "change_type":"DEBIT", "amount":"0.1", "available_after":"4.9", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"f05d4900", "intent_type":"PAYMENT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"FEE", "txStatus":"TX_CONFIRMED", "transferIds":["1"]}},
+  {"id":15, "account_id":"42cf2c08", "change_type":"DEBIT", "amount":"5.0", "available_after":"15.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_CONFIRMED", "transferIds":["1"]}},
+  {"id":16, "account_id":"42cf2c08", "change_type":"DEBIT", "amount":"0.1", "available_after":"14.9", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"FEE", "txStatus":"TX_CONFIRMED", "transferIds":["1"]}},
+  {"id":17, "account_id":"42cf2c08", "change_type":"DEBIT", "amount":"0.1", "available_after":"14.8", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"INTEGRATION_FEE", "txStatus":"TX_CONFIRMED", "transferIds":["1"], "integrationFeeDiff":"0.1"}},
+  {"id":18, "account_id":"cf0104f7", "change_type":"DEBIT", "amount":"0.1", "available_after":"49.9", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"INTEGRATION_FEE", "txStatus":"TX_CONFIRMED", "transferIds":["1"], "integrationFeeDiff":"0.1"}}
 ]
 ```
 
@@ -461,65 +467,65 @@ Account aliases: **0x1** = hot wallet (holds sender + platform funds), **0x2** =
 
 ### t0 — Fixtures
 
-| # | account | change_type | amount | available | hold | hold_in | reason | intent_type | intent_id | txId |
-|---|---------|-------------|--------|-----------|------|---------|--------|-------------|-----------|------|
-| 1 | 0x1 | CREDIT | 50.0 | 50.0 | 0.0 | 0.0 | MANUAL_CORRECTION | — | — | — |
-| 2 | 0x1 | CREDIT | 20.0 | 70.0 | 0.0 | 0.0 | MANUAL_CORRECTION | — | — | — |
+| # | account | change_type | amount | available | hold | hold_in | intent_type | intent_operation_type | intent_id | reason |
+|---|---------|-------------|--------|-----------|------|---------|-------------|----------------------|-----------|--------|
+| 1 | 0x1 | CREDIT | 50.0 | 50.0 | 0.0 | 0.0 | — | — | — | MANUAL_CORRECTION |
+| 2 | 0x1 | CREDIT | 20.0 | 70.0 | 0.0 | 0.0 | — | — | — | MANUAL_CORRECTION |
 
 ### t3 — PREPARED (payout holds)
 
-| # | account | change_type | amount | available | hold | hold_in | reason | intent_type | intent_id | txId |
-|---|---------|-------------|--------|-----------|------|---------|--------|-------------|-----------|------|
-| 3 | 0x1 | HOLD | 5.0 | 65.0 | 5.0 | 0.0 | AMOUNT | PAYOUT | `b6ab9111` | 1 |
-| 4 | 0x1 | HOLD | 0.1 | 64.9 | 5.1 | 0.0 | FEE | PAYOUT | `b6ab9111` | 1 |
-| 5 | 0x1 | HOLD | 0.2 | 64.7 | 5.3 | 0.0 | INTEGRATION_FEE | PAYOUT | `b6ab9111` | 1 |
-| 6 | 0x1 | HOLD | 0.1 | 64.6 | 5.4 | 0.0 | INTEGRATION_FEE | PAYOUT | `b6ab9111` | 1 |
+| # | account | change_type | amount | available | hold | hold_in | intent_type | intent_operation_type | intent_id | reason |
+|---|---------|-------------|--------|-----------|------|---------|-------------|----------------------|-----------|--------|
+| 3 | 0x1 | HOLD | 5.0 | 65.0 | 5.0 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | AMOUNT |
+| 4 | 0x1 | HOLD | 0.1 | 64.9 | 5.1 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | FEE |
+| 5 | 0x1 | HOLD | 0.2 | 64.7 | 5.3 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | INTEGRATION_FEE |
+| 6 | 0x1 | HOLD | 0.1 | 64.6 | 5.4 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | INTEGRATION_FEE |
 
 ### t5 — ACCEPTED (incoming payment hold)
 
-| # | account | change_type | amount | available | hold | hold_in | reason | intent_type | intent_id | txId |
-|---|---------|-------------|--------|-----------|------|---------|--------|-------------|-----------|------|
-| 7 | 0x2 | HOLD_IN | 5.0 | 0.0 | 0.0 | 5.0 | AMOUNT | PAYMENT | `f05d4900` | 1 |
+| # | account | change_type | amount | available | hold | hold_in | intent_type | intent_operation_type | intent_id | reason |
+|---|---------|-------------|--------|-----------|------|---------|-------------|----------------------|-----------|--------|
+| 7 | 0x2 | HOLD_IN | 5.0 | 0.0 | 0.0 | 5.0 | PAYMENT | USER_REQUEST | `f05d4900` | AMOUNT |
 
 ### t6 — CONFIRMED (release holds + final debits/credits + fee accrual)
 
-| # | account | change_type | amount | available | hold | hold_in | reason | intent_type | intent_id | txId |
-|---|---------|-------------|--------|-----------|------|---------|--------|-------------|-----------|------|
-| 8 | 0x1 | RELEASE_HOLD | 5.0 | 69.6 | 0.4 | 0.0 | AMOUNT | PAYOUT | `b6ab9111` | 1 |
-| 9 | 0x1 | RELEASE_HOLD | 0.1 | 69.7 | 0.3 | 0.0 | FEE | PAYOUT | `b6ab9111` | 1 |
-| 10 | 0x1 | RELEASE_HOLD | 0.2 | 69.9 | 0.1 | 0.0 | INTEGRATION_FEE | PAYOUT | `b6ab9111` | 1 |
-| 11 | 0x1 | RELEASE_HOLD | 0.1 | 70.0 | 0.0 | 0.0 | INTEGRATION_FEE | PAYOUT | `b6ab9111` | 1 |
-| 12 | 0x2 | RELEASE_HOLD_IN | 5.0 | 0.0 | 0.0 | 0.0 | AMOUNT | PAYMENT | `f05d4900` | 1 |
-| 13 | 0x2 | CREDIT | 5.0 | 5.0 | 0.0 | 0.0 | AMOUNT | PAYMENT | `f05d4900` | 1 |
-| 14 | 0x1 | DEBIT | 5.0 | 65.0 | 0.0 | 0.0 | AMOUNT | PAYOUT | `b6ab9111` | 1 |
-| 15 | 0x1 | DEBIT | 0.1 | 64.9 | 0.0 | 0.0 | INTEGRATION_FEE | PAYOUT | `b6ab9111` | 1 |
-| 16 | 0x2 | PLATFORM_FEE_ACCRUED | 0.1 | 4.9 | 0.1 | 0.0 | PLATFORM_FEE_CONSOLIDATION | PAYMENT | `f05d4900` | 1 |
-| 17 | 0x1 | PLATFORM_FEE_ACCRUED | 0.1 | 64.8 | 0.1 | 0.0 | PLATFORM_FEE_CONSOLIDATION | PAYOUT | `b6ab9111` | 1 |
+| # | account | change_type | amount | available | hold | hold_in | intent_type | intent_operation_type | intent_id | reason |
+|---|---------|-------------|--------|-----------|------|---------|-------------|----------------------|-----------|--------|
+| 8 | 0x1 | RELEASE_HOLD | 5.0 | 69.6 | 0.4 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | AMOUNT |
+| 9 | 0x1 | RELEASE_HOLD | 0.1 | 69.7 | 0.3 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | FEE |
+| 10 | 0x1 | RELEASE_HOLD | 0.2 | 69.9 | 0.1 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | INTEGRATION_FEE |
+| 11 | 0x1 | RELEASE_HOLD | 0.1 | 70.0 | 0.0 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | INTEGRATION_FEE |
+| 12 | 0x2 | RELEASE_HOLD_IN | 5.0 | 0.0 | 0.0 | 0.0 | PAYMENT | USER_REQUEST | `f05d4900` | AMOUNT |
+| 13 | 0x2 | CREDIT | 5.0 | 5.0 | 0.0 | 0.0 | PAYMENT | USER_REQUEST | `f05d4900` | AMOUNT |
+| 14 | 0x1 | DEBIT | 5.0 | 65.0 | 0.0 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | AMOUNT |
+| 15 | 0x1 | DEBIT | 0.1 | 64.9 | 0.0 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | INTEGRATION_FEE |
+| 16 | 0x2 | PLATFORM_FEE_ACCRUED | 0.1 | 4.9 | 0.1 | 0.0 | PAYMENT | USER_REQUEST | `f05d4900` | PLATFORM_FEE_CONSOLIDATION |
+| 17 | 0x1 | PLATFORM_FEE_ACCRUED | 0.1 | 64.8 | 0.1 | 0.0 | PAYOUT | USER_REQUEST | `b6ab9111` | PLATFORM_FEE_CONSOLIDATION |
 
-> `PLATFORM_FEE_ACCRUED` (events 16–17) creates a `hold` on the integration account, not a `debit`. The fee is earned but not yet collected — it still sits on-chain in `0x1`/`0x2`. A separate **consolidation sweep** process will later transfer these fees to the platform treasury address, at which point the escrow records (id 6–7) transition from `CREATED` → `RESOLVED` and the hold becomes a debit.
+> `PLATFORM_FEE_ACCRUED` (events 16–17) creates a `hold` on the integration account, not a `debit`. The fee is earned but not yet collected — it still sits on-chain in `0x1`/`0x2`. A separate **consolidation sweep** process will later create a payout intent with `operation_type = CONSOLIDATION` to transfer these fees to the platform treasury address, at which point the escrow records (id 6–7) transition from `CREATED` → `RESOLVED` and the hold becomes a debit.
 
 <details>
 <summary>Full JSON with metadata (17 events)</summary>
 
 ```json
 [
-  {"id":1, "account":"0x1", "change_type":"CREDIT", "amount":"50.0", "available_after":"50.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":null, "intent_type":null, "metadata":{"reason":"MANUAL_CORRECTION"}},
-  {"id":2, "account":"0x1", "change_type":"CREDIT", "amount":"20.0", "available_after":"70.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":null, "intent_type":null, "metadata":{"reason":"MANUAL_CORRECTION"}},
-  {"id":3, "account":"0x1", "change_type":"HOLD", "amount":"5.0", "available_after":"65.0", "hold_after":"5.0", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_PREPARED", "transferIds":["1"]}},
-  {"id":4, "account":"0x1", "change_type":"HOLD", "amount":"0.1", "available_after":"64.9", "hold_after":"5.1", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"FEE", "txStatus":"TX_PREPARED", "transferIds":["1"]}},
-  {"id":5, "account":"0x1", "change_type":"HOLD", "amount":"0.2", "available_after":"64.7", "hold_after":"5.3", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"INTEGRATION_FEE", "txStatus":"TX_PREPARED", "transferIds":["1"], "integrationFeeDiff":"0.1"}},
-  {"id":6, "account":"0x1", "change_type":"HOLD", "amount":"0.1", "available_after":"64.6", "hold_after":"5.4", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"INTEGRATION_FEE", "txStatus":"TX_PREPARED", "transferIds":["1"], "integrationFeeDiff":"0.1"}},
-  {"id":7, "account":"0x2", "change_type":"HOLD_IN", "amount":"5.0", "available_after":"0.0", "hold_after":"0.0", "hold_in_after":"5.0", "intent_id":"f05d4900", "intent_type":"PAYMENT", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_ACCEPTED", "transferIds":["1"], "relatedIntentId":"b6ab9111", "relatedIntentType":"PAYOUT"}},
-  {"id":8, "account":"0x1", "change_type":"RELEASE_HOLD", "amount":"5.0", "available_after":"69.6", "hold_after":"0.4", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_CONFIRMED", "transferIds":["1"]}},
-  {"id":9, "account":"0x1", "change_type":"RELEASE_HOLD", "amount":"0.1", "available_after":"69.7", "hold_after":"0.3", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"FEE", "txStatus":"TX_CONFIRMED", "transferIds":["1"]}},
-  {"id":10, "account":"0x1", "change_type":"RELEASE_HOLD", "amount":"0.2", "available_after":"69.9", "hold_after":"0.1", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"INTEGRATION_FEE", "txStatus":"TX_CONFIRMED", "transferIds":["1"], "integrationFeeDiff":"0.1"}},
-  {"id":11, "account":"0x1", "change_type":"RELEASE_HOLD", "amount":"0.1", "available_after":"70.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"INTEGRATION_FEE", "txStatus":"TX_CONFIRMED", "transferIds":["1"], "integrationFeeDiff":"0.1"}},
-  {"id":12, "account":"0x2", "change_type":"RELEASE_HOLD_IN", "amount":"5.0", "available_after":"0.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"f05d4900", "intent_type":"PAYMENT", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_CONFIRMED", "transferIds":["1"], "relatedIntentId":"b6ab9111", "relatedIntentType":"PAYOUT"}},
-  {"id":13, "account":"0x2", "change_type":"CREDIT", "amount":"5.0", "available_after":"5.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"f05d4900", "intent_type":"PAYMENT", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_CONFIRMED", "transferIds":["1"], "relatedIntentId":"b6ab9111", "relatedIntentType":"PAYOUT"}},
-  {"id":14, "account":"0x1", "change_type":"DEBIT", "amount":"5.0", "available_after":"65.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_CONFIRMED", "transferIds":["1"]}},
-  {"id":15, "account":"0x1", "change_type":"DEBIT", "amount":"0.1", "available_after":"64.9", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"INTEGRATION_FEE", "txStatus":"TX_CONFIRMED", "transferIds":["1"], "integrationFeeDiff":"0.1"}},
-  {"id":16, "account":"0x2", "change_type":"PLATFORM_FEE_ACCRUED", "amount":"0.1", "available_after":"4.9", "hold_after":"0.1", "hold_in_after":"0.0", "intent_id":"f05d4900", "intent_type":"PAYMENT", "metadata":{"txId":"1", "reason":"PLATFORM_FEE_CONSOLIDATION", "txStatus":"TX_CONFIRMED", "transferIds":["1"]}},
-  {"id":17, "account":"0x1", "change_type":"PLATFORM_FEE_ACCRUED", "amount":"0.1", "available_after":"64.8", "hold_after":"0.1", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "metadata":{"txId":"1", "reason":"PLATFORM_FEE_CONSOLIDATION", "txStatus":"TX_CONFIRMED", "transferIds":["1"]}}
+  {"id":1, "account":"0x1", "change_type":"CREDIT", "amount":"50.0", "available_after":"50.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":null, "intent_type":null, "intent_operation_type":null, "metadata":{"reason":"MANUAL_CORRECTION"}},
+  {"id":2, "account":"0x1", "change_type":"CREDIT", "amount":"20.0", "available_after":"70.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":null, "intent_type":null, "intent_operation_type":null, "metadata":{"reason":"MANUAL_CORRECTION"}},
+  {"id":3, "account":"0x1", "change_type":"HOLD", "amount":"5.0", "available_after":"65.0", "hold_after":"5.0", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_PREPARED", "transferIds":["1"]}},
+  {"id":4, "account":"0x1", "change_type":"HOLD", "amount":"0.1", "available_after":"64.9", "hold_after":"5.1", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"FEE", "txStatus":"TX_PREPARED", "transferIds":["1"]}},
+  {"id":5, "account":"0x1", "change_type":"HOLD", "amount":"0.2", "available_after":"64.7", "hold_after":"5.3", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"INTEGRATION_FEE", "txStatus":"TX_PREPARED", "transferIds":["1"], "integrationFeeDiff":"0.1"}},
+  {"id":6, "account":"0x1", "change_type":"HOLD", "amount":"0.1", "available_after":"64.6", "hold_after":"5.4", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"INTEGRATION_FEE", "txStatus":"TX_PREPARED", "transferIds":["1"], "integrationFeeDiff":"0.1"}},
+  {"id":7, "account":"0x2", "change_type":"HOLD_IN", "amount":"5.0", "available_after":"0.0", "hold_after":"0.0", "hold_in_after":"5.0", "intent_id":"f05d4900", "intent_type":"PAYMENT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_ACCEPTED", "transferIds":["1"], "relatedIntentId":"b6ab9111", "relatedIntentType":"PAYOUT"}},
+  {"id":8, "account":"0x1", "change_type":"RELEASE_HOLD", "amount":"5.0", "available_after":"69.6", "hold_after":"0.4", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_CONFIRMED", "transferIds":["1"]}},
+  {"id":9, "account":"0x1", "change_type":"RELEASE_HOLD", "amount":"0.1", "available_after":"69.7", "hold_after":"0.3", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"FEE", "txStatus":"TX_CONFIRMED", "transferIds":["1"]}},
+  {"id":10, "account":"0x1", "change_type":"RELEASE_HOLD", "amount":"0.2", "available_after":"69.9", "hold_after":"0.1", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"INTEGRATION_FEE", "txStatus":"TX_CONFIRMED", "transferIds":["1"], "integrationFeeDiff":"0.1"}},
+  {"id":11, "account":"0x1", "change_type":"RELEASE_HOLD", "amount":"0.1", "available_after":"70.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"INTEGRATION_FEE", "txStatus":"TX_CONFIRMED", "transferIds":["1"], "integrationFeeDiff":"0.1"}},
+  {"id":12, "account":"0x2", "change_type":"RELEASE_HOLD_IN", "amount":"5.0", "available_after":"0.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"f05d4900", "intent_type":"PAYMENT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_CONFIRMED", "transferIds":["1"], "relatedIntentId":"b6ab9111", "relatedIntentType":"PAYOUT"}},
+  {"id":13, "account":"0x2", "change_type":"CREDIT", "amount":"5.0", "available_after":"5.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"f05d4900", "intent_type":"PAYMENT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_CONFIRMED", "transferIds":["1"], "relatedIntentId":"b6ab9111", "relatedIntentType":"PAYOUT"}},
+  {"id":14, "account":"0x1", "change_type":"DEBIT", "amount":"5.0", "available_after":"65.0", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"AMOUNT", "txStatus":"TX_CONFIRMED", "transferIds":["1"]}},
+  {"id":15, "account":"0x1", "change_type":"DEBIT", "amount":"0.1", "available_after":"64.9", "hold_after":"0.0", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"INTEGRATION_FEE", "txStatus":"TX_CONFIRMED", "transferIds":["1"], "integrationFeeDiff":"0.1"}},
+  {"id":16, "account":"0x2", "change_type":"PLATFORM_FEE_ACCRUED", "amount":"0.1", "available_after":"4.9", "hold_after":"0.1", "hold_in_after":"0.0", "intent_id":"f05d4900", "intent_type":"PAYMENT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"PLATFORM_FEE_CONSOLIDATION", "txStatus":"TX_CONFIRMED", "transferIds":["1"]}},
+  {"id":17, "account":"0x1", "change_type":"PLATFORM_FEE_ACCRUED", "amount":"0.1", "available_after":"64.8", "hold_after":"0.1", "hold_in_after":"0.0", "intent_id":"b6ab9111", "intent_type":"PAYOUT", "intent_operation_type":"USER_REQUEST", "metadata":{"txId":"1", "reason":"PLATFORM_FEE_CONSOLIDATION", "txStatus":"TX_CONFIRMED", "transferIds":["1"]}}
 ]
 ```
 
@@ -535,6 +541,42 @@ Service: **Ledger** · Schema: `ledger` · Table: `integration_account_projectio
 |---------|-----------|------|---------|------|
 | `0x1` | 64.8 | 0.1 | 0.0 | 70.0 − 5.0 (payout) − 0.1 (integration fee) − 0.1 (platform fee held) |
 | `0x2` | 4.9 | 0.1 | 0.0 | 5.0 received − 0.1 (platform fee held) |
+
+---
+
+## 9. Reference — intent_operation_type
+
+`intent_operation_type` indicates the business purpose behind the intent that triggered a balance change. It is stored as a column on both ES tables (`platform_account_es`, `integration_account_es`) alongside `intent_type` and `intent_id`.
+
+| Value | Description |
+|-------|-------------|
+| `USER_REQUEST` | Standard user-initiated payment or payout |
+| `CONSOLIDATION` | System-initiated sweep of accrued platform fees to treasury |
+
+**Enum definitions:**
+
+```typescript
+export enum PaymentOperationEntityType {
+  USER_REQUEST = 1,
+  CONSOLIDATION = 2,
+}
+
+export enum PayoutOperationEntityType {
+  USER_REQUEST = 1,
+  CONSOLIDATION = 2,
+}
+
+export enum BalanceChangeOperationType {
+  USER_REQUEST = 'USER_REQUEST',
+  CONSOLIDATION = 'CONSOLIDATION',
+}
+```
+
+**Mapping:** `PaymentOperationEntityType` / `PayoutOperationEntityType` → `BalanceChangeOperationType` via `OperationTypeMapper.toBalanceChange()` before writing to the ledger ES.
+
+**In this example** all events carry `USER_REQUEST` — standard user-initiated payout and payment.
+
+`CONSOLIDATION` appears when the escrow records (id 6–7, `PLATFORM_FEE_ACCRUED`) are swept: a payout intent is created with `operation_type = CONSOLIDATION` to move the accrued fees from `0x1`/`0x2` to the platform treasury. At that point the escrow records transition `CREATED → RESOLVED` and the `PLATFORM_FEE_ACCRUED` hold becomes a debit.
 
 ---
 

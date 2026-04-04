@@ -1,10 +1,5 @@
 import { BalanceUpdatedResult, GetBalancesResult } from './ledger-repository.types'
-import {
-  BalanceChangeMetadata,
-  BalanceChange,
-  BalanceChangeReason,
-  BalanceChangeTxStatus,
-} from '@app/shared/types/balance-change'
+import { BalanceChangeMetadata, BalanceChange, BalanceChangeReason } from '@app/shared/types/balance-change'
 import { BalanceChangeRequestData, BalanceUpdatedEvent } from '@app/shared/services/ledger/v1'
 import { Numeric, UUID, Id, IntegrationCurrency, IntegrationAccount } from '@app/types'
 import { GetBalancesParams, Balance, IntegrationType } from '@app/shared'
@@ -43,8 +38,6 @@ export class LedgerRepositoryMapper {
         amount: Numeric.create(item.amount),
         metadata: {
           txId: item.metadata.txId as Id,
-          intentType: item.metadata.intentType,
-          intentId: item.metadata.intentId as UUID | Id,
           reason: item.metadata.reason
             ? (BalanceChangeReason[item.metadata.reason.toString()] as BalanceChangeReason)
             : undefined,
@@ -66,6 +59,9 @@ export class LedgerRepositoryMapper {
   static balanceChangeToEvent(data: BalanceChange): BalanceChangeRequestData {
     return new BalanceChangeRequestData(
       data.type,
+      data.intentType,
+      data.intentId,
+      data.operationType,
       data.platformAccountId,
       data.integrationAccount,
       data.currency,

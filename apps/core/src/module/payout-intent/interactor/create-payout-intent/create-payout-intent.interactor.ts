@@ -1,5 +1,5 @@
 import { AbstractInteractor, UUID, IntegrationCurrency, Numeric, IntegrationAccount } from '@app/types'
-import { PayoutIntentModel } from '../../model/payout-intent.model'
+import { PayoutIntentModel, PayoutOperationType } from '../../model/payout-intent.model'
 import { PayoutIntentRepository } from '../../../../data/repository/payout-intent/payout-intent.repository'
 import {
   ExternalIntegrationRepository,
@@ -26,6 +26,8 @@ import {
 } from '../../../../shared/model/composite-integration-account.model'
 
 export interface CreatePayoutIntentParams {
+  readonly operationType: PayoutOperationType
+
   readonly platformMember: PlatformMemberModel
   readonly amount: Numeric
   readonly fromIntegration: IntegrationType
@@ -56,6 +58,7 @@ export class CreatePayoutIntentInteractor extends AbstractInteractor<
 
     // todo call some policy for validate payout configuration!
     const payout = await this.payoutIntentRepository.create({
+      operationType: params.operationType,
       member: params.platformMember,
       from, // get platfromAccount (hot account)
       fromAmount: params.amount,

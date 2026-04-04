@@ -2,6 +2,7 @@ import { BalanceChange, BalanceChangeReason, BalanceChangeTxStatus } from '@app/
 import { Id, AbstractInteractor, Numeric } from '@app/types'
 import { IntentType, BalanceChangeType, IntegrationType } from '@app/shared'
 import { PayoutIntentModel } from '../../../../payout-intent/model/payout-intent.model'
+import { OperationTypeMapper } from '../../../../../shared/converter/operation-type.mapper'
 
 export interface PlatformFeePayoutOperationParams {
   readonly payout: PayoutIntentModel
@@ -32,17 +33,22 @@ export class IntegrationFeePayoutOperation extends AbstractInteractor<
     const metadata = {
       txId,
       transferIds: Array.from(transferIds),
-      intentType: IntentType.PAYOUT,
-      intentId: payout.id,
       reason: BalanceChangeReason.INTEGRATION_FEE,
       txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
       integrationFeeDiff: diff,
+    }
+
+    const basicData: Pick<BalanceChange, 'intentType' | 'intentId' | 'operationType'> = {
+      intentType: IntentType.PAYOUT,
+      intentId: payout.id,
+      operationType: OperationTypeMapper.toBalanceChange(payout.operationType),
     }
 
     if (isInternalTransfer) {
       return [
         {
           type: BalanceChangeType.RELEASE_HOLD,
+          ...basicData,
           platformAccountId: payout.from.platformAccountId,
           integrationAccount: null,
           currency: payout.estimatedFeeCurrency,
@@ -52,6 +58,7 @@ export class IntegrationFeePayoutOperation extends AbstractInteractor<
         },
         {
           type: BalanceChangeType.PLATFORM_FEE_ACCRUED,
+          ...basicData,
           platformAccountId: payout.from.platformAccountId,
           integrationAccount: null,
           currency: payout.integrationFeeCurrency,
@@ -68,6 +75,7 @@ export class IntegrationFeePayoutOperation extends AbstractInteractor<
       return [
         {
           type: BalanceChangeType.RELEASE_HOLD,
+          ...basicData,
           platformAccountId: payout.integrationFeePayer.platformAccountId,
           integrationAccount: payout.integrationFeePayer.account,
           currency: payout.estimatedFeeCurrency,
@@ -77,6 +85,7 @@ export class IntegrationFeePayoutOperation extends AbstractInteractor<
         },
         {
           type: BalanceChangeType.DEBIT,
+          ...basicData,
           platformAccountId: payout.integrationFeePayer.platformAccountId,
           integrationAccount: payout.integrationFeePayer.account,
           currency: payout.integrationFeeCurrency,
@@ -92,6 +101,7 @@ export class IntegrationFeePayoutOperation extends AbstractInteractor<
     return [
       {
         type: BalanceChangeType.RELEASE_HOLD,
+        ...basicData,
         platformAccountId: payout.member.accountId,
         integrationAccount: payout.integrationFeePayer.account,
         currency: payout.estimatedFeeCurrency,
@@ -101,6 +111,7 @@ export class IntegrationFeePayoutOperation extends AbstractInteractor<
       },
       {
         type: BalanceChangeType.DEBIT,
+        ...basicData,
         platformAccountId: payout.member.accountId,
         integrationAccount: null,
         currency: payout.estimatedFeeCurrency,
@@ -110,6 +121,7 @@ export class IntegrationFeePayoutOperation extends AbstractInteractor<
       },
       {
         type: BalanceChangeType.RELEASE_HOLD,
+        ...basicData,
         platformAccountId: payout.integrationFeePayer.platformAccountId ?? null,
         integrationAccount: payout.integrationFeePayer.account,
         currency: payout.integrationFeeCurrency,
@@ -119,6 +131,7 @@ export class IntegrationFeePayoutOperation extends AbstractInteractor<
       },
       {
         type: BalanceChangeType.DEBIT,
+        ...basicData,
         platformAccountId: payout.integrationFeePayer.platformAccountId ?? null,
         integrationAccount: payout.integrationFeePayer.account,
         currency: payout.integrationFeeCurrency,

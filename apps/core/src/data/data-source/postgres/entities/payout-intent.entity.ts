@@ -16,6 +16,11 @@ export enum PayoutIntentEntityStatus {
   FAILED = 7,
 }
 
+export enum PayoutOperationEntityType {
+  USER_REQUEST = 1,
+  CONSOLIDATION = 2, // for example, top-up etc.
+}
+
 export type PayoutIntentEntityMetadata = Record<string, unknown>
 
 @Entity({ name: PayoutIntentEntity.NAME, schema: APP_SCHEMA })
@@ -25,6 +30,9 @@ export class PayoutIntentEntity extends BasicEntity {
 
   @PrimaryGeneratedColumn('uuid')
   readonly id: UUID
+
+  @Column({ type: 'smallint' })
+  readonly operationType: PayoutOperationEntityType
 
   @Column({ type: 'uuid' })
   readonly initiatorAccountId: UUID

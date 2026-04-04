@@ -2,6 +2,7 @@ import { BalanceChange, BalanceChangeTxStatus, BalanceChangeReason } from '@app/
 import { PaymentIntentModel } from '../../../../payment-intent/model/payment-intent.model'
 import { Numeric, Id, AbstractInteractor, UUID } from '@app/types'
 import { IntentType, BalanceChangeType, IntegrationType } from '@app/shared'
+import { OperationTypeMapper } from '../../../../../shared/converter/operation-type.mapper'
 
 export interface PaymentOperationParams {
   readonly payment: PaymentIntentModel
@@ -22,6 +23,9 @@ export class PaymentOperation extends AbstractInteractor<PaymentOperationParams,
     return [
       {
         type: BalanceChangeType.CREDIT,
+        intentType: IntentType.PAYMENT,
+        intentId: payment.id,
+        operationType: OperationTypeMapper.toBalanceChange(payment.operationType),
         platformAccountId: payment.to.platformAccountId,
         integrationAccount,
         currency: payment.currency,
@@ -30,8 +34,6 @@ export class PaymentOperation extends AbstractInteractor<PaymentOperationParams,
         metadata: {
           txId: txId,
           transferIds: Array.from(transferIds),
-          intentType: IntentType.PAYMENT,
-          intentId: payment.id,
           relatedIntentType: payoutId ? IntentType.PAYOUT : undefined,
           relatedIntentId: payoutId,
           reason: BalanceChangeReason.AMOUNT,

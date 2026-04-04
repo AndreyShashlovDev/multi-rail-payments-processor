@@ -2,6 +2,7 @@ import { BalanceChange, BalanceChangeReason, BalanceChangeTxStatus } from '@app/
 import { Id, AbstractInteractor } from '@app/types'
 import { IntentType, BalanceChangeType, IntegrationType } from '@app/shared'
 import { PayoutIntentModel } from '../../../../payout-intent/model/payout-intent.model'
+import { OperationTypeMapper } from '../../../../../shared/converter/operation-type.mapper'
 
 export interface PayoutHoldsOperationParams {
   readonly payout: PayoutIntentModel
@@ -21,9 +22,16 @@ export class PayoutHoldsOperation extends AbstractInteractor<PayoutHoldsOperatio
     const platformFeeIntegrationAccount = isInternalTransfer ? null : payout.from.account
     const integrationFeeIntegrationAccount = isInternalTransfer ? null : payout.platformFeeAccount?.account
 
+    const basicData: Pick<BalanceChange, 'intentType' | 'intentId' | 'operationType' | 'type'> = {
+      type: BalanceChangeType.HOLD,
+      intentType: IntentType.PAYOUT,
+      intentId: payout.id,
+      operationType: OperationTypeMapper.toBalanceChange(payout.operationType),
+    }
+
     if (payout.platformFee && payout.platformFee.gt(0)) {
       optionalHolds.push({
-        type: BalanceChangeType.HOLD,
+        ...basicData,
         platformAccountId: payout.member.accountId,
         integrationAccount: platformFeeIntegrationAccount,
         currency: payout.fromCurrency,
@@ -32,8 +40,6 @@ export class PayoutHoldsOperation extends AbstractInteractor<PayoutHoldsOperatio
         metadata: {
           txId: txId,
           transferIds: Array.from(transferIds),
-          intentType: IntentType.PAYOUT,
-          intentId: payout.id,
           reason: BalanceChangeReason.FEE,
           txStatus: BalanceChangeTxStatus.TX_PREPARED,
         },
@@ -45,7 +51,7 @@ export class PayoutHoldsOperation extends AbstractInteractor<PayoutHoldsOperatio
       const diff = payout.estimatedFee.minus(convertedIntegrationFee).div(payout.integrationFeeRate)
 
       optionalHolds.push({
-        type: BalanceChangeType.HOLD,
+        ...basicData,
         platformAccountId: payout.member.accountId,
         integrationAccount: integrationFeeIntegrationAccount ?? null,
         currency: payout.estimatedFeeCurrency,
@@ -54,8 +60,6 @@ export class PayoutHoldsOperation extends AbstractInteractor<PayoutHoldsOperatio
         metadata: {
           txId: txId,
           transferIds: Array.from(transferIds),
-          intentType: IntentType.PAYOUT,
-          intentId: payout.id,
           reason: BalanceChangeReason.INTEGRATION_FEE,
           txStatus: BalanceChangeTxStatus.TX_PREPARED,
           integrationFeeDiff: diff,
@@ -64,7 +68,7 @@ export class PayoutHoldsOperation extends AbstractInteractor<PayoutHoldsOperatio
 
       if (payout.integrationFeePayer) {
         optionalHolds.push({
-          type: BalanceChangeType.HOLD,
+          ...basicData,
           platformAccountId: payout.integrationFeePayer.platformAccountId ?? null,
           integrationAccount: isInternalTransfer ? null : payout.integrationFeePayer.account,
           currency: payout.integrationFeeCurrency,
@@ -73,8 +77,6 @@ export class PayoutHoldsOperation extends AbstractInteractor<PayoutHoldsOperatio
           metadata: {
             txId: txId,
             transferIds: Array.from(transferIds),
-            intentType: IntentType.PAYOUT,
-            intentId: payout.id,
             reason: BalanceChangeReason.INTEGRATION_FEE,
             txStatus: BalanceChangeTxStatus.TX_PREPARED,
             integrationFeeDiff: diff,
@@ -85,7 +87,7 @@ export class PayoutHoldsOperation extends AbstractInteractor<PayoutHoldsOperatio
 
     return [
       {
-        type: BalanceChangeType.HOLD,
+        ...basicData,
         platformAccountId: payout.member.accountId,
         integrationAccount: amountIntegrationAccount,
         currency: payout.fromCurrency,
@@ -94,8 +96,6 @@ export class PayoutHoldsOperation extends AbstractInteractor<PayoutHoldsOperatio
         metadata: {
           txId: txId,
           transferIds: Array.from(transferIds),
-          intentType: IntentType.PAYOUT,
-          intentId: payout.id,
           reason: BalanceChangeReason.AMOUNT,
           txStatus: BalanceChangeTxStatus.TX_PREPARED,
         },

@@ -1,5 +1,5 @@
 import { AbstractInteractor, UUID, IntegrationCurrency, Numeric } from '@app/types'
-import { PaymentIntentModel, PaymentPlatformFeePayerType } from '../../model/payment-intent.model'
+import { PaymentIntentModel, PaymentPlatformFeePayerType, PaymentOperationType } from '../../model/payment-intent.model'
 import { PaymentIntentRepository } from '../../../../data/repository/payment-intent/payment-intent.repository'
 import { Injectable } from '@nestjs/common'
 import {
@@ -15,6 +15,7 @@ import { PlatformFeeProvider } from '../../../../shared/platform-fee/platform-fe
 import { NotFoundAvailableLinkAccountException } from '../../exception/not-found-available-link-account.exception'
 
 export interface CreatePaymentParams {
+  readonly operationType: PaymentOperationType
   readonly platformAccountId: UUID
   readonly userId: UUID
   readonly integration: IntegrationType

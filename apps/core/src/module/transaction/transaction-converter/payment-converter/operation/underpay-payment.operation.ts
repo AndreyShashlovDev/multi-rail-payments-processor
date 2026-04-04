@@ -2,6 +2,7 @@ import { BalanceChange, BalanceChangeReason, BalanceChangeTxStatus } from '@app/
 import { PaymentIntentModel } from '../../../../payment-intent/model/payment-intent.model'
 import { Numeric, Id, AbstractInteractor } from '@app/types'
 import { IntentType, BalanceChangeType, IntegrationType } from '@app/shared'
+import { OperationTypeMapper } from '../../../../../shared/converter/operation-type.mapper'
 
 export interface UnderpayPaymentOperationParams {
   readonly payment: PaymentIntentModel
@@ -22,10 +23,16 @@ export class UnderpayPaymentOperation extends AbstractInteractor<
       payment.to.account === payment.member.accountId && payment.integration === IntegrationType.INTERNAL
 
     const integrationAccount = isInternalTransfer ? null : payment.to.account
+    const basicData: Pick<BalanceChange, 'intentType' | 'intentId' | 'operationType'> = {
+      intentType: IntentType.PAYMENT,
+      intentId: payment.id,
+      operationType: OperationTypeMapper.toBalanceChange(payment.operationType),
+    }
 
     return [
       {
         type: BalanceChangeType.CREDIT,
+        ...basicData,
         platformAccountId: payment.to.platformAccountId,
         integrationAccount,
         currency: payment.currency,
@@ -34,8 +41,6 @@ export class UnderpayPaymentOperation extends AbstractInteractor<
         metadata: {
           txId: txId,
           transferIds: Array.from(transferIds),
-          intentType: IntentType.PAYMENT,
-          intentId: payment.id,
           reason: BalanceChangeReason.UNDERPAY,
           actualAmount: amount,
           expectedAmount,
@@ -44,6 +49,7 @@ export class UnderpayPaymentOperation extends AbstractInteractor<
       },
       {
         type: BalanceChangeType.HOLD,
+        ...basicData,
         platformAccountId: payment.to.platformAccountId,
         integrationAccount,
         currency: payment.currency,
@@ -52,8 +58,6 @@ export class UnderpayPaymentOperation extends AbstractInteractor<
         metadata: {
           txId: txId,
           transferIds: Array.from(transferIds),
-          intentType: IntentType.PAYMENT,
-          intentId: payment.id,
           reason: BalanceChangeReason.UNDERPAY,
           actualAmount: amount,
           expectedAmount,

@@ -4,7 +4,7 @@ import { AccountModel, AccountRole } from '../../../shared/model/account.model'
 export class AccountRepositoryMapper {
   static toDomain(entity: AccountEntity): AccountModel {
     return {
-      ...entity,
+      ...entity, // fixme remove it. need clear mapping
       role: AccountRepositoryMapper.toDomainRole(entity.role),
     }
   }

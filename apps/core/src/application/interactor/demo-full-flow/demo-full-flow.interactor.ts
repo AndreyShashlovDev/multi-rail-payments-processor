@@ -1,4 +1,4 @@
-import { AbstractInteractor, UUID, IntegrationCurrency, Numeric, IntegrationAccount } from '@app/types'
+import { AbstractInteractor, UUID, IntegrationCurrency, Numeric } from '@app/types'
 import {
   IntegrationAccountLinkRepository,
 } from '../../../data/repository/integration-account-link/integration-account-link.repository'
@@ -14,10 +14,14 @@ import { AccountRepository } from '../../../data/repository/account/account.repo
 import {
   CreatePaymentIntentInteractor,
 } from '../../../module/payment-intent/interactor/create-payment-intent/create-payment-intent.interactor'
-import { PaymentPlatformFeePayerType } from '../../../module/payment-intent/model/payment-intent.model'
+import {
+  PaymentPlatformFeePayerType,
+  PaymentOperationType,
+} from '../../../module/payment-intent/model/payment-intent.model'
 import {
   CreatePayoutIntentInteractor,
 } from '../../../module/payout-intent/interactor/create-payout-intent/create-payout-intent.interactor'
+import { PayoutOperationType } from '../../../module/payout-intent/model/payout-intent.model'
 
 /**
  * @deprecated remove it in real project! just for example. simulation
@@ -126,6 +130,7 @@ export class DemoFullFlowInteractor extends AbstractInteractor<never, Promise<vo
     }
 
     const payment = await this.createPaymentIntentInteractor.execute({
+      operationType: PaymentOperationType.USER_REQUEST,
       platformAccountId: paymentMerchant.id,
       userId: paymentMerchant.owner,
       integration: DemoFullFlowInteractor.INTEGRATION,
@@ -137,6 +142,7 @@ export class DemoFullFlowInteractor extends AbstractInteractor<never, Promise<vo
     this.logger.debug(`Payment id ${payment.id}`)
 
     const payout = await this.createPayoutIntentInteractor.execute({
+      operationType: PayoutOperationType.USER_REQUEST,
       platformMember: {
         accountId: payoutMerchant.id,
         userId: payoutMerchant.owner,
@@ -182,6 +188,9 @@ export class DemoFullFlowInteractor extends AbstractInteractor<never, Promise<vo
       changes: [
         {
           type: BalanceChangeType.CREDIT,
+          intentType: null,
+          intentId: null,
+          operationType: null,
           platformAccountId: null,
           integrationAccount: hotAccount.integrationAccount.account,
           currency: params.currency,
@@ -193,6 +202,9 @@ export class DemoFullFlowInteractor extends AbstractInteractor<never, Promise<vo
         },
         {
           type: BalanceChangeType.CREDIT,
+          intentType: null,
+          intentId: null,
+          operationType: null,
           platformAccountId: params.platformAccount,
           integrationAccount: null,
           currency: params.currency,

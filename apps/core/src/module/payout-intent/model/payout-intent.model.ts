@@ -16,9 +16,16 @@ export enum PayoutIntentStatus {
   FAILED = 'FAILED',
 }
 
+export enum PayoutOperationType {
+  USER_REQUEST = 'USER_REQUEST',
+  CONSOLIDATION = 'CONSOLIDATION', // for example, top-up etc.
+}
+
 export type PayoutIntentMetadataType = Record<string, unknown>
 
 export interface PayoutIntentData {
+  readonly operationType: PayoutOperationType
+
   readonly member: PlatformMemberModel
 
   readonly from: SourceIntegrationAccount

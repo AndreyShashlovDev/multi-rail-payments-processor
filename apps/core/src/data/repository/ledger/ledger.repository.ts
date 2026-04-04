@@ -48,7 +48,7 @@ export class LedgerRepository implements LedgerJetstreamHandler {
             let result: boolean = true
 
             if (result && filter?.intentType) {
-              result = item.metadata.intentType === filter.intentType
+              result = item.intentType === filter.intentType
             }
 
             if (result && filter?.status) {

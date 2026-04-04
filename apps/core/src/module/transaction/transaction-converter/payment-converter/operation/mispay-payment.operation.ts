@@ -21,6 +21,9 @@ export class MispayPaymentOperation extends AbstractInteractor<
     return [
       {
         type: BalanceChangeType.CREDIT,
+        intentType: null,
+        intentId: null,
+        operationType: null,
         platformAccountId: accountId,
         integrationAccount,
         currency: transfer.currency,
@@ -35,6 +38,9 @@ export class MispayPaymentOperation extends AbstractInteractor<
       },
       {
         type: BalanceChangeType.HOLD,
+        intentType: null,
+        intentId: null,
+        operationType: null,
         platformAccountId: accountId,
         integrationAccount,
         currency: transfer.currency,

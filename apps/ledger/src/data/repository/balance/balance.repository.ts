@@ -134,17 +134,16 @@ export class BalanceRepository {
     change: BalanceChangeData,
     snapshot: ProjectionSnapshot,
   ): Promise<void> {
-    const { intentType, intentId, ...metadata } = change.metadata
-
     await em.insert(IntegrationAccountEsEntity, {
       account: change.integrationAccount!,
       integration: change.integration,
       currency: change.currency,
       changeType: change.type,
       amount: change.amount,
-      intentType: intentType ? change.metadata.intentType : null,
-      intentId: intentId ?? null,
-      metadata,
+      intentType: change.intentType ?? null,
+      intentId: change.intentId ?? null,
+      intentOperationType: change.operationType ?? null,
+      metadata: change.metadata,
       availableAfter: snapshot.available,
       holdAfter: snapshot.hold,
       holdInAfter: snapshot.holdIn,
@@ -156,17 +155,16 @@ export class BalanceRepository {
     change: BalanceChangeData,
     snapshot: ProjectionSnapshot,
   ): Promise<void> {
-    const { intentType, intentId, ...metadata } = change.metadata
-
     await em.insert(PlatformAccountEsEntity, {
       accountId: change.platformAccountId!,
       integration: change.integration,
       currency: change.currency,
       changeType: change.type,
       amount: change.amount,
-      intentType: intentType ? intentType : null,
-      intentId: intentId ?? null,
-      metadata,
+      intentType: change.intentType ?? null,
+      intentId: change.intentId ?? null,
+      intentOperationType: change.operationType ?? null,
+      metadata: change.metadata,
       availableAfter: snapshot.available,
       holdAfter: snapshot.hold,
       holdInAfter: snapshot.holdIn,

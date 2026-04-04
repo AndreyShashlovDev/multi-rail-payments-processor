@@ -19,7 +19,7 @@ export class IntegrationAccountLinkRepositoryMapper {
     integrationAccount: IntegrationAccountEntity,
   ): IntegrationAccountLinkModel {
     return {
-      ...entity,
+      ...entity, // fixme remove it. need clear mapping
       integrationAccount: IntegrationAccountRepositoryMapper.toDomain(integrationAccount),
       status: IntegrationAccountLinkRepositoryMapper.toDomainStatus(entity.status),
       linkType: IntegrationAccountLinkRepositoryMapper.toDomainType(entity.linkType),

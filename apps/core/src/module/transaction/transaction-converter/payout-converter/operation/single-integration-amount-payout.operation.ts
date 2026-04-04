@@ -2,6 +2,7 @@ import { BalanceChange, BalanceChangeReason, BalanceChangeTxStatus } from '@app/
 import { Id, AbstractInteractor } from '@app/types'
 import { IntentType, BalanceChangeType, IntegrationType } from '@app/shared'
 import { PayoutIntentModel } from '../../../../payout-intent/model/payout-intent.model'
+import { OperationTypeMapper } from '../../../../../shared/converter/operation-type.mapper'
 
 export interface PayoutOperationParams {
   readonly payout: PayoutIntentModel
@@ -21,9 +22,16 @@ export class SingleIntegrationAmountPayoutOperation extends AbstractInteractor<
         ? null
         : payout.from.account
 
+    const basicData: Pick<BalanceChange, 'intentType' | 'intentId' | 'operationType'> = {
+      intentType: IntentType.PAYOUT,
+      intentId: payout.id,
+      operationType: OperationTypeMapper.toBalanceChange(payout.operationType),
+    }
+
     return [
       {
         type: BalanceChangeType.RELEASE_HOLD,
+        ...basicData,
         platformAccountId: payout.member.accountId,
         integrationAccount,
         currency: payout.fromCurrency,
@@ -32,14 +40,13 @@ export class SingleIntegrationAmountPayoutOperation extends AbstractInteractor<
         metadata: {
           txId: txId,
           transferIds: Array.from(transferIds),
-          intentType: IntentType.PAYOUT,
           reason: BalanceChangeReason.AMOUNT,
           txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
-          intentId: payout.id,
         },
       },
       {
         type: BalanceChangeType.DEBIT,
+        ...basicData,
         platformAccountId: payout.member.accountId,
         integrationAccount,
         currency: payout.fromCurrency,
@@ -48,10 +55,8 @@ export class SingleIntegrationAmountPayoutOperation extends AbstractInteractor<
         metadata: {
           txId: txId,
           transferIds: Array.from(transferIds),
-          intentType: IntentType.PAYOUT,
           reason: BalanceChangeReason.AMOUNT,
           txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
-          intentId: payout.id,
         },
       },
     ]

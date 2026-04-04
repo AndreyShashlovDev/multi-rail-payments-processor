@@ -2,6 +2,7 @@ import { BalanceChange, BalanceChangeReason, BalanceChangeTxStatus } from '@app/
 import { PaymentIntentModel, PaymentPlatformFeePayerType } from '../../../../payment-intent/model/payment-intent.model'
 import { Numeric, Id, AbstractInteractor } from '@app/types'
 import { IntentType, BalanceChangeType, IntegrationType } from '@app/shared'
+import { OperationTypeMapper } from '../../../../../shared/converter/operation-type.mapper'
 
 export interface FeePaymentOperationParams {
   readonly payment: PaymentIntentModel
@@ -40,11 +41,18 @@ export class FeePaymentOperation extends AbstractInteractor<FeePaymentOperationP
     const isInternalTransfer =
       payment.to.account === payment.member.accountId && payment.integration === IntegrationType.INTERNAL
 
+    const basicData: Pick<BalanceChange, 'intentType' | 'intentId' | 'operationType'> = {
+      intentType: IntentType.PAYMENT,
+      intentId: payment.id,
+      operationType: OperationTypeMapper.toBalanceChange(payment.operationType),
+    }
+
     const changes: BalanceChange[] = []
 
     if (isInternalTransfer) {
       changes.push({
         type: BalanceChangeType.PLATFORM_FEE_ACCRUED,
+        ...basicData,
         platformAccountId: payment.to.platformAccountId,
         integrationAccount: null,
         currency: payment.currency,
@@ -53,8 +61,6 @@ export class FeePaymentOperation extends AbstractInteractor<FeePaymentOperationP
         metadata: {
           txId: txId,
           transferIds: Array.from(transferIds),
-          intentType: IntentType.PAYMENT,
-          intentId: payment.id,
           reason: BalanceChangeReason.PLATFORM_FEE_CONSOLIDATION,
           txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
         },
@@ -63,6 +69,7 @@ export class FeePaymentOperation extends AbstractInteractor<FeePaymentOperationP
       changes.push(
         {
           type: BalanceChangeType.PLATFORM_FEE_ACCRUED,
+          ...basicData,
           platformAccountId: null,
           integrationAccount: payment.to.account,
           currency: payment.currency,
@@ -71,14 +78,13 @@ export class FeePaymentOperation extends AbstractInteractor<FeePaymentOperationP
           metadata: {
             txId: txId,
             transferIds: Array.from(transferIds),
-            intentType: IntentType.PAYMENT,
-            intentId: payment.id,
             reason: BalanceChangeReason.PLATFORM_FEE_CONSOLIDATION,
             txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
           },
         },
         {
           type: BalanceChangeType.DEBIT,
+          ...basicData,
           platformAccountId: payment.to.platformAccountId,
           integrationAccount: null,
           currency: payment.currency,
@@ -87,8 +93,6 @@ export class FeePaymentOperation extends AbstractInteractor<FeePaymentOperationP
           metadata: {
             txId: txId,
             transferIds: Array.from(transferIds),
-            intentType: IntentType.PAYMENT,
-            intentId: payment.id,
             reason: BalanceChangeReason.FEE,
             txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
           },

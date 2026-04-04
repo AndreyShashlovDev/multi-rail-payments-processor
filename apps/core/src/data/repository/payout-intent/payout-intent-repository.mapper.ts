@@ -2,15 +2,21 @@ import {
   PayoutIntentModel,
   PayoutIntentData,
   PayoutIntentStatus,
+  PayoutOperationType,
 } from '../../../module/payout-intent/model/payout-intent.model'
-import { PayoutIntentEntity, PayoutIntentEntityStatus } from '../../data-source/postgres/entities/payout-intent.entity'
+import {
+  PayoutIntentEntity,
+  PayoutIntentEntityStatus,
+  PayoutOperationEntityType,
+} from '../../data-source/postgres/entities/payout-intent.entity'
 import { integrationTypeToDomain, integrationTypeFromDomain } from '@app/shared'
 import { EntityManager } from 'typeorm'
 
 export class PayoutIntentRepositoryMapper {
   static toDomain(entity: PayoutIntentEntity): PayoutIntentModel {
     return {
-      ...entity,
+      ...entity, // fixme remove it. need clear mapping
+      operationType: PayoutIntentRepositoryMapper.toDomainOperationType(entity.operationType),
       member: {
         accountId: entity.initiatorAccountId,
         userId: entity.initiatorUserId,
@@ -50,6 +56,8 @@ export class PayoutIntentRepositoryMapper {
   static fromDomain(model: PayoutIntentData, manager: EntityManager): PayoutIntentEntity {
     return manager.create(PayoutIntentEntity, {
       ...model,
+      operationType: PayoutIntentRepositoryMapper.fromDomainOperationType(model.operationType),
+
       initiatorAccountId: model.member.accountId,
       initiatorUserId: model.member.userId,
 
@@ -121,6 +129,34 @@ export class PayoutIntentRepositoryMapper {
       default: {
         const _exhaustive: never = status
         throw new Error(`Unhandled payout intent status: ${String(_exhaustive)}`)
+      }
+    }
+  }
+
+  private static fromDomainOperationType(operation: PayoutOperationType): PayoutOperationEntityType {
+    switch (operation) {
+      case PayoutOperationType.USER_REQUEST:
+        return PayoutOperationEntityType.USER_REQUEST
+      case PayoutOperationType.CONSOLIDATION:
+        return PayoutOperationEntityType.CONSOLIDATION
+
+      default: {
+        const _exhaustive: never = operation
+        throw new Error(`Unhandled payout intent operation type: ${String(_exhaustive)}`)
+      }
+    }
+  }
+
+  private static toDomainOperationType(operation: PayoutOperationEntityType): PayoutOperationType {
+    switch (operation) {
+      case PayoutOperationEntityType.USER_REQUEST:
+        return PayoutOperationType.USER_REQUEST
+      case PayoutOperationEntityType.CONSOLIDATION:
+        return PayoutOperationType.CONSOLIDATION
+
+      default: {
+        const _exhaustive: never = operation
+        throw new Error(`Unhandled payout intent operation type: ${String(_exhaustive)}`)
       }
     }
   }

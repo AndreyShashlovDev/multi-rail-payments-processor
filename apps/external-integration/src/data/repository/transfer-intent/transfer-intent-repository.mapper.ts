@@ -70,7 +70,7 @@ export class TransferIntentRepositoryMapper {
 
   static toDomain(entity: TransferIntentEntity): TransferIntentModel {
     return {
-      ...entity,
+      ...entity, // fixme remove it. need clear mapping
       fromIntegration: integrationTypeToDomain(entity.fromIntegration),
       toIntegration: integrationTypeToDomain(entity.toIntegration),
       intentType: intentTypeToDomain(entity.intentType),

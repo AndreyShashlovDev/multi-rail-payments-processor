@@ -59,6 +59,7 @@ export class MispayPaymentConverter extends BasicPaymentConverter {
           integration: params.transaction.integration,
           platformAccountId,
           integrationAccount,
+          operationType: null,
           amount: transfer.amount,
           currency: transfer.currency,
           txId: params.transaction.id,

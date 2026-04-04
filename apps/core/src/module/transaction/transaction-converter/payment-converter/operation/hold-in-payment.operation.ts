@@ -1,7 +1,13 @@
-import { BalanceChange, BalanceChangeReason, BalanceChangeTxStatus } from '@app/shared/types/balance-change'
+import {
+  BalanceChange,
+  BalanceChangeReason,
+  BalanceChangeTxStatus,
+  BalanceChangeOperationType,
+} from '@app/shared/types/balance-change'
 import { Id, AbstractInteractor, UUID, IntegrationAccount, Numeric, IntegrationCurrency } from '@app/types'
 import { IntentType, IntegrationType, BalanceChangeType } from '@app/shared'
 import { PaymentIntentModel } from '../../../../payment-intent/model/payment-intent.model'
+import { OperationTypeMapper } from '../../../../../shared/converter/operation-type.mapper'
 
 export interface HoldInOperationParams {
   readonly integration: IntegrationType
@@ -12,6 +18,7 @@ export interface HoldInOperationParams {
 
   readonly txId: Id
   readonly transferIds: ReadonlySet<Id>
+  readonly operationType: BalanceChangeOperationType | null
   readonly paymentId?: UUID | null
   readonly payoutId?: UUID | Id
 
@@ -45,6 +52,7 @@ export class HoldInPaymentOperation extends AbstractInteractor<HoldInOperationPa
       paymentId: data.payment.id,
       txId: data.txId,
       transferIds: data.transferIds,
+      operationType: OperationTypeMapper.toBalanceChange(data.payment.operationType),
       payoutId: data.payoutId,
       action: data.action,
       reason: data.reason,
@@ -61,6 +69,7 @@ export class HoldInPaymentOperation extends AbstractInteractor<HoldInOperationPa
       currency,
       transferIds,
       txId,
+      operationType,
       paymentId,
       payoutId,
       action,
@@ -71,6 +80,9 @@ export class HoldInPaymentOperation extends AbstractInteractor<HoldInOperationPa
     return [
       {
         type: action === 'hold' ? BalanceChangeType.HOLD_IN : BalanceChangeType.RELEASE_HOLD_IN,
+        intentType: paymentId ? IntentType.PAYMENT : null,
+        intentId: paymentId ?? null,
+        operationType,
         platformAccountId,
         integrationAccount,
         currency,
@@ -79,8 +91,6 @@ export class HoldInPaymentOperation extends AbstractInteractor<HoldInOperationPa
         metadata: {
           txId: txId,
           transferIds: Array.from(transferIds),
-          intentType: paymentId ? IntentType.PAYMENT : undefined,
-          intentId: paymentId,
           relatedIntentType: payoutId ? IntentType.PAYOUT : undefined,
           relatedIntentId: payoutId,
           reason,

@@ -20,7 +20,7 @@ export class TransactionIntentRepositoryMapper {
     transfers: ReadonlyArray<TransferIntentModel>,
   ): TransactionIntentModel {
     return {
-      ...entity,
+      ...entity, // fixme remove it. need clear mapping
       integration: integrationTypeToDomain(entity.integration),
       status: TransactionIntentRepositoryMapper.toDomainStatus(entity.status),
       transfers,
@@ -33,7 +33,7 @@ export class TransactionIntentRepositoryMapper {
     transfers: ReadonlyArray<TransferIntentEntity>,
   ): TransactionIntentModel {
     return {
-      ...entity,
+      ...entity, // fixme remove it. need clear mapping
       integration: integrationTypeToDomain(entity.integration),
       status: TransactionIntentRepositoryMapper.toDomainStatus(entity.status),
       transfers: transfers.map((transfer) => TransferIntentRepositoryMapper.toDomain(transfer)),

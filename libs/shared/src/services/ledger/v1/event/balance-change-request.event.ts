@@ -9,14 +9,27 @@ import {
   IsNotEmptyObject,
   IsNumberString,
 } from 'class-validator'
-import { BasicEvent, UUID, IntegrationAccount, type IntegrationCurrency, type RawNumeric } from '@app/types'
+import { BasicEvent, UUID, IntegrationAccount, type IntegrationCurrency, type RawNumeric, Id } from '@app/types'
 import { Type } from 'class-transformer'
-import { BalanceChangeType, IntegrationType } from '@app/shared/types'
+import { BalanceChangeType, IntegrationType, IntentType } from '@app/shared/types'
 import type { BalanceChangeDataMetadata } from '@app/shared/services/ledger/v1/event/balance-change-metadata.type'
+import { BalanceChangeOperationType } from '@app/shared/types/balance-change'
 
 export class BalanceChangeRequestData {
   @IsEnum(BalanceChangeType)
   readonly type: BalanceChangeType
+
+  @IsEnum(IntentType)
+  @IsOptional()
+  readonly intentType: IntentType | null
+
+  @IsUUID()
+  @IsOptional()
+  readonly intentId: Id | UUID | null
+
+  @IsEnum(BalanceChangeOperationType)
+  @IsOptional()
+  readonly operationType: BalanceChangeOperationType | null
 
   @IsUUID()
   @IsOptional()
@@ -38,6 +51,9 @@ export class BalanceChangeRequestData {
 
   constructor(
     type: BalanceChangeType,
+    intentType: IntentType | null,
+    intentId: Id | UUID | null,
+    operationType: BalanceChangeOperationType | null,
     platformAccountId: UUID | null,
     integrationAccount: IntegrationAccount | null,
     currency: IntegrationCurrency,
@@ -45,6 +61,9 @@ export class BalanceChangeRequestData {
     metadata: BalanceChangeDataMetadata,
   ) {
     this.type = type
+    this.intentType = intentType
+    this.intentId = intentId
+    this.operationType = operationType
     this.platformAccountId = platformAccountId
     this.integrationAccount = integrationAccount
     this.currency = currency

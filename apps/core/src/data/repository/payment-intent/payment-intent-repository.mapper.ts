@@ -2,12 +2,14 @@ import {
   PaymentIntentEntity,
   PaymentIntentEntityStatus,
   PaymentPlatformFeePayerEntityType,
+  PaymentOperationEntityType,
 } from '../../data-source/postgres/entities/payment-intent.entity'
 import {
   PaymentIntentModel,
   PaymentIntentStatus,
   PaymentPlatformFeePayerType,
   PaymentIntentData,
+  PaymentOperationType,
 } from '../../../module/payment-intent/model/payment-intent.model'
 import { Numeric } from '@app/types'
 import { integrationTypeToDomain, integrationTypeFromDomain } from '@app/shared'
@@ -16,7 +18,8 @@ import { EntityManager } from 'typeorm'
 export class PaymentIntentRepositoryMapper {
   static toDomain(entity: PaymentIntentEntity): PaymentIntentModel {
     return {
-      ...entity,
+      ...entity, // fixme remove it. need clear mapping
+      operationType: PaymentIntentRepositoryMapper.toDomainOperationType(entity.operationType),
       member: {
         accountId: entity.initiatorAccountId,
         userId: entity.initiatorUserId,
@@ -46,6 +49,7 @@ export class PaymentIntentRepositoryMapper {
   static fromDomain(model: PaymentIntentData, manager: EntityManager): PaymentIntentEntity {
     return manager.create(PaymentIntentEntity, {
       ...model,
+      operationType: PaymentIntentRepositoryMapper.fromDomainOperationType(model.operationType),
       initiatorAccountId: model.member.accountId,
       initiatorUserId: model.member.userId,
       toPlatformAccount: model.to.platformAccountId,
@@ -136,6 +140,34 @@ export class PaymentIntentRepositoryMapper {
       default: {
         const _exhaustive: never = status
         throw new Error(`Unhandled payment intent status: ${String(_exhaustive)}`)
+      }
+    }
+  }
+
+  private static fromDomainOperationType(operation: PaymentOperationType): PaymentOperationEntityType {
+    switch (operation) {
+      case PaymentOperationType.USER_REQUEST:
+        return PaymentOperationEntityType.USER_REQUEST
+      case PaymentOperationType.CONSOLIDATION:
+        return PaymentOperationEntityType.CONSOLIDATION
+
+      default: {
+        const _exhaustive: never = operation
+        throw new Error(`Unhandled payment intent operation type: ${String(_exhaustive)}`)
+      }
+    }
+  }
+
+  private static toDomainOperationType(operation: PaymentOperationEntityType): PaymentOperationType {
+    switch (operation) {
+      case PaymentOperationEntityType.USER_REQUEST:
+        return PaymentOperationType.USER_REQUEST
+      case PaymentOperationEntityType.CONSOLIDATION:
+        return PaymentOperationType.CONSOLIDATION
+
+      default: {
+        const _exhaustive: never = operation
+        throw new Error(`Unhandled payment intent operation type: ${String(_exhaustive)}`)
       }
     }
   }

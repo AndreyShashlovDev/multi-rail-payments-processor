@@ -18,7 +18,13 @@ export enum PaymentPlatformFeePayerType {
   PAYER = 'PAYER',
 }
 
+export enum PaymentOperationType {
+  USER_REQUEST = 'USER_REQUEST',
+  CONSOLIDATION = 'CONSOLIDATION', // for example, top-up etc.
+}
+
 export interface PaymentIntentData {
+  readonly operationType: PaymentOperationType
   readonly member: PlatformMemberModel
   readonly to: SourceIntegrationAccount
   readonly fromPlatformAccountId: UUID | null

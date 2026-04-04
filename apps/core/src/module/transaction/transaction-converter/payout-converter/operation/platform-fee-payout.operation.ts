@@ -2,6 +2,7 @@ import { BalanceChange, BalanceChangeReason, BalanceChangeTxStatus } from '@app/
 import { Id, AbstractInteractor } from '@app/types'
 import { IntentType, BalanceChangeType, IntegrationType } from '@app/shared'
 import { PayoutIntentModel } from '../../../../payout-intent/model/payout-intent.model'
+import { OperationTypeMapper } from '../../../../../shared/converter/operation-type.mapper'
 
 export interface PlatformFeePayoutOperationParams {
   readonly payout: PayoutIntentModel
@@ -23,12 +24,19 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
     const isInternalTransfer =
       payout.member.accountId === payout.from.account && payout.fromIntegration === IntegrationType.INTERNAL
 
+    const basicData: Pick<BalanceChange, 'intentType' | 'intentId' | 'operationType'> = {
+      intentType: IntentType.PAYOUT,
+      intentId: payout.id,
+      operationType: OperationTypeMapper.toBalanceChange(payout.operationType),
+    }
+
     if (!isInternalTransfer) {
       const integrationAccount = payout.from.account
 
       return [
         {
           type: BalanceChangeType.RELEASE_HOLD,
+          ...basicData,
           platformAccountId: payout.member.accountId,
           integrationAccount,
           currency: payout.fromCurrency,
@@ -37,14 +45,13 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
           metadata: {
             txId: txId,
             transferIds: Array.from(transferIds),
-            intentType: IntentType.PAYOUT,
-            intentId: payout.id,
             reason: BalanceChangeReason.FEE,
             txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
           },
         },
         {
           type: BalanceChangeType.DEBIT,
+          ...basicData,
           platformAccountId: payout.member.accountId,
           integrationAccount: null,
           currency: payout.fromCurrency,
@@ -53,14 +60,13 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
           metadata: {
             txId: txId,
             transferIds: Array.from(transferIds),
-            intentType: IntentType.PAYOUT,
-            intentId: payout.id,
             reason: BalanceChangeReason.FEE,
             txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
           },
         },
         {
           type: BalanceChangeType.PLATFORM_FEE_ACCRUED,
+          ...basicData,
           platformAccountId: null,
           integrationAccount,
           currency: payout.fromCurrency,
@@ -69,8 +75,6 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
           metadata: {
             txId: txId,
             transferIds: Array.from(transferIds),
-            intentType: IntentType.PAYOUT,
-            intentId: payout.id,
             reason: BalanceChangeReason.PLATFORM_FEE_CONSOLIDATION,
             txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
           },
@@ -82,6 +86,7 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
     return [
       {
         type: BalanceChangeType.RELEASE_HOLD,
+        ...basicData,
         platformAccountId: payout.member.accountId,
         integrationAccount: null,
         currency: payout.fromCurrency,
@@ -90,14 +95,13 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
         metadata: {
           txId: txId,
           transferIds: Array.from(transferIds),
-          intentType: IntentType.PAYOUT,
-          intentId: payout.id,
           reason: BalanceChangeReason.FEE,
           txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
         },
       },
       {
         type: BalanceChangeType.PLATFORM_FEE_ACCRUED,
+        ...basicData,
         platformAccountId: payout.member.accountId,
         integrationAccount: null,
         currency: payout.fromCurrency,
@@ -106,8 +110,6 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
         metadata: {
           txId: txId,
           transferIds: Array.from(transferIds),
-          intentType: IntentType.PAYOUT,
-          intentId: payout.id,
           reason: BalanceChangeReason.PLATFORM_FEE_CONSOLIDATION,
           txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
         },

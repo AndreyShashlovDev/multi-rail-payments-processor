@@ -12,7 +12,7 @@ import { EntityManager } from 'typeorm'
 export class IntegrationAccountRepositoryMapper {
   static toDomain(entity: IntegrationAccountEntity): IntegrationAccountModel {
     return {
-      ...entity,
+      ...entity, // fixme remove it. need clear mapping
       integration: integrationTypeToDomain(entity.integration),
       status: IntegrationAccountRepositoryMapper.toDomainStatus(entity.status),
     }

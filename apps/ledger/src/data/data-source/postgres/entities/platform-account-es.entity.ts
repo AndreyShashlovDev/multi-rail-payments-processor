@@ -3,7 +3,7 @@ import { APP_SCHEMA } from '../ledger-postgres.config'
 import { Id, Numeric, NumericColumn, type UUID, type IntegrationCurrency } from '@app/types'
 import { BalanceChangeType, IntegrationType, IntentType } from '@app/shared'
 import { BasicEntity } from '@app/database'
-import type { BalanceChangeMetadata } from '@app/shared/types/balance-change'
+import type { BalanceChangeMetadata, BalanceChangeOperationType } from '@app/shared/types/balance-change'
 
 @Entity({ schema: APP_SCHEMA, name: PlatformAccountEsEntity.NAME })
 @Index('idx_platform_account_es_account_integration_currency', ['accountId', 'integration', 'currency'])
@@ -45,6 +45,9 @@ export class PlatformAccountEsEntity extends BasicEntity {
 
   @Column({ type: 'text', nullable: true })
   readonly intentType: IntentType | null
+
+  @Column({ type: 'text', nullable: true })
+  readonly intentOperationType: BalanceChangeOperationType | null
 
   @Column({ type: 'jsonb' })
   readonly metadata: BalanceChangeMetadata

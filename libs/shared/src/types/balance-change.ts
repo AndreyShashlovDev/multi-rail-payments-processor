@@ -10,6 +10,11 @@ export enum BalanceChangeTxStatus {
   TX_ACCEPTED = 'TX_ACCEPTED',
 }
 
+export enum BalanceChangeOperationType {
+  USER_REQUEST = 'USER_REQUEST',
+  CONSOLIDATION = 'CONSOLIDATION',
+}
+
 export enum BalanceChangeReason {
   // Payment reasons
   OVERPAY = 'OVERPAY',
@@ -38,8 +43,6 @@ export enum BalanceChangeReason {
 
 export interface BalanceChangeMetadata {
   readonly txId?: Id
-  readonly intentType?: IntentType | null
-  readonly intentId?: Id | UUID | null
   readonly reason?: BalanceChangeReason
   readonly txStatus?: BalanceChangeTxStatus
   readonly transferIds?: ReadonlyArray<Id>
@@ -58,6 +61,9 @@ export interface BalanceChangeMetadata {
 
 export interface BalanceChange<T extends BalanceChangeMetadata = BalanceChangeMetadata> {
   readonly type: BalanceChangeType
+  readonly intentType: IntentType | null
+  readonly intentId: Id | UUID | null
+  readonly operationType: BalanceChangeOperationType | null
   readonly platformAccountId: UUID | null
   readonly integrationAccount: IntegrationAccount | null
   readonly currency: IntegrationCurrency

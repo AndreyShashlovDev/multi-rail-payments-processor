@@ -33,7 +33,7 @@ export class ChangePayoutStatusInteractor extends AbstractInteractor<ChangePayou
     const { data } = params
 
     const changeByPayout = data.changes.reduce((prev, curr) => {
-      const id = curr.metadata.intentId as UUID
+      const id = curr.intentId as UUID
       const arr = prev.get(id) ?? []
       arr.push(curr)
 

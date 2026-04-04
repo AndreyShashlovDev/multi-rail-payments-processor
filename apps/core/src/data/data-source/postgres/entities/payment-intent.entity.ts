@@ -23,6 +23,11 @@ export enum PaymentPlatformFeePayerEntityType {
   PAYER = 2,
 }
 
+export enum PaymentOperationEntityType {
+  USER_REQUEST = 1,
+  CONSOLIDATION = 2, // for example, top-up etc.
+}
+
 export type PaymentIntentEntityMetadata = Record<string, unknown>
 
 @Entity({ name: PaymentIntentEntity.NAME, schema: APP_SCHEMA })
@@ -32,6 +37,9 @@ export class PaymentIntentEntity extends BasicEntity {
 
   @PrimaryGeneratedColumn('uuid')
   readonly id: UUID
+
+  @Column({ type: 'smallint' })
+  readonly operationType: PaymentOperationEntityType
 
   @Column({ type: 'uuid' })
   readonly initiatorAccountId: UUID

@@ -10,7 +10,7 @@ import { TransferModel, TransferData, OperationType } from '../../../module/tran
 export class TransactionRepositoryMapper {
   static toDomainRaw(entity: TransactionEntity, raw: TransactionRawEntity | null = null): TransactionModel {
     return {
-      ...entity,
+      ...entity, // fixme remove it. need clear mapping
       id: Id.create(entity.id),
       integration: integrationTypeToDomain(entity.integration),
       transfers: entity.transfers?.map((item) => TransactionRepositoryMapper.toDomainTransfer(item)) ?? [],

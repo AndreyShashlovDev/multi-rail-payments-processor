@@ -1,6 +1,10 @@
 import { IntegrationAccountLinkFactory } from './integration-account-link.factory'
 import { IntegrationType } from '@app/shared'
-import { PaymentIntentModel, PaymentIntentStatus } from '../../../module/payment-intent/model/payment-intent.model'
+import {
+  PaymentIntentModel,
+  PaymentIntentStatus,
+  PaymentOperationType,
+} from '../../../module/payment-intent/model/payment-intent.model'
 import { randomUUID } from 'node:crypto'
 import { Numeric } from '@app/types'
 import { IntegrationCurrencyFactory } from './integration-currency.factory'
@@ -13,6 +17,7 @@ export class PaymentIntentFactory {
 
     return {
       id: randomUUID(),
+      operationType: overrides?.operationType ?? PaymentOperationType.USER_REQUEST,
       member: {
         accountId: to.platformAccountId,
         userId: randomUUID(),
