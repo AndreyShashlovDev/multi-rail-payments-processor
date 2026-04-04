@@ -51,7 +51,7 @@ t6  Transaction confirmed on-chain → Transaction CONFIRMED
 
 ## 1. Payout Intent
 
-Service: **Logic** · Schema: `logic` · Table: `payout_intent`
+Service: **Core** · Schema: `core` · Table: `payout_intent`
 
 <details>
 <summary>payout_intent (1 record)</summary>
@@ -109,7 +109,7 @@ Service: **Logic** · Schema: `logic` · Table: `payout_intent`
 
 ## 2. Payment Intent
 
-Service: **Logic** · Schema: `logic` · Table: `payment_intent`
+Service: **Core** · Schema: `core` · Table: `payment_intent`
 
 <details>
 <summary>payment_intent (1 record)</summary>
@@ -225,7 +225,7 @@ Service: **External Integration** · Schema: `external_integration` · Tables: `
 
 ## 4. Escrow
 
-Service: **Logic** · Schema: `logic` · Table: `escrow`
+Service: **Core** · Schema: `core` · Table: `escrow`
 
 Escrow is a live operational view of holds in the system. Records are created in response to ledger hold confirmation events (via JetStream) and reflect the current hold state from the ledger. It enables monitoring and decision-making: detecting stale holds that signal bugs or unresolved mispayments, and identifying accrued platform fees ready for consolidation. Resolved records are periodically cleaned up
 

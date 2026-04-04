@@ -80,10 +80,10 @@ This project demonstrates a clean, scalable payment infrastructure built with Ev
 
 - Exposes REST API for frontend applications
 - Handles authentication and request validation
-- Communicates with Logic service via gRPC
+- Communicates with Core service via gRPC
 - No business logic - pure gateway pattern
 
-### 2. Logic
+### 2. Core
 **Responsibility**: Core business logic orchestrator
 
 - Central hub for all event processing
@@ -121,14 +121,14 @@ This project demonstrates a clean, scalable payment infrastructure built with Ev
 **Responsibility**: Communication with external systems
 
 - Integrations with CEX (Centralized Exchanges), DEX (Decentralized Exchanges), Banking, Blockchain
-- Receives `TransferIntent` events from Logic and builds actual transactions
+- Receives `TransferIntent` events from Core and builds actual transactions
 - Parses incoming blockchain transactions via webhooks
 - Manages `TransferIntent` → `TransactionIntent` → `Transaction` lifecycle
 - Determines transaction execution strategy (single/batch/bridge)
-- Publishes `TRANSACTION` events back to Logic for pipeline processing
+- Publishes `TRANSACTION` events back to Core for pipeline processing
 
 **Key Entities**:
-- `transfer_intent` — requested transfer from Logic (what needs to happen)
+- `transfer_intent` — requested transfer from Core (what needs to happen)
 - `transaction_intent` — built but not yet confirmed transaction (how to do it)
 - `transaction` / `transfer` — actual on-chain transactions and their transfers
 
@@ -145,26 +145,26 @@ This project demonstrates a clean, scalable payment infrastructure built with Ev
 ### 1. Create Integration Account Flow
 ```mermaid
 sequenceDiagram
-    participant Logic
+    participant Core
     participant Custody
 
-    Note over Logic: Cron job determines<br/>need for new accounts
-    Logic->>Custody: Event: create_accounts_requested<br/>(integration, count)
+    Note over Core: Cron job determines<br/>need for new accounts
+    Core->>Custody: Event: create_accounts_requested<br/>(integration, count)
 
     loop For each account
         Custody->>Custody: Generate keypair / address
-        Custody->>Logic: Event (JetStream): account_created<br/>(address, integration, public_key)
+        Custody->>Core: Event (JetStream): account_created<br/>(address, integration, public_key)
     end
 
-    Logic->>Logic: Store in integration_account table
+    Core->>Core: Store in integration_account table
 ```
 
 **Description**:
-1. Logic proactively determines integration account shortage via cron job
+1. Core proactively determines integration account shortage via cron job
 2. Sends event to Custody requesting N accounts for specific integration(s)
 3. Custody creates accounts sequentially (generates keypairs)
-4. Each created account triggers event to Logic
-5. Logic persists account information in `integration_account` table
+4. Each created account triggers event to Core
+5. Core persists account information in `integration_account` table
 
 ---
 
@@ -176,17 +176,17 @@ The payment flow works as a two-phase pipeline. On `ACCEPTED` (mempool/first see
 sequenceDiagram
     participant User
     participant BFF
-    participant Logic
+    participant Core
     participant ExtInt as External Integration
     participant Ledger
 
-    Note over User,Logic: Phase 1: Create Payment (sync)
+    Note over User,Core: Phase 1: Create Payment (sync)
     User->>BFF: REST: Create Payment
-    BFF->>Logic: gRPC: CreatePayment
-    Logic->>Logic: makeUseAccount() — select<br/>available integration account
-    Logic->>Logic: assignAccount() — link integration<br/>account to user (platformAccountId + userId)
-    Logic->>Logic: Create PaymentIntent<br/>status: CREATED
-    Logic-->>BFF: Payment details<br/>(address, amount, currency)
+    BFF->>Core: gRPC: CreatePayment
+    Core->>Core: makeUseAccount() — select<br/>available integration account
+    Core->>Core: assignAccount() — link integration<br/>account to user (platformAccountId + userId)
+    Core->>Core: Create PaymentIntent<br/>status: CREATED
+    Core-->>BFF: Payment details<br/>(address, amount, currency)
     BFF-->>User: Payment info
 
     Note over ExtInt: Phase 2: Transaction detected (async)
@@ -195,57 +195,57 @@ sequenceDiagram
     ExtInt->>ExtInt: Save transaction + transfers<br/>status: ACCEPTED
     ExtInt->>ExtInt: Publish TRANSACTION event<br/>(JetStream)
 
-    Note over Logic: Pipeline: ACCEPTED
-    Logic->>Logic: AcceptedHandler:<br/>find payments by (to, currency)<br/>mark payments → CONFIRMING
-    Logic->>Logic: AcceptedProjector:<br/>filter transfers by known accounts<br/>→ PaymentConverterEngine
-    Logic->>Logic: Converters produce HOLD_IN only<br/>(incoming hold, funds not yet verified)
-    Logic->>Ledger: JetStream: BALANCE_CHANGE<br/>(HOLD_IN with txStatus=TX_ACCEPTED)
+    Note over Core: Pipeline: ACCEPTED
+    Core->>Core: AcceptedHandler:<br/>find payments by (to, currency)<br/>mark payments → CONFIRMING
+    Core->>Core: AcceptedProjector:<br/>filter transfers by known accounts<br/>→ PaymentConverterEngine
+    Core->>Core: Converters produce HOLD_IN only<br/>(incoming hold, funds not yet verified)
+    Core->>Ledger: JetStream: BALANCE_CHANGE<br/>(HOLD_IN with txStatus=TX_ACCEPTED)
     Ledger->>Ledger: Apply incoming holds<br/>(event sourcing)
-    Ledger->>Logic: JetStream: BALANCE_UPDATED
-    Note over Logic: No payment status change<br/>(ChangePaymentStatusInteractor<br/>ignores TX_ACCEPTED events)
+    Ledger->>Core: JetStream: BALANCE_UPDATED
+    Note over Core: No payment status change<br/>(ChangePaymentStatusInteractor<br/>ignores TX_ACCEPTED events)
 
     Note over ExtInt: Phase 3: Confirmation (async)
     ExtInt->>ExtInt: Transaction confirmed on chain
     ExtInt->>ExtInt: markAsConfirmed + publish<br/>TRANSACTION event (CONFIRMED)
 
-    Note over Logic: Pipeline: CONFIRMED
-    Logic->>Logic: ConfirmedProjector:<br/>PaymentConverterEngine<br/>(same converters, same matches)
-    Logic->>Logic: Converters produce:<br/>RELEASE_HOLD_IN (release incoming holds)<br/>+ CREDIT (real balance credit)<br/>+ FEE (PLATFORM_FEE_ACCRUED + DEBIT)
-    Logic->>Ledger: JetStream: BALANCE_CHANGE<br/>(with txStatus=TX_CONFIRMED)
+    Note over Core: Pipeline: CONFIRMED
+    Core->>Core: ConfirmedProjector:<br/>PaymentConverterEngine<br/>(same converters, same matches)
+    Core->>Core: Converters produce:<br/>RELEASE_HOLD_IN (release incoming holds)<br/>+ CREDIT (real balance credit)<br/>+ FEE (PLATFORM_FEE_ACCRUED + DEBIT)
+    Core->>Ledger: JetStream: BALANCE_CHANGE<br/>(with txStatus=TX_CONFIRMED)
     Ledger->>Ledger: Apply changes
-    Ledger->>Logic: JetStream: BALANCE_UPDATED
+    Ledger->>Core: JetStream: BALANCE_UPDATED
 
-    Logic->>Logic: ChangePaymentStatusInteractor:<br/>analyze changes with TX_CONFIRMED
+    Core->>Core: ChangePaymentStatusInteractor:<br/>analyze changes with TX_CONFIRMED
     alt Exact payment (CREDIT found)
-        Logic->>Logic: markAsCompleted
+        Core->>Core: markAsCompleted
     else Underpayment (HOLD + UNDERPAY reason)
-        Logic->>Logic: markAsUnderpay
+        Core->>Core: markAsUnderpay
     else Overpayment (HOLD + OVERPAY reason)
-        Logic->>Logic: markAsOverpay
+        Core->>Core: markAsOverpay
     end
 ```
 
 **Description**:
 
 **Phase 1: Create Payment (Synchronous)**
-1. User requests payment creation via BFF → Logic
-2. Logic selects an available integration account (`makeUseAccount`) and links it to the user (`assignAccount`)
-3. Logic creates a `PaymentIntent` with status `CREATED` including platform fee configuration
+1. User requests payment creation via BFF → Core
+2. Core selects an available integration account (`makeUseAccount`) and links it to the user (`assignAccount`)
+3. Core creates a `PaymentIntent` with status `CREATED` including platform fee configuration
 4. Returns the deposit address, amount, and currency to the user
 
 **Phase 2: Transaction Detected → ACCEPTED Pipeline (Asynchronous)**
 5. External Integration receives a webhook with a blockchain transaction
 6. It parses the transaction, saves it with transfers, and publishes a JetStream `TRANSACTION` event with status `ACCEPTED`
-7. Logic receives the event and runs the **pipeline**:
+7. Core receives the event and runs the **pipeline**:
     - **Handler** (`AcceptedHandler`): finds payments matching transfers by `(to, currency)` in status `CREATED`, marks them `CONFIRMING`
     - **Projector** (`AcceptedProjector`): filters transfers to only those involving known integration accounts, then runs `PaymentConverterEngine`
     - **Converters** (ExactPayment, Overpay, Underpay, etc.): match transfers to payment intents but **produce only `HOLD_IN` changes** — incoming holds with `txStatus=TX_ACCEPTED`. No credits, no fees at this stage.
-8. Logic sends HOLD_IN changes to Ledger → Ledger applies → publishes `BALANCE_UPDATED`
+8. Core sends HOLD_IN changes to Ledger → Ledger applies → publishes `BALANCE_UPDATED`
 9. `ChangePaymentStatusInteractor` receives the event but **does nothing** — it only reacts to `TX_CONFIRMED` events. Payment stays in `CONFIRMING`.
 
 **Phase 3: Confirmation → CONFIRMED Pipeline (Asynchronous)**
 10. When the transaction is confirmed on-chain, EIS publishes `TRANSACTION` event with status `CONFIRMED`
-11. Logic runs the same pipeline with the same converters, but now the converters **detect `CONFIRMED` status and produce the full set of changes**:
+11. Core runs the same pipeline with the same converters, but now the converters **detect `CONFIRMED` status and produce the full set of changes**:
     - `RELEASE_HOLD_IN` — release the incoming holds placed at ACCEPTED
     - `CREDIT` — real balance credit to user's platform account and integration account
     - `PLATFORM_FEE_ACCRUED` + `DEBIT` — platform fee processing (if configured)
@@ -281,35 +281,35 @@ The converter engine processes transfers through an ordered chain of matchers. E
 
 ### 3. Payout Flow (Outgoing) — Pipeline
 
-The payout flow is a full pipeline: Logic creates the intent and publishes a `TransferIntent`, then External Integration builds and executes the transaction. Each status change produces a `TRANSACTION` event that Logic processes through the same handler → projector/converter → ledger chain.
+The payout flow is a full pipeline: Core creates the intent and publishes a `TransferIntent`, then External Integration builds and executes the transaction. Each status change produces a `TRANSACTION` event that Core processes through the same handler → projector/converter → ledger chain.
 
 ```mermaid
 sequenceDiagram
     participant User
     participant BFF
-    participant Logic
+    participant Core
     participant ExtInt as External Integration
     participant Ledger
     participant Custody
 
-    Note over User,Logic: Phase 1: Create Payout (sync)
+    Note over User,Core: Phase 1: Create Payout (sync)
     User->>BFF: REST: Create Payout
-    BFF->>Logic: gRPC: CreatePayout
+    BFF->>Core: gRPC: CreatePayout
 
-    Logic->>Ledger: gRPC: getBalances<br/>(user + hot account)
-    Ledger-->>Logic: balances
+    Core->>Ledger: gRPC: getBalances<br/>(user + hot account)
+    Ledger-->>Core: balances
 
-    Logic->>ExtInt: gRPC: getEstimatedTransferFee
-    ExtInt-->>Logic: { fee, currency }
-    Logic->>Logic: Convert fee currency if needed<br/>(CurrencyConverterProvider)
+    Core->>ExtInt: gRPC: getEstimatedTransferFee
+    ExtInt-->>Core: { fee, currency }
+    Core->>Core: Convert fee currency if needed<br/>(CurrencyConverterProvider)
 
-    Logic->>Logic: getPlatformHotAccount() — select<br/>source integration account (from)
-    Logic->>Logic: PayoutBalancePolicy.validate()<br/>check user + integration account balances
+    Core->>Core: getPlatformHotAccount() — select<br/>source integration account (from)
+    Core->>Core: PayoutBalancePolicy.validate()<br/>check user + integration account balances
 
-    Logic->>Logic: Create PayoutIntent<br/>status: CREATED
+    Core->>Core: Create PayoutIntent<br/>status: CREATED
 
-    Logic->>ExtInt: JetStream: TransferIntent CREATE<br/>(intentId, intentType=PAYOUT,<br/>from, to, amount, estimatedFee)
-    Logic-->>BFF: Payout created
+    Core->>ExtInt: JetStream: TransferIntent CREATE<br/>(intentId, intentType=PAYOUT,<br/>from, to, amount, estimatedFee)
+    Core-->>BFF: Payout created
     BFF-->>User: Payout info
 
     Note over ExtInt: Phase 2: Build Transaction (async, cron) - (strategy: one transfer per transaction)
@@ -319,15 +319,15 @@ sequenceDiagram
     ExtInt->>ExtInt: Save Transaction<br/>status: PREPARED
     ExtInt->>ExtInt: Publish TRANSACTION event<br/>(PREPARED + transfer intents)
 
-    Note over Logic: Pipeline: PREPARED
-    Logic->>Logic: PreparedHandler:<br/>find payouts by intentId,<br/>mark → PREPARED<br/>(set integrationFee, feePayer)
-    Logic->>Logic: PreparedProjector:<br/>PayoutHoldConverter →<br/>HOLD balance changes<br/>(amount + platformFee +<br/>estimatedIntegrationFee)
-    Logic->>Ledger: JetStream: BALANCE_CHANGE<br/>(HOLD user + HOLD integration account)
+    Note over Core: Pipeline: PREPARED
+    Core->>Core: PreparedHandler:<br/>find payouts by intentId,<br/>mark → PREPARED<br/>(set integrationFee, feePayer)
+    Core->>Core: PreparedProjector:<br/>PayoutHoldConverter →<br/>HOLD balance changes<br/>(amount + platformFee +<br/>estimatedIntegrationFee)
+    Core->>Ledger: JetStream: BALANCE_CHANGE<br/>(HOLD user + HOLD integration account)
     Ledger->>Ledger: Apply holds (event sourcing)
-    Ledger->>Logic: JetStream: BALANCE_UPDATED
+    Ledger->>Core: JetStream: BALANCE_UPDATED
 
-    Logic->>Logic: ChangePayoutStatusInteractor:<br/>mark payout → HELD
-    Logic->>ExtInt: JetStream: TransferIntent HELD<br/>(intentIds)
+    Core->>Core: ChangePayoutStatusInteractor:<br/>mark payout → HELD
+    Core->>ExtInt: JetStream: TransferIntent HELD<br/>(intentIds)
 
     Note over ExtInt: Phase 3: Sign & Promote (async)
     ExtInt->>ExtInt: markAsPrepared(transferIntents)
@@ -340,8 +340,8 @@ sequenceDiagram
     ExtInt->>ExtInt: Promote: markPromoted<br/>(transactionIntent + transaction)
     ExtInt->>ExtInt: Publish TRANSACTION event<br/>(PROMOTED + transfer intents)
 
-    Note over Logic: Pipeline: PROMOTED
-    Logic->>Logic: PromotedHandler:<br/>mark payouts → PROCESSING
+    Note over Core: Pipeline: PROMOTED
+    Core->>Core: PromotedHandler:<br/>mark payouts → PROCESSING
 
     Note over ExtInt: Phase 4: Blockchain Confirmation (async)
     Note over ExtInt: Webhook: transaction accepted on-chain
@@ -349,31 +349,31 @@ sequenceDiagram
     ExtInt->>ExtInt: markCompleted(transactionIntent)
     ExtInt->>ExtInt: Publish TRANSACTION event<br/>(ACCEPTED + transfer intents)
 
-    Note over Logic: Pipeline: ACCEPTED
-    Logic->>Logic: AcceptedHandler:<br/>mark payouts → CONFIRMING<br/>(set actual integrationFee,<br/>feePayerAccount)
+    Note over Core: Pipeline: ACCEPTED
+    Core->>Core: AcceptedHandler:<br/>mark payouts → CONFIRMING<br/>(set actual integrationFee,<br/>feePayerAccount)
 
     Note over ExtInt: Transaction confirmed
     ExtInt->>ExtInt: markAsConfirmed
     ExtInt->>ExtInt: Publish TRANSACTION event<br/>(CONFIRMED + transfer intents)
 
-    Note over Logic: Pipeline: CONFIRMED
-    Logic->>Logic: ConfirmedProjector:<br/>PayoutConverter →<br/>RELEASE_HOLD + DEBIT +<br/>PLATFORM_FEE_ACCRUED<br/>balance changes
-    Logic->>Ledger: JetStream: BALANCE_CHANGE
+    Note over Core: Pipeline: CONFIRMED
+    Core->>Core: ConfirmedProjector:<br/>PayoutConverter →<br/>RELEASE_HOLD + DEBIT +<br/>PLATFORM_FEE_ACCRUED<br/>balance changes
+    Core->>Ledger: JetStream: BALANCE_CHANGE
     Ledger->>Ledger: Apply changes
-    Ledger->>Logic: JetStream: BALANCE_UPDATED
-    Logic->>Logic: ChangePayoutStatusInteractor:<br/>mark payout → SUCCESS
+    Ledger->>Core: JetStream: BALANCE_UPDATED
+    Core->>Core: ChangePayoutStatusInteractor:<br/>mark payout → SUCCESS
 ```
 
 **Description**:
 
 **Phase 1: Create Payout (Synchronous — Steps 1-7)**
 
-1. **Check balances**: Logic calls Ledger via gRPC to verify user has sufficient funds and the hot integration account has enough to cover the transfer
-2. **Estimate fee**: Logic calls EIS for estimated transfer fee, then converts to the payout currency if needed (`CurrencyConverterProvider`)
-3. **Select source account**: Logic finds the platform hot account (`getPlatformHotAccount`) for the given integration and currency
+1. **Check balances**: Core calls Ledger via gRPC to verify user has sufficient funds and the hot integration account has enough to cover the transfer
+2. **Estimate fee**: Core calls EIS for estimated transfer fee, then converts to the payout currency if needed (`CurrencyConverterProvider`)
+3. **Select source account**: Core finds the platform hot account (`getPlatformHotAccount`) for the given integration and currency
 4. **Validate**: `PayoutBalancePolicy` checks both user balance and integration account balance are sufficient
-5. **Create PayoutIntent**: Logic creates the intent with status `CREATED` including fee estimates, platform fee, exchange rate, destination account
-6. **Publish TransferIntent**: Logic publishes a `TransferIntent CREATE` event to EIS via JetStream with all transfer details (from, to, amounts, fee)
+5. **Create PayoutIntent**: Core creates the intent with status `CREATED` including fee estimates, platform fee, exchange rate, destination account
+6. **Publish TransferIntent**: Core publishes a `TransferIntent CREATE` event to EIS via JetStream with all transfer details (from, to, amounts, fee)
 7. **Response**: User receives confirmation that payout is created and queued
 
 **Phase 2: Build Transaction (Asynchronous — Cron in EIS)**
@@ -387,9 +387,9 @@ sequenceDiagram
 
 12. **Handler** (`PreparedHandler`): finds payouts in `CREATED` status by intentId, marks them `PREPARED`, sets `integrationFee` and `feePayer` from the actual transaction data
 13. **Projector** (`PreparedProjector`): runs `PayoutHoldConverter` which produces `HOLD` balance changes — holds on user's platform account (amount + platform fee) and on hot integration account (amount + estimated integration fee)
-14. Logic sends all holds to Ledger → Ledger applies → publishes `BALANCE_UPDATED`
+14. Core sends all holds to Ledger → Ledger applies → publishes `BALANCE_UPDATED`
 15. `ChangePayoutStatusInteractor`: detects HOLD events with `txStatus=TX_PREPARED`, marks payout `HELD`
-16. Logic publishes `TransferIntent HELD` event back to EIS
+16. Core publishes `TransferIntent HELD` event back to EIS
 
 **Phase 3: Sign & Promote (Asynchronous — Finalize flow in EIS)**
 
@@ -416,7 +416,7 @@ sequenceDiagram
 **Pipeline: CONFIRMED**
 
 26. **Projector** (`ConfirmedProjector`): runs `PayoutConverter` which produces: `RELEASE_HOLD` (release previous holds) + `DEBIT` (actual amounts) + `PLATFORM_FEE_ACCRUED`
-27. Logic sends to Ledger → Ledger applies → publishes `BALANCE_UPDATED`
+27. Core sends to Ledger → Ledger applies → publishes `BALANCE_UPDATED`
 28. `ChangePayoutStatusInteractor`: detects DEBIT with `txStatus=TX_CONFIRMED`, marks payout `SUCCESS`
 
 **Payout Status Progression**: `CREATED` → `PREPARED` → `HELD` → `PROCESSING` → `CONFIRMING` → `SUCCESS`
@@ -429,7 +429,7 @@ sequenceDiagram
 
 **Key: The Pipeline Pattern**
 
-Both payment and payout share the same processing pipeline in Logic:
+Both payment and payout share the same processing pipeline in Core:
 
 ```
 TRANSACTION event (JetStream)
@@ -450,7 +450,7 @@ This pipeline is the same regardless of whether the transaction is a payment or 
 
 ## Pipeline Architecture — The Conveyor
 
-The central idea of this system is a **unified transaction processing pipeline** inside Logic. Every external event (blockchain webhook, exchange notification, bank callback) eventually becomes a `TRANSACTION` event with a `TransactionStatus`. Logic processes it through the same conveyor regardless of the source or intent type.
+The central idea of this system is a **unified transaction processing pipeline** inside Core. Every external event (blockchain webhook, exchange notification, bank callback) eventually becomes a `TRANSACTION` event with a `TransactionStatus`. Core processes it through the same conveyor regardless of the source or intent type.
 
 ### How the Pipeline Works
 
@@ -475,7 +475,7 @@ flowchart TD
     DEX --> PARSE
     PARSE --> SAVE --> PUB
 
-    subgraph Pipeline["Logic: Transaction Pipeline (stable core)"]
+    subgraph Pipeline["Core: Transaction Pipeline (stable core)"]
         direction TB
         HANDLER["① TransactionHandlerStrategy<br/>──────────────────────<br/>Dispatch by TransactionStatus<br/>→ Update intent statuses<br/>→ Set metadata on intents"]
         PROJECTOR["② TransactionBalanceProjectorStrategy<br/>──────────────────────<br/>Dispatch by TransactionStatus<br/>→ Load related data (intents, accounts)<br/>→ Run ConverterEngine"]
@@ -507,12 +507,12 @@ pie title Development effort distribution
     "External Integration (new integrations, parsers)" : 40
     "BFF (new API endpoints, auth)" : 25
     "Custody (new signing schemes)" : 20
-    "Logic — new Converters / Handlers" : 15
-    "Logic — core pipeline" : 5
+    "Core — new Converters / Handlers" : 15
+    "Core — core pipeline" : 5
     "Ledger" : 1
 ```
 
-The pipeline in Logic is a stable core. It doesn't change when adding new integrations. All new work happens either at the edges of the system (EIS, BFF, Custody) or by adding new converters and handlers into the existing pipeline — without modifying existing code.
+The pipeline in Core is a stable core. It doesn't change when adding new integrations. All new work happens either at the edges of the system (EIS, BFF, Custody) or by adding new converters and handlers into the existing pipeline — without modifying existing code.
 
 A new integration (Solana, SWIFT, CEX) means a new parser, transaction builder, and controller in External Integration. The pipeline stays untouched. A new business scenario (batch payout etc.) means a new `Strategy` in External integration service.
 To add internal translations, it is also mainly only affected EIS.
@@ -534,9 +534,9 @@ To add internal translations, it is also mainly only affected EIS.
 ### Synchronous Communication (Secondary)
 
 **Via gRPC**:
-- BFF → Logic (user-facing operations requiring immediate response)
-- Logic → Ledger (balance queries: `getBalances`)
-- Logic → External Integration (fee estimation: `getEstimatedTransferFee`)
+- BFF → Core (user-facing operations requiring immediate response)
+- Core → Ledger (balance queries: `getBalances`)
+- Core → External Integration (fee estimation: `getEstimatedTransferFee`)
 - Used sparingly to maintain loose coupling
 
 ---

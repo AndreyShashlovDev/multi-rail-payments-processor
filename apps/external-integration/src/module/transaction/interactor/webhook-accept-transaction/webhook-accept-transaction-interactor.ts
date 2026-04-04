@@ -40,7 +40,7 @@ export class WebhookAcceptTransactionInteractor extends BasicTransactionInteract
 
   async execute(params: AcceptTransactionParams): Promise<void> {
     const parsedTransaction = await this.transactionParser.parse(params.source, params.integration, params.raw)
-    // this.integrationAccountRepository.hasAccounts() - todo call for check before save and publish event (grpc request to Logic)
+    // this.integrationAccountRepository.hasAccounts() - todo call for check before save and publish event (grpc request to Core)
 
     const result = await this.txRunner
       .createWithData<{ tx: TransactionModel; transfers: ReadonlyArray<TransferEventWithIntent> }>(

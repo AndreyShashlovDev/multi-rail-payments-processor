@@ -1,7 +1,7 @@
 import {
-  LogicJetstreamDataSource,
-  LogicJetstreamHandler,
-} from '../../data-source/nats-jetstream/logic/logic-jetstream.data-source'
+  CoreJetstreamDataSource,
+  CoreJetstreamHandler,
+} from '../../data-source/nats-jetstream/core/core-jetstream-data-source.service'
 import { Injectable } from '@nestjs/common'
 import { BalanceChangeEvent, BalanceUpdatedData } from './balance-event-repository.types'
 import { BalanceUpdatedEvent, BalanceChangeRequestEvent } from '@app/shared/services/ledger/v1'
@@ -14,11 +14,11 @@ export interface BalanceEventSubscription {
 }
 
 @Injectable()
-export class BalanceEventRepository implements LogicJetstreamHandler {
+export class BalanceEventRepository implements CoreJetstreamHandler {
   private readonly subscriptions: BalanceEventSubscription[] = []
 
-  constructor(private readonly logicJetstreamDataSource: LogicJetstreamDataSource) {
-    logicJetstreamDataSource.setupHandler(this)
+  constructor(private readonly coreJetstreamDataSource: CoreJetstreamDataSource) {
+    coreJetstreamDataSource.setupHandler(this)
   }
 
   async balanceChangeHandler(event: BalanceChangeRequestEvent): Promise<void> {
@@ -40,7 +40,7 @@ export class BalanceEventRepository implements LogicJetstreamHandler {
   }
 
   async publish(data: BalanceUpdatedData): Promise<void> {
-    await this.logicJetstreamDataSource.publish(
+    await this.coreJetstreamDataSource.publish(
       BALANCE_UPDATED_STREAM_SUBJECT,
       new BalanceUpdatedEvent(
         data.uniqueKey,

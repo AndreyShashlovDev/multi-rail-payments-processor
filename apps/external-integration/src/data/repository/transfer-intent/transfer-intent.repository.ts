@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common'
 import {
-  LogicJetstreamHandler,
-  LogicJetstreamDataSource,
-} from '../../data-source/nats-jetstream/logic-jetstream.data-source'
+  CoreJetstreamHandler,
+  CoreJetstreamDataSource,
+} from '../../data-source/nats-jetstream/core-jetstream.data-source'
 import { TransferIntentCreateEvent } from '@app/shared/services/external-integration/v1'
 import { toError } from '@app/utils'
 import {
@@ -34,15 +34,15 @@ export interface TransferIntentEventSubscription<T extends TransferIntentEventKe
 }
 
 @Injectable()
-export class TransferIntentRepository implements LogicJetstreamHandler {
+export class TransferIntentRepository implements CoreJetstreamHandler {
   private readonly subscriptions: TransferIntentEventSubscription[] = []
 
   constructor(
     @InjectDataSource(IntegrationPostgresConfig.DATASOURCE_NAME)
     private readonly datasource: DataSource,
-    private readonly logicJetstreamDataSource: LogicJetstreamDataSource,
+    private readonly coreJetstreamDataSource: CoreJetstreamDataSource,
   ) {
-    this.logicJetstreamDataSource.setupHandler(this)
+    this.coreJetstreamDataSource.setupHandler(this)
   }
 
   async transferIntentEventHandler<T extends TransferIntentEventKeyType>(

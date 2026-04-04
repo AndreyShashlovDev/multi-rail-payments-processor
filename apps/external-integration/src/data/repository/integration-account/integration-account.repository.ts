@@ -2,7 +2,7 @@ import { HasIntegrationAccountParams, HasIntegrationAccountResult } from './inte
 
 export class IntegrationAccountRepository {
   async hasAccounts(data: HasIntegrationAccountParams): Promise<HasIntegrationAccountResult> {
-    // grpc request to logic
+    // grpc request to core
     return { existing: data.addresses }
   }
 }

@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common'
 import {
-  LogicJetstreamDataSourceModule,
-} from '../../data-source/nats-jetstream/logic-jetstream-data-source.module'
+  CoreJetstreamDataSourceModule,
+} from '../../data-source/nats-jetstream/core-jetstream-data-source.module'
 import { TransactionEventRepository } from './transaction-event.repository'
 
 @Module({
-  imports: [LogicJetstreamDataSourceModule],
+  imports: [CoreJetstreamDataSourceModule],
   providers: [TransactionEventRepository],
   exports: [TransactionEventRepository],
 })
