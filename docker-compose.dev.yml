@@ -12,7 +12,7 @@ services:
       - "15432:5432"
     volumes:
       - postgres_data_dev:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+
     networks:
       - multi-rail-payments-network
     healthcheck:
