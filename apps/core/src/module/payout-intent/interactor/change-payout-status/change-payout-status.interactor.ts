@@ -3,7 +3,12 @@ import { Injectable, Logger } from '@nestjs/common'
 import { TxContextRunner, BalanceChangeType, IntentType } from '@app/shared'
 import { InboxRepository } from '../../../../data/repository/inbox/inbox.repository'
 import { PayoutIntentRepository } from '../../../../data/repository/payout-intent/payout-intent.repository'
-import { BalanceChange, BalanceChangeReason, BalanceChangeTxStatus } from '@app/shared/types/balance-change'
+import {
+  BalanceChange,
+  BalanceChangeReason,
+  BalanceChangeTxStatus,
+  PayoutBalanceChangeMetadata,
+} from '@app/shared/types/balance-change'
 import {
   ChangePaymentStatusParams,
 } from '../../../payment-intent/interactor/change-payment-status/change-payment-status.interactor'
@@ -14,7 +19,7 @@ import {
 } from '../../../../data/repository/external-integration/external-integration.repository'
 
 export interface ChangePayoutStatusParams {
-  readonly data: BalanceUpdatedResult
+  readonly data: BalanceUpdatedResult<PayoutBalanceChangeMetadata>
 }
 
 @Injectable()
@@ -38,7 +43,7 @@ export class ChangePayoutStatusInteractor extends AbstractInteractor<ChangePayou
       arr.push(curr)
 
       return prev.set(id, arr)
-    }, new Map<UUID, BalanceChange[]>())
+    }, new Map<UUID, BalanceChange<PayoutBalanceChangeMetadata>[]>())
 
     const pipelineResult = await this.txContextRunner
       .createWithData<{ heldIntentIds: Set<UUID> }>({ heldIntentIds: new Set<UUID>() })

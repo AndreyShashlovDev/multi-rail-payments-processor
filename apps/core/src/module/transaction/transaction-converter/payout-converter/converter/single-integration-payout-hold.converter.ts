@@ -43,7 +43,7 @@ export class SingleIntegrationPayoutHoldConverter implements PayoutTransactionCo
       this.holdsOperation.execute({
         payout,
         transferIds: new Set([transfer.id]),
-        txId: params.transaction.id,
+        tx: params.transaction,
       }),
     )
 

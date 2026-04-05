@@ -1,4 +1,4 @@
-import { BalanceChange } from '@app/shared/types/balance-change'
+import { BalanceChange, BasicBalanceChangeMetadata, BalanceChangeMetadata } from '@app/shared/types/balance-change'
 import { IntegrationCurrency, UUID, IntegrationAccount } from '@app/types'
 import { Balance, IntegrationType } from '@app/shared'
 
@@ -7,10 +7,10 @@ export interface ChangeBalanceData {
   readonly changes: ReadonlyArray<BalanceChange>
 }
 
-export interface BalanceUpdatedResult {
+export interface BalanceUpdatedResult<T extends BasicBalanceChangeMetadata = BalanceChangeMetadata> {
   readonly idempotencyKey: string
   readonly ver: number
-  readonly changes: ReadonlyArray<BalanceChange>
+  readonly changes: ReadonlyArray<BalanceChange<T>>
 }
 
 export interface GetBalancesResult {

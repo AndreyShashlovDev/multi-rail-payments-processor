@@ -1,12 +1,18 @@
-import { BalanceChange, BalanceChangeReason, BalanceChangeTxStatus } from '@app/shared/types/balance-change'
+import {
+  BalanceChange,
+  BalanceChangeReason,
+  BalanceChangeTxStatus,
+  PayoutBalanceChangeMetadata,
+} from '@app/shared/types/balance-change'
 import { Id, AbstractInteractor, Numeric } from '@app/types'
 import { IntentType, BalanceChangeType, IntegrationType } from '@app/shared'
 import { PayoutIntentModel } from '../../../../payout-intent/model/payout-intent.model'
 import { OperationTypeMapper } from '../../../../../shared/converter/operation-type.mapper'
+import { TransactionModel } from '../../../model/transaction.model'
 
 export interface PlatformFeePayoutOperationParams {
   readonly payout: PayoutIntentModel
-  readonly txId: Id
+  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executedAt'>
   readonly transferIds: ReadonlySet<Id>
 }
 
@@ -15,7 +21,7 @@ export class IntegrationFeePayoutOperation extends AbstractInteractor<
   ReadonlyArray<BalanceChange>
 > {
   execute(params: PlatformFeePayoutOperationParams): ReadonlyArray<BalanceChange> {
-    const { payout, transferIds, txId } = params
+    const { payout, transferIds, tx } = params
 
     if (!payout.integrationFee || payout.integrationFee.lte(0) || !payout.integrationFeePayer) {
       return []
@@ -30,8 +36,10 @@ export class IntegrationFeePayoutOperation extends AbstractInteractor<
 
     const isUserPaysIntegrationFee = payout.integrationFeePayer.platformAccountId === payout.member.accountId
 
-    const metadata = {
-      txId,
+    const metadata: PayoutBalanceChangeMetadata = {
+      txId: tx.id,
+      sourceTxId: tx.sourceTxId,
+      executedAt: tx.executedAt,
       transferIds: Array.from(transferIds),
       reason: BalanceChangeReason.INTEGRATION_FEE,
       txStatus: BalanceChangeTxStatus.TX_CONFIRMED,

@@ -18,7 +18,7 @@ import { EntityManager } from 'typeorm'
 export class PaymentIntentRepositoryMapper {
   static toDomain(entity: PaymentIntentEntity): PaymentIntentModel {
     return {
-      ...entity, // fixme remove it. need clear mapping
+      id: entity.id,
       operationType: PaymentIntentRepositoryMapper.toDomainOperationType(entity.operationType),
       member: {
         accountId: entity.initiatorAccountId,
@@ -29,9 +29,13 @@ export class PaymentIntentRepositoryMapper {
         platformAccountId: entity.toPlatformAccount,
         accountLinkId: entity.toId ?? undefined,
       },
+      fromPlatformAccountId: entity.fromPlatformAccountId,
+      fromIntegrationAccount: entity.fromIntegrationAccount,
       status: PaymentIntentRepositoryMapper.toDomainStatus(entity.status),
-      amount: Numeric.create(entity.amount),
       integration: integrationTypeToDomain(entity.integration),
+      currency: entity.currency,
+      amount: Numeric.create(entity.amount),
+      platformFee: entity.platformFee,
       platformFeeAccount:
         entity.platformFeeIntegrationAccount && entity.platformFeePlatformAccountId
           ? {
@@ -43,6 +47,8 @@ export class PaymentIntentRepositoryMapper {
       platformFeePayer: entity.platformFeePayer
         ? PaymentIntentRepositoryMapper.toDomainPlatformFeePayer(entity.platformFeePayer)
         : null,
+      createdAt: entity.createdAt,
+      updatedAt: entity.updatedAt,
     }
   }
 

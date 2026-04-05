@@ -1,14 +1,22 @@
-import { AbstractInteractor, UUID } from '@app/types'
+import { AbstractInteractor, UUID, Id } from '@app/types'
 import { BalanceUpdatedResult } from '../../../../data/repository/ledger/ledger-repository.types'
 import { Injectable, Logger } from '@nestjs/common'
 import { TxContextRunner, BalanceChangeType } from '@app/shared'
 import { PaymentIntentRepository } from '../../../../data/repository/payment-intent/payment-intent.repository'
-import { BalanceChange, BalanceChangeReason, BalanceChangeTxStatus } from '@app/shared/types/balance-change'
+import {
+  BalanceChange,
+  BalanceChangeReason,
+  BalanceChangeTxStatus,
+  PaymentBalanceChangeMetadata,
+} from '@app/shared/types/balance-change'
 import { PaymentStatusNotChangedException } from '../../exception/payment-status-not-changed.exception'
 import { InboxRepository } from '../../../../data/repository/inbox/inbox.repository'
+import { PaymentReceiptRepository } from '../../../../data/repository/payment-receipt/payment-receipt.repository'
+import { TxContext } from '@app/shared/types/tx-context.type'
+import { PaymentReceiptData } from '../../model/payment-receipt.model'
 
 export interface ChangePaymentStatusParams {
-  readonly data: BalanceUpdatedResult
+  readonly data: BalanceUpdatedResult<PaymentBalanceChangeMetadata>
 }
 
 @Injectable()
@@ -16,6 +24,7 @@ export class ChangePaymentStatusInteractor extends AbstractInteractor<ChangePaym
   constructor(
     private readonly txContextRunner: TxContextRunner,
     private readonly paymentIntentRepository: PaymentIntentRepository,
+    private readonly paymentReceipt: PaymentReceiptRepository,
     private readonly inboxRepository: InboxRepository,
     private readonly logger: Logger,
   ) {
@@ -31,7 +40,7 @@ export class ChangePaymentStatusInteractor extends AbstractInteractor<ChangePaym
       arr.push(curr)
 
       return prev.set(id, arr)
-    }, new Map<UUID, BalanceChange[]>())
+    }, new Map<UUID, BalanceChange<PaymentBalanceChangeMetadata>[]>())
 
     await this.txContextRunner
       .create()
@@ -79,8 +88,35 @@ export class ChangePaymentStatusInteractor extends AbstractInteractor<ChangePaym
           if (!skipThrowError) {
             throw new PaymentStatusNotChangedException(changes)
           }
+
+          const receiptPayment = underpay ?? overpay ?? payment
+
+          if (receiptPayment) {
+            await this.createReceipt(receiptPayment, ctx)
+          }
         }
       })
       .execute()
+  }
+
+  private async createReceipt(payment: BalanceChange<PaymentBalanceChangeMetadata>, ctx: TxContext): Promise<void> {
+    const { txId, transferIds, sourceTxId, executedAt } = payment.metadata
+
+    if (!executedAt) {
+      throw new Error(`Create receipt executedAt is empty, tx id: ${txId}`)
+    }
+
+    const receipt: PaymentReceiptData = {
+      intentId: payment.intentId as UUID,
+      amount: payment.amount,
+      txId,
+      transferIds: new Set<Id>(transferIds),
+      currency: payment.currency,
+      integration: payment.integration,
+      sourceTxId,
+      executedAt,
+    }
+
+    await this.paymentReceipt.create(receipt, ctx)
   }
 }

@@ -8,6 +8,7 @@ import { BalanceUpdatedResult } from '../../../data/repository/ledger/ledger-rep
 import {
   ChangePayoutStatusInteractor,
 } from '../../../module/payout-intent/interactor/change-payout-status/change-payout-status.interactor'
+import { PayoutBalanceChangeMetadata } from '@app/shared/types/balance-change'
 
 @Controller()
 export class PayoutController {
@@ -17,12 +18,13 @@ export class PayoutController {
     private readonly createPayoutIntentInteractor: CreatePayoutIntentInteractor,
   ) {
     ledgerRepository.subscribeToChangeBalance({
-      handler: async (data) => await this.handlePayoutBalanceChangeEvents(data),
+      handler: async (data) =>
+        await this.handlePayoutBalanceChangeEvents(data as BalanceUpdatedResult<PayoutBalanceChangeMetadata>),
       filter: { intentType: IntentType.PAYOUT },
     })
   }
 
-  async handlePayoutBalanceChangeEvents(data: BalanceUpdatedResult): Promise<void> {
+  async handlePayoutBalanceChangeEvents(data: BalanceUpdatedResult<PayoutBalanceChangeMetadata>): Promise<void> {
     await this.changePayoutStatusInteractor.execute({ data })
   }
 

@@ -28,8 +28,6 @@ export enum PaymentOperationEntityType {
   CONSOLIDATION = 2, // for example, top-up etc.
 }
 
-export type PaymentIntentEntityMetadata = Record<string, unknown>
-
 @Entity({ name: PaymentIntentEntity.NAME, schema: APP_SCHEMA })
 @Index('idx_payment_intent_integration_currency_status', ['integration', 'currency', 'status'])
 export class PaymentIntentEntity extends BasicEntity {
@@ -79,10 +77,6 @@ export class PaymentIntentEntity extends BasicEntity {
   @NumericColumn()
   readonly amount: Numeric
 
-  // not currently used. Is this field needed?
-  @NumericColumn()
-  readonly paid: Numeric
-
   @Column({ type: 'text' })
   readonly currency: IntegrationCurrency
 
@@ -113,7 +107,4 @@ export class PaymentIntentEntity extends BasicEntity {
 
   @Column({ type: 'smallint', default: PaymentIntentEntityStatus.CREATED })
   readonly status: PaymentIntentEntityStatus
-
-  @Column('jsonb', { nullable: true })
-  readonly metadata: PaymentIntentEntityMetadata | null
 }

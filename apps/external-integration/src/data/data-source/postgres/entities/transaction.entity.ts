@@ -38,7 +38,7 @@ export class TransactionEntity extends BasicEntity {
   @Column({ type: 'text', nullable: true })
   readonly blockId: TransactionBlockId | null
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
   readonly blockTime: Date | null // like a executedAt
 
   @Column({ type: 'smallint' })

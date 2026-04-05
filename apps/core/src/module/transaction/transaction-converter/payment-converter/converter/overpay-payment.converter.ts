@@ -5,10 +5,10 @@ import { PaymentPriority, PaymentConverterPriority } from '../../converter-prior
 import { BasicPaymentConverter } from '../basic-payment-converter'
 import { TransactionConverterResult } from '../../basic-transaction.converter'
 import { PaymentTransactionContext } from '../payment-transaction.converter'
-import { Id } from '@app/types'
 import { HoldInPaymentOperation } from '../operation/hold-in-payment.operation'
 import { TransactionStatus, IntentType } from '@app/shared'
 import { BalanceChangeReason, BalanceChangeTxStatus } from '@app/shared/types/balance-change'
+import { Id } from '@app/types'
 
 export class OverpayPaymentConverter extends BasicPaymentConverter {
   readonly name: string = 'OverpayPaymentConverter'
@@ -27,7 +27,7 @@ export class OverpayPaymentConverter extends BasicPaymentConverter {
     const { matches, unusedPayments, unusedTransfers } = this.matchPairs(params, (payment, transfer) => {
       const { amount, clientFeeAmount, payerFeeAmount, changes } = this.feeOperation.execute({
         payment,
-        txId: params.transaction.id,
+        tx: params.transaction,
         transferIds: new Set([transfer.id]),
         transferAmount: transfer.amount,
       })
@@ -53,7 +53,7 @@ export class OverpayPaymentConverter extends BasicPaymentConverter {
         HoldInPaymentOperation.createParamsByPayment({
           payment: match.payment,
           amount: match.amount,
-          txId: params.transaction.id,
+          tx: params.transaction,
           transferIds: new Set([match.transfer.id]),
           payoutId:
             match.transfer.intent?.intentType === IntentType.PAYOUT ? match.transfer.intent.intentId : undefined,
@@ -76,13 +76,13 @@ export class OverpayPaymentConverter extends BasicPaymentConverter {
         ...this.paymentOperation.execute({
           payment: match.payment,
           amount: match.amount,
-          txId: params.transaction.id,
+          tx: params.transaction,
           transferIds: new Set<Id>([match.transfer.id]),
         }),
         ...this.overpayOperation.execute({
           payment: match.payment,
-          txId: params.transaction.id,
-          transferIds: new Set([match.transfer.id]),
+          tx: params.transaction,
+          transferIds: new Set<Id>([match.transfer.id]),
           transferAmount: match.transfer.amount,
           overpay: match.overpay,
         }),

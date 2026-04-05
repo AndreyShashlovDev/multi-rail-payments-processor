@@ -36,7 +36,7 @@ export class UnderpayPaymentConverter extends BasicPaymentConverter {
         HoldInPaymentOperation.createParamsByPayment({
           payment,
           amount: transfer.amount,
-          txId: params.transaction.id,
+          tx: params.transaction,
           transferIds: new Set([transfer.id]),
           payoutId: transfer.intent?.intentType === IntentType.PAYOUT ? transfer.intent.intentId : undefined,
           action: params.transaction.status === TransactionStatus.ACCEPTED ? 'hold' : 'release',
@@ -53,7 +53,7 @@ export class UnderpayPaymentConverter extends BasicPaymentConverter {
         underpay.push(
           ...this.underpayOperation.execute({
             payment,
-            txId: params.transaction.id,
+            tx: params.transaction,
             transferIds: new Set([transfer.id]),
             amount: transfer.amount,
             expectedAmount,

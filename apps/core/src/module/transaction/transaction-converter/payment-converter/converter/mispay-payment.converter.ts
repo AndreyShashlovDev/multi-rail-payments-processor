@@ -62,7 +62,7 @@ export class MispayPaymentConverter extends BasicPaymentConverter {
           operationType: null,
           amount: transfer.amount,
           currency: transfer.currency,
-          txId: params.transaction.id,
+          tx: params.transaction,
           transferIds: new Set([transfer.id]),
           action: params.transaction.status === TransactionStatus.ACCEPTED ? 'hold' : 'release',
           reason: BalanceChangeReason.UNEXPECTED_PAYMENT,
@@ -80,7 +80,7 @@ export class MispayPaymentConverter extends BasicPaymentConverter {
           accountId: link?.platformAccountId ?? null,
           integration: params.transaction.integration,
           integrationAccount,
-          txId: params.transaction.id,
+          tx: params.transaction,
           transfer,
         })
 

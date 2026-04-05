@@ -8,6 +8,7 @@ import {
 import {
   CreatePaymentIntentInteractor,
 } from '../../../module/payment-intent/interactor/create-payment-intent/create-payment-intent.interactor'
+import { PaymentBalanceChangeMetadata } from '@app/shared/types/balance-change'
 
 @Controller()
 export class PaymentController {
@@ -17,7 +18,8 @@ export class PaymentController {
     private readonly createPaymentIntentInteractor: CreatePaymentIntentInteractor,
   ) {
     ledgerRepository.subscribeToChangeBalance({
-      handler: async (data) => await this.handlePaymentBalanceChangeEvents(data),
+      handler: async (data) =>
+        await this.handlePaymentBalanceChangeEvents(data as BalanceUpdatedResult<PaymentBalanceChangeMetadata>),
       filter: {
         intentType: IntentType.PAYMENT,
         status: new Set([BalanceChangeType.CREDIT, BalanceChangeType.HOLD, BalanceChangeType.HOLD_IN]),
@@ -25,7 +27,7 @@ export class PaymentController {
     })
   }
 
-  async handlePaymentBalanceChangeEvents(data: BalanceUpdatedResult): Promise<void> {
+  async handlePaymentBalanceChangeEvents(data: BalanceUpdatedResult<PaymentBalanceChangeMetadata>): Promise<void> {
     await this.changePaymentStatusInteractor.execute({ data })
   }
 

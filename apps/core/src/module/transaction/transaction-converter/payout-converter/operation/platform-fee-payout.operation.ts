@@ -1,12 +1,18 @@
-import { BalanceChange, BalanceChangeReason, BalanceChangeTxStatus } from '@app/shared/types/balance-change'
+import {
+  BalanceChange,
+  BalanceChangeReason,
+  BalanceChangeTxStatus,
+  PayoutBalanceChangeMetadata,
+} from '@app/shared/types/balance-change'
 import { Id, AbstractInteractor } from '@app/types'
 import { IntentType, BalanceChangeType, IntegrationType } from '@app/shared'
 import { PayoutIntentModel } from '../../../../payout-intent/model/payout-intent.model'
 import { OperationTypeMapper } from '../../../../../shared/converter/operation-type.mapper'
+import { TransactionModel } from '../../../model/transaction.model'
 
 export interface PlatformFeePayoutOperationParams {
   readonly payout: PayoutIntentModel
-  readonly txId: Id
+  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executedAt'>
   readonly transferIds: ReadonlySet<Id>
 }
 
@@ -15,7 +21,7 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
   ReadonlyArray<BalanceChange>
 > {
   execute(params: PlatformFeePayoutOperationParams): ReadonlyArray<BalanceChange> {
-    const { payout, transferIds, txId } = params
+    const { payout, transferIds, tx } = params
 
     if (!payout.platformFee || !payout.platformFeeAccount) {
       return []
@@ -28,6 +34,14 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
       intentType: IntentType.PAYOUT,
       intentId: payout.id,
       operationType: OperationTypeMapper.toBalanceChange(payout.operationType),
+    }
+
+    const basicMetadata: Omit<PayoutBalanceChangeMetadata, 'reason'> = {
+      txId: tx.id,
+      sourceTxId: tx.sourceTxId,
+      executedAt: tx.executedAt,
+      transferIds: Array.from(transferIds),
+      txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
     }
 
     if (!isInternalTransfer) {
@@ -43,10 +57,8 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
           integration: payout.fromIntegration,
           amount: payout.platformFee,
           metadata: {
-            txId: txId,
-            transferIds: Array.from(transferIds),
+            ...basicMetadata,
             reason: BalanceChangeReason.FEE,
-            txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
           },
         },
         {
@@ -58,10 +70,8 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
           integration: payout.fromIntegration,
           amount: payout.platformFee,
           metadata: {
-            txId: txId,
-            transferIds: Array.from(transferIds),
+            ...basicMetadata,
             reason: BalanceChangeReason.FEE,
-            txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
           },
         },
         {
@@ -73,10 +83,8 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
           integration: payout.fromIntegration,
           amount: payout.platformFee,
           metadata: {
-            txId: txId,
-            transferIds: Array.from(transferIds),
+            ...basicMetadata,
             reason: BalanceChangeReason.PLATFORM_FEE_CONSOLIDATION,
-            txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
           },
         },
       ]
@@ -93,10 +101,8 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
         integration: payout.fromIntegration,
         amount: payout.platformFee,
         metadata: {
-          txId: txId,
-          transferIds: Array.from(transferIds),
+          ...basicMetadata,
           reason: BalanceChangeReason.FEE,
-          txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
         },
       },
       {
@@ -108,10 +114,8 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
         integration: payout.fromIntegration,
         amount: payout.platformFee,
         metadata: {
-          txId: txId,
-          transferIds: Array.from(transferIds),
+          ...basicMetadata,
           reason: BalanceChangeReason.PLATFORM_FEE_CONSOLIDATION,
-          txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
         },
       },
     ]

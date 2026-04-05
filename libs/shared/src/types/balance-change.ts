@@ -1,7 +1,7 @@
 import { IntegrationAccount } from '@app/types/integration-account'
 import { Numeric } from '@app/types/numeric.type'
 import { Id } from '@app/types/id.type'
-import { UUID, IntegrationCurrency } from '@app/types'
+import { UUID, IntegrationCurrency, SourceTransactionId } from '@app/types'
 import { IntegrationType, IntentType, BalanceChangeType } from '@app/shared/index'
 
 export enum BalanceChangeTxStatus {
@@ -41,25 +41,37 @@ export enum BalanceChangeReason {
   FEE_ADJUSTMENT = 'FEE_ADJUSTMENT',
 }
 
-export interface BalanceChangeMetadata {
-  readonly txId?: Id
-  readonly reason?: BalanceChangeReason
-  readonly txStatus?: BalanceChangeTxStatus
-  readonly transferIds?: ReadonlyArray<Id>
+export interface BasicBalanceChangeMetadata {
+  readonly reason: BalanceChangeReason
+}
 
-  // payment
+export interface TransactionBalanceChangeMetadata extends BasicBalanceChangeMetadata {
+  readonly txId: Id
+  readonly transferIds: ReadonlyArray<Id>
+  readonly txStatus: BalanceChangeTxStatus
+  readonly sourceTxId: SourceTransactionId
+  readonly executedAt: Date | null
+}
+
+export interface PaymentBalanceChangeMetadata extends TransactionBalanceChangeMetadata {
   readonly overpay?: Numeric
   readonly actualAmount?: Numeric
   readonly expectedAmount?: Numeric
 
   readonly relatedIntentType?: IntentType | null
   readonly relatedIntentId?: UUID | Id
+}
 
-  // payout
+export interface PayoutBalanceChangeMetadata extends TransactionBalanceChangeMetadata {
   readonly integrationFeeDiff?: Numeric
 }
 
-export interface BalanceChange<T extends BalanceChangeMetadata = BalanceChangeMetadata> {
+export type BalanceChangeMetadata =
+  | BasicBalanceChangeMetadata
+  | PaymentBalanceChangeMetadata
+  | PayoutBalanceChangeMetadata
+
+export interface BalanceChange<T extends BasicBalanceChangeMetadata = BalanceChangeMetadata> {
   readonly type: BalanceChangeType
   readonly intentType: IntentType | null
   readonly intentId: Id | UUID | null

@@ -3,11 +3,13 @@ import {
   BalanceChangeReason,
   BalanceChangeTxStatus,
   BalanceChangeOperationType,
+  PaymentBalanceChangeMetadata,
 } from '@app/shared/types/balance-change'
 import { Id, AbstractInteractor, UUID, IntegrationAccount, Numeric, IntegrationCurrency } from '@app/types'
 import { IntentType, IntegrationType, BalanceChangeType } from '@app/shared'
 import { PaymentIntentModel } from '../../../../payment-intent/model/payment-intent.model'
 import { OperationTypeMapper } from '../../../../../shared/converter/operation-type.mapper'
+import { TransactionModel } from '../../../model/transaction.model'
 
 export interface HoldInOperationParams {
   readonly integration: IntegrationType
@@ -16,7 +18,7 @@ export interface HoldInOperationParams {
   readonly amount: Numeric
   readonly currency: IntegrationCurrency
 
-  readonly txId: Id
+  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executedAt'>
   readonly transferIds: ReadonlySet<Id>
   readonly operationType: BalanceChangeOperationType | null
   readonly paymentId?: UUID | null
@@ -27,11 +29,14 @@ export interface HoldInOperationParams {
   readonly txStatus: BalanceChangeTxStatus.TX_ACCEPTED | BalanceChangeTxStatus.TX_CONFIRMED
 }
 
-export class HoldInPaymentOperation extends AbstractInteractor<HoldInOperationParams, ReadonlyArray<BalanceChange>> {
+export class HoldInPaymentOperation extends AbstractInteractor<
+  HoldInOperationParams,
+  ReadonlyArray<BalanceChange<PaymentBalanceChangeMetadata>>
+> {
   static createParamsByPayment(data: {
     readonly payment: PaymentIntentModel
     readonly amount: Numeric
-    readonly txId: Id
+    readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executedAt'>
     readonly transferIds: ReadonlySet<Id>
     readonly payoutId?: UUID | Id
     readonly action: 'hold' | 'release'
@@ -50,7 +55,7 @@ export class HoldInPaymentOperation extends AbstractInteractor<HoldInOperationPa
       amount: data.amount,
       currency: data.payment.currency,
       paymentId: data.payment.id,
-      txId: data.txId,
+      tx: data.tx,
       transferIds: data.transferIds,
       operationType: OperationTypeMapper.toBalanceChange(data.payment.operationType),
       payoutId: data.payoutId,
@@ -60,15 +65,15 @@ export class HoldInPaymentOperation extends AbstractInteractor<HoldInOperationPa
     }
   }
 
-  execute(params: HoldInOperationParams): ReadonlyArray<BalanceChange> {
+  execute(params: HoldInOperationParams): ReadonlyArray<BalanceChange<PaymentBalanceChangeMetadata>> {
     const {
       integration,
       platformAccountId,
       integrationAccount,
       amount,
       currency,
+      tx,
       transferIds,
-      txId,
       operationType,
       paymentId,
       payoutId,
@@ -89,7 +94,9 @@ export class HoldInPaymentOperation extends AbstractInteractor<HoldInOperationPa
         integration,
         amount,
         metadata: {
-          txId: txId,
+          txId: tx.id,
+          sourceTxId: tx.sourceTxId,
+          executedAt: tx.executedAt,
           transferIds: Array.from(transferIds),
           relatedIntentType: payoutId ? IntentType.PAYOUT : undefined,
           relatedIntentId: payoutId,

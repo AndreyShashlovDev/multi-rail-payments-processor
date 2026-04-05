@@ -32,12 +32,10 @@ export interface PaymentIntentData {
   readonly integration: IntegrationType
   readonly currency: IntegrationCurrency
   readonly amount: Numeric
-  readonly paid: Numeric
   readonly platformFee: Numeric | null
   readonly platformFeeAccount: SourceIntegrationAccount | null
   readonly platformFeePayer: PaymentPlatformFeePayerType | null
   readonly status: PaymentIntentStatus
-  readonly metadata: Record<string, unknown> | null
 }
 
 export interface PaymentIntentModel extends PaymentIntentData {

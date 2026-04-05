@@ -15,6 +15,7 @@ import { IntegrationCurrencyEntity } from './entities/integration-currency.entit
 import { PaymentIntentEntity } from './entities/payment-intent.entity'
 import { EscrowEntity } from './entities/escrow.entity'
 import { InboxEntity } from './entities/inbox.entity'
+import { PaymentReceiptEntity } from './entities/payment-receipt.entity'
 
 export const APP_SCHEMA = 'core'
 
@@ -41,6 +42,7 @@ export class CorePostgresConfig extends BaseDatabaseConfig {
         IntegrationAccountLinkEntity,
         IntegrationCurrencyEntity,
         PaymentIntentEntity,
+        PaymentReceiptEntity,
         PayoutIntentEntity,
         EscrowEntity,
         InboxEntity,

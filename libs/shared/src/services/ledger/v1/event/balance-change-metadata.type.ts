@@ -5,8 +5,8 @@ export interface BalanceChangeDataMetadata extends Omit<
   BalanceChangeMetadata,
   'overpay' | 'expectedAmount' | 'actualAmount' | 'integrationFeeDiff'
 > {
-  readonly overpay: RawNumeric
-  readonly expectedAmount: RawNumeric
-  readonly actualAmount: RawNumeric
-  readonly integrationFeeDiff: RawNumeric
+  readonly overpay?: RawNumeric
+  readonly expectedAmount?: RawNumeric
+  readonly actualAmount?: RawNumeric
+  readonly integrationFeeDiff?: RawNumeric
 }

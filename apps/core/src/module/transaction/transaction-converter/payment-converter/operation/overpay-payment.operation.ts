@@ -1,12 +1,18 @@
-import { BalanceChange, BalanceChangeReason, BalanceChangeTxStatus } from '@app/shared/types/balance-change'
+import {
+  BalanceChange,
+  BalanceChangeReason,
+  BalanceChangeTxStatus,
+  PaymentBalanceChangeMetadata,
+} from '@app/shared/types/balance-change'
 import { PaymentIntentModel } from '../../../../payment-intent/model/payment-intent.model'
 import { Numeric, Id, AbstractInteractor } from '@app/types'
 import { IntentType, BalanceChangeType, IntegrationType } from '@app/shared'
 import { OperationTypeMapper } from '../../../../../shared/converter/operation-type.mapper'
+import { TransactionModel } from '../../../model/transaction.model'
 
 export interface OverpayPaymentOperationParams {
   readonly payment: PaymentIntentModel
-  readonly txId: Id
+  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executedAt'>
   readonly transferIds: ReadonlySet<Id>
   readonly transferAmount: Numeric
   readonly overpay: Numeric
@@ -14,10 +20,10 @@ export interface OverpayPaymentOperationParams {
 
 export class OverpayPaymentOperation extends AbstractInteractor<
   OverpayPaymentOperationParams,
-  ReadonlyArray<BalanceChange>
+  ReadonlyArray<BalanceChange<PaymentBalanceChangeMetadata>>
 > {
-  execute(params: OverpayPaymentOperationParams): ReadonlyArray<BalanceChange> {
-    const { payment, overpay, transferAmount, transferIds, txId } = params
+  execute(params: OverpayPaymentOperationParams): ReadonlyArray<BalanceChange<PaymentBalanceChangeMetadata>> {
+    const { payment, overpay, transferAmount, transferIds, tx } = params
 
     const isInternalTransfer =
       payment.to.account === payment.member.accountId && payment.integration === IntegrationType.INTERNAL
@@ -36,7 +42,9 @@ export class OverpayPaymentOperation extends AbstractInteractor<
         integration: payment.integration,
         amount: overpay,
         metadata: {
-          txId: txId,
+          txId: tx.id,
+          sourceTxId: tx.sourceTxId,
+          executedAt: tx.executedAt,
           transferIds: Array.from(transferIds),
           reason: BalanceChangeReason.OVERPAY,
           overpay,

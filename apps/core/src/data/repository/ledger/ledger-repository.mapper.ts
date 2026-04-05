@@ -1,7 +1,7 @@
 import { BalanceUpdatedResult, GetBalancesResult } from './ledger-repository.types'
-import { BalanceChangeMetadata, BalanceChange, BalanceChangeReason } from '@app/shared/types/balance-change'
+import { BalanceChangeMetadata, BalanceChange } from '@app/shared/types/balance-change'
 import { BalanceChangeRequestData, BalanceUpdatedEvent } from '@app/shared/services/ledger/v1'
-import { Numeric, UUID, Id, IntegrationCurrency, IntegrationAccount } from '@app/types'
+import { Numeric, UUID, IntegrationCurrency, IntegrationAccount } from '@app/types'
 import { GetBalancesParams, Balance, IntegrationType } from '@app/shared'
 import { plainToInstance } from 'class-transformer'
 import { validateSync } from 'class-validator'
@@ -36,23 +36,18 @@ export class LedgerRepositoryMapper {
         ...item,
         integration: item.integration,
         amount: Numeric.create(item.amount),
-        metadata: {
-          txId: item.metadata.txId as Id,
-          reason: item.metadata.reason
-            ? (BalanceChangeReason[item.metadata.reason.toString()] as BalanceChangeReason)
-            : undefined,
-          transferIds: Array.isArray(item.metadata.transferIds) ? item.metadata.transferIds : undefined,
-          overpay: item.metadata.overpay ? Numeric.create(item.metadata.overpay) : undefined,
-          actualAmount: item.metadata.actualAmount ? Numeric.create(item.metadata.actualAmount) : undefined,
-          expectedAmount: item.metadata.expectedAmount ? Numeric.create(item.metadata.expectedAmount) : undefined,
-          relatedIntentId: item.metadata.relatedIntentId,
-          relatedIntentType: item.metadata.relatedIntentType,
-          integrationFeeDiff: item.metadata.integrationFeeDiff
-            ? Numeric.create(item.metadata.integrationFeeDiff)
-            : undefined,
-          txStatus: item.metadata.txStatus,
-        },
+        metadata: LedgerRepositoryMapper.mapMetadata(item.metadata),
       })),
+    }
+  }
+
+  private static mapMetadata(metadata: BalanceChangeDataMetadata): BalanceChangeMetadata {
+    return {
+      ...metadata,
+      overpay: metadata.overpay ? Numeric.create(metadata.overpay) : undefined,
+      expectedAmount: metadata.expectedAmount ? Numeric.create(metadata.expectedAmount) : undefined,
+      actualAmount: metadata.actualAmount ? Numeric.create(metadata.actualAmount) : undefined,
+      integrationFeeDiff: metadata.integrationFeeDiff ? Numeric.create(metadata.integrationFeeDiff) : undefined,
     }
   }
 

@@ -73,7 +73,6 @@ export class CreatePaymentIntentInteractor extends AbstractInteractor<
                   accountLinkId: platformFeeAccount.id,
                 }
               : null,
-            metadata: null,
           },
           ctx,
         )

@@ -1,13 +1,19 @@
-import { BalanceChange, BalanceChangeReason, BalanceChangeTxStatus } from '@app/shared/types/balance-change'
-import { Id, AbstractInteractor, UUID, IntegrationAccount } from '@app/types'
+import {
+  BalanceChange,
+  BalanceChangeReason,
+  BalanceChangeTxStatus,
+  PaymentBalanceChangeMetadata,
+} from '@app/shared/types/balance-change'
+import { AbstractInteractor, UUID, IntegrationAccount } from '@app/types'
 import { TransferModel } from '../../../model/transfer.model'
 import { BalanceChangeType, IntegrationType } from '@app/shared'
+import { TransactionModel } from '../../../model/transaction.model'
 
 export interface MispayPaymentOperationParams {
   readonly accountId: UUID | null
   readonly integration: IntegrationType
   readonly integrationAccount: IntegrationAccount | null
-  readonly txId: Id
+  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executedAt'>
   readonly transfer: TransferModel
 }
 
@@ -16,7 +22,15 @@ export class MispayPaymentOperation extends AbstractInteractor<
   ReadonlyArray<BalanceChange>
 > {
   execute(params: MispayPaymentOperationParams): ReadonlyArray<BalanceChange> {
-    const { accountId, integration, integrationAccount, txId, transfer } = params
+    const { accountId, integration, integrationAccount, tx, transfer } = params
+
+    const basicMetadata: Omit<PaymentBalanceChangeMetadata, 'reason'> = {
+      txId: tx.id,
+      sourceTxId: tx.sourceTxId,
+      executedAt: tx.executedAt,
+      transferIds: [transfer.id],
+      txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
+    }
 
     return [
       {
@@ -30,10 +44,8 @@ export class MispayPaymentOperation extends AbstractInteractor<
         integration: integration,
         amount: transfer.amount,
         metadata: {
-          txId: txId,
-          transferIds: [transfer.id],
+          ...basicMetadata,
           reason: BalanceChangeReason.UNEXPECTED_PAYMENT,
-          txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
         },
       },
       {
@@ -47,10 +59,8 @@ export class MispayPaymentOperation extends AbstractInteractor<
         integration: integration,
         amount: transfer.amount,
         metadata: {
-          txId: txId,
-          transferIds: [transfer.id],
+          ...basicMetadata,
           reason: BalanceChangeReason.UNEXPECTED_PAYMENT,
-          txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
         },
       },
     ]

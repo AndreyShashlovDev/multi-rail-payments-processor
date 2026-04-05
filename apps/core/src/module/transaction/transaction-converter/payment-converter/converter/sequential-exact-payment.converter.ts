@@ -98,7 +98,7 @@ export class SequentialExactPaymentConverter extends BasicPaymentConverter {
 
         const { amount, clientFeeAmount, payerFeeAmount, changes } = this.feeOperation.execute({
           payment,
-          txId: params.transaction.id,
+          tx: params.transaction,
           transferIds: new Set(transfersGroup.transfers.map((transfer) => transfer.id)),
           transferAmount: transfersGroup.totalAmount,
         })
@@ -122,7 +122,7 @@ export class SequentialExactPaymentConverter extends BasicPaymentConverter {
         HoldInPaymentOperation.createParamsByPayment({
           payment: match.payment,
           amount: match.amount,
-          txId: params.transaction.id,
+          tx: params.transaction,
           transferIds: match.transferIds,
           action: params.transaction.status === TransactionStatus.ACCEPTED ? 'hold' : 'release',
           reason: BalanceChangeReason.AMOUNT,
@@ -143,7 +143,7 @@ export class SequentialExactPaymentConverter extends BasicPaymentConverter {
         ...this.paymentOperation.execute({
           payment: match.payment,
           amount: match.amount,
-          txId: params.transaction.id,
+          tx: params.transaction,
           transferIds: match.transferIds,
         }),
       ]

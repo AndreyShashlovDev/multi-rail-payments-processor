@@ -81,11 +81,9 @@ export class CreateEscrowInteractor extends AbstractInteractor<CreateEscrowParam
   }
 
   private generateMetadataHash(data: BalanceChange): string {
-    return [
-      data.metadata.txId,
-      Array.from(data.metadata.transferIds?.values() ?? []).join(','),
-      data.intentType,
-      data.intentId,
-    ].join('-')
+    const txId = 'txId' in data.metadata ? data.metadata.txId : ''
+    const transferIds = 'transferIds' in data.metadata ? data.metadata.transferIds : []
+
+    return [txId, transferIds.join(','), data.intentType, data.intentId].join('-')
   }
 }

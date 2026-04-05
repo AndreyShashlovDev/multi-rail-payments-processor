@@ -16,7 +16,7 @@ import { PaymentIntentRepositoryMapper } from './payment-intent-repository.mappe
 import { FindOptionsWhere } from 'typeorm/find-options/FindOptionsWhere'
 import { integrationTypeFromDomain } from '@app/shared'
 import { TxContext } from '@app/shared/types/tx-context.type'
-import { Numeric, UUID } from '@app/types'
+import { UUID } from '@app/types'
 
 @Injectable()
 export class PaymentIntentRepository {
@@ -49,7 +49,6 @@ export class PaymentIntentRepository {
     const entity = PaymentIntentRepositoryMapper.fromDomain(
       {
         ...data,
-        paid: Numeric.ZERO,
         status: PaymentIntentStatus.CREATED,
       },
       this.datasource.manager,

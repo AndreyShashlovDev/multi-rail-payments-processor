@@ -1,20 +1,29 @@
-import { BalanceChange, BalanceChangeTxStatus, BalanceChangeReason } from '@app/shared/types/balance-change'
+import {
+  BalanceChange,
+  BalanceChangeTxStatus,
+  BalanceChangeReason,
+  PaymentBalanceChangeMetadata,
+} from '@app/shared/types/balance-change'
 import { PaymentIntentModel } from '../../../../payment-intent/model/payment-intent.model'
 import { Numeric, Id, AbstractInteractor, UUID } from '@app/types'
 import { IntentType, BalanceChangeType, IntegrationType } from '@app/shared'
 import { OperationTypeMapper } from '../../../../../shared/converter/operation-type.mapper'
+import { TransactionModel } from '../../../model/transaction.model'
 
 export interface PaymentOperationParams {
   readonly payment: PaymentIntentModel
   readonly amount: Numeric
-  readonly txId: Id
+  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executedAt'>
   readonly transferIds: ReadonlySet<Id>
   readonly payoutId?: UUID | Id
 }
 
-export class PaymentOperation extends AbstractInteractor<PaymentOperationParams, ReadonlyArray<BalanceChange>> {
-  execute(params: PaymentOperationParams): ReadonlyArray<BalanceChange> {
-    const { payment, amount, transferIds, txId, payoutId } = params
+export class PaymentOperation extends AbstractInteractor<
+  PaymentOperationParams,
+  ReadonlyArray<BalanceChange<PaymentBalanceChangeMetadata>>
+> {
+  execute(params: PaymentOperationParams): ReadonlyArray<BalanceChange<PaymentBalanceChangeMetadata>> {
+    const { payment, amount, transferIds, tx, payoutId } = params
 
     const isInternalTransfer =
       payment.to.account === payment.member.accountId && payment.integration === IntegrationType.INTERNAL
@@ -32,7 +41,9 @@ export class PaymentOperation extends AbstractInteractor<PaymentOperationParams,
         integration: payment.integration,
         amount,
         metadata: {
-          txId: txId,
+          txId: tx.id,
+          sourceTxId: tx.sourceTxId,
+          executedAt: tx.executedAt,
           transferIds: Array.from(transferIds),
           relatedIntentType: payoutId ? IntentType.PAYOUT : undefined,
           relatedIntentId: payoutId,

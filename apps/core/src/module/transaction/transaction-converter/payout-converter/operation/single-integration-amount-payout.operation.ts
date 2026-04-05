@@ -1,12 +1,18 @@
-import { BalanceChange, BalanceChangeReason, BalanceChangeTxStatus } from '@app/shared/types/balance-change'
+import {
+  BalanceChange,
+  BalanceChangeReason,
+  BalanceChangeTxStatus,
+  PayoutBalanceChangeMetadata,
+} from '@app/shared/types/balance-change'
 import { Id, AbstractInteractor } from '@app/types'
 import { IntentType, BalanceChangeType, IntegrationType } from '@app/shared'
 import { PayoutIntentModel } from '../../../../payout-intent/model/payout-intent.model'
 import { OperationTypeMapper } from '../../../../../shared/converter/operation-type.mapper'
+import { TransactionModel } from '../../../model/transaction.model'
 
 export interface PayoutOperationParams {
   readonly payout: PayoutIntentModel
-  readonly txId: Id
+  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executedAt'>
   readonly transferIds: ReadonlySet<Id>
 }
 
@@ -15,7 +21,7 @@ export class SingleIntegrationAmountPayoutOperation extends AbstractInteractor<
   ReadonlyArray<BalanceChange>
 > {
   execute(params: PayoutOperationParams): ReadonlyArray<BalanceChange> {
-    const { payout, transferIds, txId } = params
+    const { payout, transferIds, tx } = params
 
     const integrationAccount =
       payout.member.accountId === payout.from.account && payout.fromIntegration === IntegrationType.INTERNAL
@@ -28,6 +34,14 @@ export class SingleIntegrationAmountPayoutOperation extends AbstractInteractor<
       operationType: OperationTypeMapper.toBalanceChange(payout.operationType),
     }
 
+    const basicMetadata: Omit<PayoutBalanceChangeMetadata, 'reason'> = {
+      txId: tx.id,
+      sourceTxId: tx.sourceTxId,
+      executedAt: tx.executedAt,
+      transferIds: Array.from(transferIds),
+      txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
+    }
+
     return [
       {
         type: BalanceChangeType.RELEASE_HOLD,
@@ -38,10 +52,8 @@ export class SingleIntegrationAmountPayoutOperation extends AbstractInteractor<
         integration: payout.fromIntegration,
         amount: payout.fromAmount,
         metadata: {
-          txId: txId,
-          transferIds: Array.from(transferIds),
+          ...basicMetadata,
           reason: BalanceChangeReason.AMOUNT,
-          txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
         },
       },
       {
@@ -53,10 +65,8 @@ export class SingleIntegrationAmountPayoutOperation extends AbstractInteractor<
         integration: payout.fromIntegration,
         amount: payout.fromAmount,
         metadata: {
-          txId: txId,
-          transferIds: Array.from(transferIds),
+          ...basicMetadata,
           reason: BalanceChangeReason.AMOUNT,
-          txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
         },
       },
     ]

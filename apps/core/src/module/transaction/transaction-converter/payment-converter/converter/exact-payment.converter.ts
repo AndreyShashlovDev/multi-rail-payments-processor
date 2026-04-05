@@ -24,7 +24,7 @@ export class ExactPaymentConverter extends BasicPaymentConverter {
     const { matches, unusedPayments, unusedTransfers } = this.matchPairs(params, (payment, transfer) => {
       const { amount, clientFeeAmount, payerFeeAmount, changes } = this.feeOperation.execute({
         payment,
-        txId: params.transaction.id,
+        tx: params.transaction,
         transferIds: new Set([transfer.id]),
         transferAmount: transfer.amount,
       })
@@ -46,7 +46,7 @@ export class ExactPaymentConverter extends BasicPaymentConverter {
         HoldInPaymentOperation.createParamsByPayment({
           payment: match.payment,
           amount: match.amount,
-          txId: params.transaction.id,
+          tx: params.transaction,
           transferIds: new Set([match.transfer.id]),
           payoutId:
             match.transfer.intent?.intentType === IntentType.PAYOUT ? match.transfer.intent.intentId : undefined,
@@ -69,7 +69,7 @@ export class ExactPaymentConverter extends BasicPaymentConverter {
         ...this.paymentOperation.execute({
           payment: match.payment,
           amount: match.amount,
-          txId: params.transaction.id,
+          tx: params.transaction,
           transferIds: new Set([match.transfer.id]),
           payoutId:
             match.transfer.intent?.intentType === IntentType.PAYOUT ? match.transfer.intent.intentId : undefined,

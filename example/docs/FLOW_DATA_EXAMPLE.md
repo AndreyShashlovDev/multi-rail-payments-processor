@@ -47,6 +47,7 @@ t6  Transaction confirmed on-chain → Transaction CONFIRMED
     Pipeline: CONFIRMED →
       Payout: RELEASE_HOLD + DEBIT + PLATFORM_FEE_ACCRUED → PayoutIntent SUCCESS
       Payment: RELEASE_HOLD_IN + CREDIT + PLATFORM_FEE_ACCRUED → PaymentIntent COMPLETED
+      payment_receipt created (after Ledger confirms balance change)
 ```
 
 ---
@@ -577,6 +578,66 @@ export enum BalanceChangeOperationType {
 **In this example** all events carry `USER_REQUEST` — standard user-initiated payout and payment.
 
 `CONSOLIDATION` appears when the escrow records (id 6–7, `PLATFORM_FEE_ACCRUED`) are swept: a payout intent is created with `operation_type = CONSOLIDATION` to move the accrued fees from `0x1`/`0x2` to the platform treasury. At that point the escrow records transition `CREATED → RESOLVED` and the `PLATFORM_FEE_ACCRUED` hold becomes a debit.
+
+---
+
+## 10. Payment Receipt
+
+Service: **Core** · Schema: `core` · Table: `payment_receipt`
+
+Each row represents a **single confirmed incoming transfer** for a payment intent. One intent can have multiple receipts, which lays the groundwork for partial payment support — where a user covers the full amount across multiple transactions over time.
+
+The receipt is created **after** Ledger confirms the balance change and publishes the event. It is a downstream artifact of the Ledger event — not a precondition.
+
+<details>
+<summary>payment_receipt (1 record)</summary>
+
+```json
+[
+  {
+    "id": "517c1580-3123-4e5f-9fc1-ca9ff346a301",
+    "intent_id": "f05d4900-97ae-485b-9068-00d3d58860a7",
+    "amount": 5.000000000000000000000000000000,
+    "integration": "ETHEREUM",
+    "source_tx_id": "0xa6444690168591d481f309e620bea50ea3bb2080",
+    "tx_id": 1,
+    "transfer_ids": [1],
+    "currency": "native",
+    "executed_at": "2026-03-21T18:36:00.000Z"
+  }
+]
+```
+
+</details>
+
+**Key points:**
+- `intent_id` links to `payment_intent` (`f05d4900`) — one intent can have multiple receipts.
+- `amount` = the amount of this specific transfer, not cumulative. For partial payments, multiple receipts sum up to the total received.
+- `source_tx_id` = on-chain transaction hash (`0xa644...`) — used to build block explorer links (Etherscan, Tronscan, etc.) at the BFF/frontend layer. Core stores only the hash, not the full URL, since Core has no knowledge of specific integrations.
+- `executed_at` = `block_time` from the transaction — when the transfer was confirmed on-chain. Stored as `timestamptz` (UTC).
+- `transfer_ids` = references to `transfer` records in External Integration service. Stored as a native Postgres `bigint[]` array — metadata of small, predictable size that doesn't require its own table.
+- `tx_id` = internal transaction id (`1`) linking to the `transaction` table in External Integration.
+
+**Relation to payment_intent status:**
+
+The resulting `payment_intent` status after each receipt reflects the outcome of the cumulative received amount vs the expected amount:
+
+| Status | Meaning |
+|--------|---------|
+| `CONFIRMING` | Transaction seen on-chain, waiting for confirmation |
+| `UNDERPAY` | Total received is less than expected. Full partial payment flow (re-accepting subsequent transfers) is not yet implemented — currently the wallet remains locked and the intent does not re-enter processing. |
+| `OVERPAY` | Total received exceeds expected amount |
+| `COMPLETED` | Total received matches expected amount exactly |
+
+**Underpay example** — two receipts on the same intent:
+
+| # | intent_id | amount | source_tx_id | executed_at |
+|---|-----------|--------|--------------|-------------|
+| 1 | `f05d4900` | 3.0 | `0xabc...` | 2026-03-21T18:30:00Z |
+| 2 | `f05d4900` | 2.0 | `0xdef...` | 2026-03-21T18:36:00Z |
+
+After receipt #1 → `payment_intent.status = UNDERPAY`  
+After receipt #2 → `payment_intent.status = COMPLETED`
 
 ---
 

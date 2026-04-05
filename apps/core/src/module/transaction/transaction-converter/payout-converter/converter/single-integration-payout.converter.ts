@@ -1,6 +1,6 @@
 import { TransactionConverterResult } from '../../basic-transaction.converter'
 import { PayoutPriority, PayoutConverterPriority } from '../../converter-priority.constants'
-import { UUID, Id } from '@app/types'
+import { UUID } from '@app/types'
 import { SingleIntegrationAmountPayoutOperation } from '../operation/single-integration-amount-payout.operation'
 import { isUUID } from 'class-validator'
 import { PlatformFeePayoutOperation } from '../operation/platform-fee-payout.operation'
@@ -10,6 +10,7 @@ import { PayoutIntentModel, PayoutIntentStatus } from '../../../../payout-intent
 import { TransferModel } from '../../../model/transfer.model'
 import { PayoutTransactionConverter, PayoutTransactionContext } from '../payout-transaction.converter'
 import { IntentType } from '@app/shared'
+import { TransactionModel } from '../../../model/transaction.model'
 
 export class SingleIntegrationPayoutConverter implements PayoutTransactionConverter {
   readonly name: string = 'SingleIntegrationPayoutConverter'
@@ -47,7 +48,7 @@ export class SingleIntegrationPayoutConverter implements PayoutTransactionConver
         return { payout, transfer }
       })
 
-    const changes = this.getBalanceChanges(params.transaction.id, matchedPayout)
+    const changes = this.getBalanceChanges(params.transaction, matchedPayout)
 
     return {
       context: {
@@ -60,25 +61,25 @@ export class SingleIntegrationPayoutConverter implements PayoutTransactionConver
   }
 
   private getBalanceChanges(
-    txId: Id,
+    tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executedAt'>,
     matchedPayout: ReadonlyArray<{ payout: PayoutIntentModel; transfer: TransferModel }>,
   ): ReadonlyArray<BalanceChange> {
     return matchedPayout.flatMap(({ payout, transfer }) => {
       const bodyTransfer = this.amountOperation.execute({
         payout,
-        txId,
+        tx,
         transferIds: new Set([transfer.id]),
       })
 
       const platformFee = this.platformFeeOperation.execute({
         payout,
-        txId,
+        tx,
         transferIds: new Set([transfer.id]),
       })
 
       const integrationFee = this.integrationFeeOperation.execute({
         payout,
-        txId,
+        tx,
         transferIds: new Set([transfer.id]),
       })
 
