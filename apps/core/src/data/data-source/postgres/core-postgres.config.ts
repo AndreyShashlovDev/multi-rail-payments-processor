@@ -1,3 +1,5 @@
+export const APP_SCHEMA = 'core'
+
 import 'reflect-metadata'
 import { DataSource } from 'typeorm'
 import { BaseDatabaseConfig, SnakeNamingStrategy } from '@app/database'
@@ -16,11 +18,11 @@ import { PaymentIntentEntity } from './entities/payment-intent.entity'
 import { EscrowEntity } from './entities/escrow.entity'
 import { InboxEntity } from './entities/inbox.entity'
 import { PaymentReceiptEntity } from './entities/payment-receipt.entity'
-
-export const APP_SCHEMA = 'core'
+import { PayoutInboxTransferEntity } from './entities/payout-inbox-transfer.entity'
+import { PaymentInboxTransferEntity } from './entities/payment-inbox-transfer.entity'
 
 export class CorePostgresConfig extends BaseDatabaseConfig {
-  public static readonly DATASOURCE_NAME = 'core'
+  static readonly DATASOURCE_NAME = 'core'
 
   static getTypeOrmConfig(configService?: PostgresConfig): TypeOrmModuleOptions {
     const dbConfig = configService ? configService : this.getEnvConfig()
@@ -43,7 +45,9 @@ export class CorePostgresConfig extends BaseDatabaseConfig {
         IntegrationCurrencyEntity,
         PaymentIntentEntity,
         PaymentReceiptEntity,
+        PaymentInboxTransferEntity,
         PayoutIntentEntity,
+        PayoutInboxTransferEntity,
         EscrowEntity,
         InboxEntity,
       ],

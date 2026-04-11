@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class Migration1775395325623 implements MigrationInterface {
-    name = 'Migration1775395325623'
+export class Migration1775912806339 implements MigrationInterface {
+    name = 'Migration1775912806339'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`CREATE TABLE "core"."integration_account" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" BIGSERIAL NOT NULL, "integration" smallint NOT NULL, "account" text NOT NULL, "currency" text, "custody_account_id" bigint NOT NULL, "status" smallint NOT NULL DEFAULT '1', CONSTRAINT "idx_unique_integration_account_custody_account_id" UNIQUE ("custody_account_id"), CONSTRAINT "PK_29708a53e178d1c04d542a81800" PRIMARY KEY ("id"))`);
@@ -22,11 +22,15 @@ export class Migration1775395325623 implements MigrationInterface {
         await queryRunner.query(`CREATE INDEX "idx_escrow_status_created_at" ON "core"."escrow" ("status", "created_at") `);
         await queryRunner.query(`CREATE TABLE "core"."inbox" ("service_name" character varying NOT NULL, "idempotency_key" character varying NOT NULL, "data" text, CONSTRAINT "PK_45875d77b98fb32e13799702ac6" PRIMARY KEY ("service_name", "idempotency_key"))`);
         await queryRunner.query(`CREATE TABLE "core"."payment_receipt" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" uuid NOT NULL DEFAULT uuid_generate_v4(), "intent_id" uuid NOT NULL, "amount" numeric(60,30) NOT NULL, "integration" smallint NOT NULL, "source_tx_id" text NOT NULL, "tx_id" bigint NOT NULL, "transfer_ids" bigint array NOT NULL, "currency" text NOT NULL, "executed_at" TIMESTAMP WITH TIME ZONE NOT NULL, CONSTRAINT "PK_6f138d3dfb91c65b06446e68c06" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "core"."payout_inbox_transfer" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" BIGSERIAL NOT NULL, "key" text NOT NULL, "tx_id" bigint NOT NULL, "transfer_id" bigint NOT NULL, "integration" smallint NOT NULL, "intent_id" uuid NOT NULL, "tx_status" text NOT NULL, "data" json NOT NULL, "state" smallint NOT NULL, "reason" text, CONSTRAINT "idx_unique_integration_intentid_txid_transferid" UNIQUE ("integration", "intent_id", "tx_id", "transfer_id"), CONSTRAINT "PK_779d48045eb066ac6706e9dcda3" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "core"."payment_inbox_transfer" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" BIGSERIAL NOT NULL, "key" text NOT NULL, "tx_id" bigint NOT NULL, "transfer_id" bigint NOT NULL, "integration" smallint NOT NULL, "to" text NOT NULL, "currency" text NOT NULL, "tx_status" text NOT NULL, "data" json NOT NULL, "state" smallint NOT NULL, "reason" text, CONSTRAINT "idx_unique_integration_txid_transferid" UNIQUE ("integration", "tx_id", "transfer_id"), CONSTRAINT "PK_41b711a0f910b8723f9571ae209" PRIMARY KEY ("id"))`);
         await queryRunner.query(`ALTER TABLE "core"."integration_account_link" ADD CONSTRAINT "FK_c34758bc84aa67e0a5fc697f236" FOREIGN KEY ("integration_account_id") REFERENCES "core"."integration_account"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`ALTER TABLE "core"."integration_account_link" DROP CONSTRAINT "FK_c34758bc84aa67e0a5fc697f236"`);
+        await queryRunner.query(`DROP TABLE "core"."payment_inbox_transfer"`);
+        await queryRunner.query(`DROP TABLE "core"."payout_inbox_transfer"`);
         await queryRunner.query(`DROP TABLE "core"."payment_receipt"`);
         await queryRunner.query(`DROP TABLE "core"."inbox"`);
         await queryRunner.query(`DROP INDEX "core"."idx_escrow_status_created_at"`);

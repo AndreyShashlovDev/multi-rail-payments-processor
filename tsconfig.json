@@ -2,7 +2,7 @@
   "compilerOptions": {
     "module": "nodenext",
     "moduleResolution": "nodenext",
-    "lib": ["ES2023.Array"],
+    "lib": ["ES2023.Array", "ES2024.Collection"],
     "resolvePackageJsonExports": true,
     "esModuleInterop": true,
     "isolatedModules": true,

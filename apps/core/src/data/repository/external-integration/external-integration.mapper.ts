@@ -40,10 +40,14 @@ export class ExternalIntegrationMapper {
     )
 
     return {
-      ...event,
-      transfers,
+      id: event.id,
+      sourceTxId: event.sourceTxId,
+      integration: event.integration,
+      status: event.status,
+      feeCurrency: event.feeCurrency,
       fee,
       executedAt: event.executedDate,
+      transfers,
     }
   }
 
