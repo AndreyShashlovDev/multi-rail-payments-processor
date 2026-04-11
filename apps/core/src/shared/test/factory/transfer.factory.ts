@@ -1,5 +1,5 @@
 import { IntegrationAccount, IntegrationCurrency, Numeric, Id } from '@app/types'
-import { TransferModel } from '../../../module/transaction/model/transfer.model'
+import { TransferModel } from '../../model/transfer.model'
 
 export class TransferFactory {
   static create(overrides?: Partial<TransferModel>): TransferModel {

@@ -24,12 +24,13 @@ export interface ChangePayoutStatusParams {
 
 @Injectable()
 export class ChangePayoutStatusInteractor extends AbstractInteractor<ChangePayoutStatusParams, Promise<void>> {
+  private readonly logger = new Logger(ChangePayoutStatusInteractor.name)
+
   constructor(
     private readonly txContextRunner: TxContextRunner,
     private readonly payoutIntentRepository: PayoutIntentRepository,
     private readonly inboxRepository: InboxRepository,
     private readonly externalIntegrationRepository: ExternalIntegrationRepository,
-    private readonly logger: Logger,
   ) {
     super()
   }

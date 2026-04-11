@@ -1,6 +1,6 @@
 import { IntegrationType, TransactionStatus } from '@app/shared'
 import { Numeric, Id } from '@app/types'
-import { TransactionModel } from '../../../module/transaction/model/transaction.model'
+import { TransactionModel } from '../../model/transaction.model'
 import { IntegrationCurrencyFactory } from './integration-currency.factory'
 
 export class TransactionFactory {

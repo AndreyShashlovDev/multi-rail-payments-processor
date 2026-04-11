@@ -1,4 +1,4 @@
-import { Module, Logger } from '@nestjs/common'
+import { Module } from '@nestjs/common'
 import { TxContextModule } from '../../../../shared/tx-context/tx-context.module'
 import { InboxRepositoryModule } from '../../../../data/repository/inbox/inbox-repository.module'
 import { PayoutIntentRepositoryModule } from '../../../../data/repository/payout-intent/payout-intent-repository.module'
@@ -9,7 +9,7 @@ import {
 
 @Module({
   imports: [TxContextModule, PayoutIntentRepositoryModule, InboxRepositoryModule, ExternalIntegrationRepositoryModule],
-  providers: [Logger, ChangePayoutStatusInteractor],
+  providers: [ChangePayoutStatusInteractor],
   exports: [ChangePayoutStatusInteractor],
 })
 export class ChangePayoutStatusInteractorModule {}

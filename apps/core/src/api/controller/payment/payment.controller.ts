@@ -9,6 +9,13 @@ import {
   CreatePaymentIntentInteractor,
 } from '../../../module/payment-intent/interactor/create-payment-intent/create-payment-intent.interactor'
 import { PaymentBalanceChangeMetadata } from '@app/shared/types/balance-change'
+import {
+  ExternalIntegrationRepository,
+} from '../../../data/repository/external-integration/external-integration.repository'
+import {
+  ProcessPaymentTransactionInteractor,
+} from '../../../module/payment-intent/interactor/process-payment-transaction/process-payment-transaction.interactor'
+import { TransactionModel } from '../../../shared/model/transaction.model'
 
 @Controller()
 export class PaymentController {
@@ -16,6 +23,8 @@ export class PaymentController {
     ledgerRepository: LedgerRepository,
     private readonly changePaymentStatusInteractor: ChangePaymentStatusInteractor,
     private readonly createPaymentIntentInteractor: CreatePaymentIntentInteractor,
+    private readonly processPaymentTransactionInteractor: ProcessPaymentTransactionInteractor,
+    private readonly externalIntegrationRepository: ExternalIntegrationRepository,
   ) {
     ledgerRepository.subscribeToChangeBalance({
       handler: async (data) =>
@@ -25,9 +34,19 @@ export class PaymentController {
         status: new Set([BalanceChangeType.CREDIT, BalanceChangeType.HOLD, BalanceChangeType.HOLD_IN]),
       },
     })
+
+    this.externalIntegrationRepository.subscribeToTransactionEvent({
+      handler: async (tx) => await this.handleTransaction(tx),
+    })
   }
 
-  async handlePaymentBalanceChangeEvents(data: BalanceUpdatedResult<PaymentBalanceChangeMetadata>): Promise<void> {
+  private async handleTransaction(transaction: TransactionModel): Promise<void> {
+    await this.processPaymentTransactionInteractor.execute({ transaction: transaction })
+  }
+
+  private async handlePaymentBalanceChangeEvents(
+    data: BalanceUpdatedResult<PaymentBalanceChangeMetadata>,
+  ): Promise<void> {
     await this.changePaymentStatusInteractor.execute({ data })
   }
 

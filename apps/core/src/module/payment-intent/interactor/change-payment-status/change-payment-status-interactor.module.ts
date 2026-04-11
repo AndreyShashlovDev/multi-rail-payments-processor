@@ -1,4 +1,4 @@
-import { Module, Logger } from '@nestjs/common'
+import { Module } from '@nestjs/common'
 import { ChangePaymentStatusInteractor } from './change-payment-status.interactor'
 import {
   PaymentIntentRepositoryModule,
@@ -11,7 +11,7 @@ import {
 
 @Module({
   imports: [TxContextModule, PaymentIntentRepositoryModule, PaymentReceiptRepositoryModule, InboxRepositoryModule],
-  providers: [Logger, ChangePaymentStatusInteractor],
+  providers: [ChangePaymentStatusInteractor],
   exports: [ChangePaymentStatusInteractor],
 })
 export class ChangePaymentStatusInteractorModule {}

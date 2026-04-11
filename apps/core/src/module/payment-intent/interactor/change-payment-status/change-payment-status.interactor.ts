@@ -21,12 +21,13 @@ export interface ChangePaymentStatusParams {
 
 @Injectable()
 export class ChangePaymentStatusInteractor extends AbstractInteractor<ChangePaymentStatusParams, Promise<void>> {
+  private readonly logger: Logger = new Logger(ChangePaymentStatusInteractor.name)
+
   constructor(
     private readonly txContextRunner: TxContextRunner,
     private readonly paymentIntentRepository: PaymentIntentRepository,
     private readonly paymentReceipt: PaymentReceiptRepository,
     private readonly inboxRepository: InboxRepository,
-    private readonly logger: Logger,
   ) {
     super()
   }

@@ -5,7 +5,6 @@ import natsConfig from '../config/nats.config'
 import loggingConfig from '../config/logging.config'
 import { validate } from '../config'
 import postgresConfig from '../config/postgres.config'
-import { TransactionControllerModule } from '../api/controller/transaction/transaction-controller.module'
 import ledgerGrpcConfig from '../config/ledger.grpc.config'
 import grpcConfig from '../config/grpc.config'
 import { CorePostgresModule } from '../data/data-source/postgres/core-postgres.module'
@@ -30,7 +29,6 @@ import { DemoControllerModule } from '../api/controller/demo/demo-controller.mod
     }),
     SharedProviderModule,
     CorePostgresModule,
-    TransactionControllerModule,
     EscrowControllerModule,
     IntegrationAccountControllerModule,
     PaymentControllerModule,

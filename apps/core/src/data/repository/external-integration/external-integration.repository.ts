@@ -6,7 +6,7 @@ import { TransactionEvent, TransferIntentCreateEvent } from '@app/shared/service
 import { ExternalIntegrationMapper } from './external-integration.mapper'
 import { IntegrationType } from '@app/shared'
 import { Injectable } from '@nestjs/common'
-import { TransactionModel } from '../../../module/transaction/model/transaction.model'
+import { TransactionModel } from '../../../shared/model/transaction.model'
 import { DataSource } from 'typeorm'
 import { IntegrationCurrency, Numeric, UUID } from '@app/types'
 import { IntegrationCurrencyEntity } from '../../data-source/postgres/entities/integration-currency.entity'

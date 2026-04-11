@@ -7,9 +7,21 @@ import {
 import {
   CreatePayoutIntentInteractorModule,
 } from '../../../module/payout-intent/interactor/create-payout-intent/create-payout-intent-interactor.module'
+import {
+  ProcessPayoutTransactionInteractorModule,
+} from '../../../module/payout-intent/interactor/process-payout-transaction/process-payout-transaction-interactor.module'
+import {
+  ExternalIntegrationRepositoryModule,
+} from '../../../data/repository/external-integration/external-integration-repository.module'
 
 @Module({
-  imports: [LedgerRepositoryModule, ChangePayoutStatusInteractorModule, CreatePayoutIntentInteractorModule],
+  imports: [
+    LedgerRepositoryModule,
+    ChangePayoutStatusInteractorModule,
+    CreatePayoutIntentInteractorModule,
+    ProcessPayoutTransactionInteractorModule,
+    ExternalIntegrationRepositoryModule,
+  ],
   controllers: [PayoutController],
 })
 export class PayoutControllerModule {}

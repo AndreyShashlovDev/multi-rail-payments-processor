@@ -1,8 +1,8 @@
 import { TransactionEvent, TransferEventData } from '@app/shared/services/external-integration/v1'
 import { plainToInstance } from 'class-transformer'
 import { validateSync } from 'class-validator'
-import { TransactionModel } from '../../../module/transaction/model/transaction.model'
-import { TransferModel } from '../../../module/transaction/model/transfer.model'
+import { TransactionModel } from '../../../shared/model/transaction.model'
+import { TransferModel } from '../../../shared/model/transfer.model'
 import { IntegrationCurrency, Numeric } from '@app/types'
 import { IntegrationType } from '@app/shared'
 
