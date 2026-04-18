@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common'
 import { ChangePaymentStatusInteractor } from './change-payment-status.interactor'
-import { PaymentIntentRepositoryModule } from '../../../../data/repository/payment-intent/payment-intent-repository.module'
 import { TxContextModule } from '../../../../shared/tx-context/tx-context.module'
 import { InboxRepositoryModule } from '../../../../data/repository/inbox/inbox-repository.module'
-import { PaymentReceiptRepositoryModule } from '../../../../data/repository/payment-receipt/payment-receipt-repository.module'
+import { ReceiptRepositoryModule } from '../../../../data/repository/receipt/receipt-repository.module'
+import { FinalizePaymentOperationModule } from '../operation/finalize-payment-operation.module'
 
 @Module({
-  imports: [TxContextModule, PaymentIntentRepositoryModule, PaymentReceiptRepositoryModule, InboxRepositoryModule],
+  imports: [TxContextModule, FinalizePaymentOperationModule, ReceiptRepositoryModule, InboxRepositoryModule],
   providers: [ChangePaymentStatusInteractor],
   exports: [ChangePaymentStatusInteractor],
 })

@@ -1,6 +1,4 @@
-import {
-  IntegrationAccountRepository,
-} from '../../data/repository/integration-account/integration-account.repository'
+import { IntegrationAccountRepository } from '../../data/repository/integration-account/integration-account.repository'
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { BalanceChange } from '@app/shared/types/balance-change'
 import { TransactionModel } from '../model/transaction.model'

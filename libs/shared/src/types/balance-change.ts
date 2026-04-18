@@ -55,7 +55,6 @@ export interface TransactionBalanceChangeMetadata extends BasicBalanceChangeMeta
 
 export interface PaymentBalanceChangeMetadata extends TransactionBalanceChangeMetadata {
   readonly overpay?: Numeric
-  readonly actualAmount?: Numeric
   readonly expectedAmount?: Numeric
 
   readonly relatedIntentType?: IntentType | null

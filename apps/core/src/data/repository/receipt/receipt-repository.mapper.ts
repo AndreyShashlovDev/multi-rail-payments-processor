@@ -1,13 +1,18 @@
-import { PaymentReceiptData, PaymentReceiptModel } from '../../../module/payment-intent/model/payment-receipt.model'
 import { EntityManager } from 'typeorm'
-import { PaymentReceiptEntity } from '../../data-source/postgres/entities/payment-receipt.entity'
-import { integrationTypeFromDomain, integrationTypeToDomain } from '@app/shared'
+import { ReceiptEntity } from '../../data-source/postgres/entities/receipt.entity'
+import {
+  integrationTypeFromDomain,
+  integrationTypeToDomain,
+  intentTypeFromDomain,
+  intentTypeToDomain,
+} from '@app/shared'
+import { ReceiptModel, ReceiptData } from './receipt-repository.types'
 
-export class PaymentReceiptRepositoryMapper {
-  static fromDomain(data: PaymentReceiptData, em: EntityManager): PaymentReceiptEntity {
-    return em.create(PaymentReceiptEntity, {
+export class ReceiptRepositoryMapper {
+  static fromDomain(data: ReceiptData, em: EntityManager): ReceiptEntity {
+    return em.create(ReceiptEntity, {
       intentId: data.intentId,
-      intent: undefined,
+      intentType: intentTypeFromDomain(data.intentType),
       amount: data.amount,
       integration: integrationTypeFromDomain(data.integration),
       sourceTxId: data.sourceTxId,
@@ -18,10 +23,11 @@ export class PaymentReceiptRepositoryMapper {
     })
   }
 
-  static toDomain(entity: PaymentReceiptEntity): PaymentReceiptModel {
+  static toDomain(entity: ReceiptEntity): ReceiptModel {
     return {
       id: entity.id,
       intentId: entity.intentId,
+      intentType: intentTypeToDomain(entity.intentType),
       amount: entity.amount,
       integration: integrationTypeToDomain(entity.integration),
       sourceTxId: entity.sourceTxId,

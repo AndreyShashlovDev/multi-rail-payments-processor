@@ -1,5 +1,6 @@
 export const APP_SCHEMA = 'core'
 
+import { PaymentAmountAccumulatorEntity } from './entities/payment-amount-accumulator.entity'
 import 'reflect-metadata'
 import { DataSource } from 'typeorm'
 import { BaseDatabaseConfig, SnakeNamingStrategy } from '@app/database'
@@ -17,7 +18,7 @@ import { IntegrationCurrencyEntity } from './entities/integration-currency.entit
 import { PaymentIntentEntity } from './entities/payment-intent.entity'
 import { EscrowEntity } from './entities/escrow.entity'
 import { InboxEntity } from './entities/inbox.entity'
-import { PaymentReceiptEntity } from './entities/payment-receipt.entity'
+import { ReceiptEntity } from './entities/receipt.entity'
 import { PayoutInboxTransferEntity } from './entities/payout-inbox-transfer.entity'
 import { PaymentInboxTransferEntity } from './entities/payment-inbox-transfer.entity'
 
@@ -44,10 +45,11 @@ export class CorePostgresConfig extends BaseDatabaseConfig {
         IntegrationAccountLinkEntity,
         IntegrationCurrencyEntity,
         PaymentIntentEntity,
-        PaymentReceiptEntity,
         PaymentInboxTransferEntity,
+        PaymentAmountAccumulatorEntity,
         PayoutIntentEntity,
         PayoutInboxTransferEntity,
+        ReceiptEntity,
         EscrowEntity,
         InboxEntity,
       ],

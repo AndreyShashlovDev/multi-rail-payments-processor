@@ -15,6 +15,7 @@ export interface OverpayPaymentOperationParams {
   readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executedAt'>
   readonly transferIds: ReadonlySet<Id>
   readonly transferAmount: Numeric
+  readonly expectedAmount: Numeric
   readonly overpay: Numeric
 }
 
@@ -23,7 +24,7 @@ export class OverpayPaymentOperation extends AbstractInteractor<
   ReadonlyArray<BalanceChange<PaymentBalanceChangeMetadata>>
 > {
   execute(params: OverpayPaymentOperationParams): ReadonlyArray<BalanceChange<PaymentBalanceChangeMetadata>> {
-    const { payment, overpay, transferAmount, transferIds, tx } = params
+    const { payment, overpay, transferAmount, transferIds, tx, expectedAmount } = params
 
     const isInternalTransfer =
       payment.to.account === payment.member.accountId && payment.integration === IntegrationType.INTERNAL
@@ -31,6 +32,27 @@ export class OverpayPaymentOperation extends AbstractInteractor<
     const integrationAccount = isInternalTransfer ? null : payment.to.account
 
     return [
+      {
+        type: BalanceChangeType.CREDIT,
+        intentType: IntentType.PAYMENT,
+        intentId: payment.id,
+        operationType: OperationTypeMapper.toBalanceChange(payment.operationType),
+        platformAccountId: payment.to.platformAccountId,
+        integrationAccount,
+        currency: payment.currency,
+        integration: payment.integration,
+        amount: transferAmount,
+        metadata: {
+          txId: tx.id,
+          sourceTxId: tx.sourceTxId,
+          executedAt: tx.executedAt,
+          transferIds: Array.from(transferIds),
+          reason: BalanceChangeReason.OVERPAY,
+          overpay,
+          expectedAmount,
+          txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
+        },
+      },
       {
         type: BalanceChangeType.HOLD,
         intentType: IntentType.PAYMENT,
@@ -40,7 +62,7 @@ export class OverpayPaymentOperation extends AbstractInteractor<
         integrationAccount,
         currency: payment.currency,
         integration: payment.integration,
-        amount: overpay,
+        amount: transferAmount,
         metadata: {
           txId: tx.id,
           sourceTxId: tx.sourceTxId,
@@ -48,8 +70,7 @@ export class OverpayPaymentOperation extends AbstractInteractor<
           transferIds: Array.from(transferIds),
           reason: BalanceChangeReason.OVERPAY,
           overpay,
-          expectedAmount: payment.amount,
-          actualAmount: transferAmount,
+          expectedAmount,
           txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
         },
       },

@@ -5,10 +5,10 @@ import { PlatformMemberModel } from '../../../shared/model/platform-member.model
 
 export enum PaymentIntentStatus {
   CREATED = 'CREATED',
-  CONFIRMING = 'CONFIRMING',
+  PROCESSING = 'PROCESSING',
   UNDERPAY = 'UNDERPAY',
   OVERPAY = 'OVERPAY',
-  COMPLETED = 'COMPLETED',
+  EXACT = 'EXACT',
   EXPIRED = 'EXPIRED',
   CANCELLED = 'CANCELLED',
 }

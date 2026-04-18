@@ -62,22 +62,24 @@ export class PaymentInboxTransferRepository {
           .andWhere('it.state = :state', { state: PaymentInboxTransferEntityState.BLOCKED })
           .getExists()
 
-        for (const transfer of group) {
-          const entity = PaymentInboxTransferRepositoryMapper.fromDomain(transfer, manager)
+        const state = hasBlocked
+          ? PaymentInboxTransferEntityState.BLOCKED
+          : PaymentInboxTransferEntityState.CREATED
 
-          await manager
-            .createQueryBuilder()
-            .insert()
-            .into(PaymentInboxTransferEntity)
-            .values({
-              ...entity,
-              key,
-              state: hasBlocked ? PaymentInboxTransferEntityState.BLOCKED : PaymentInboxTransferEntityState.CREATED,
-              reason: hasBlocked ? 'predecessor_blocked' : null,
-            })
-            .orIgnore()
-            .execute()
-        }
+        const reason = hasBlocked ? 'predecessor_blocked' : null
+
+        const values = group.map((transfer) => {
+          const entity = PaymentInboxTransferRepositoryMapper.fromDomain(transfer, manager)
+          return { ...entity, key, state, reason }
+        })
+
+        await manager
+          .createQueryBuilder()
+          .insert()
+          .into(PaymentInboxTransferEntity)
+          .values(values)
+          .orIgnore()
+          .execute()
       })
     }
   }
@@ -110,7 +112,7 @@ export class PaymentInboxTransferRepository {
   ): Promise<ReadonlySet<PaymentInboxTransferKey>> {
     const whereParams: unknown[] = []
 
-    let where = `state = ANY($1)`
+    let where = `state = ANY($1) AND deleted_at IS NULL`
     whereParams.push([PaymentInboxTransferEntityState.CREATED, PaymentInboxTransferEntityState.BLOCKED])
 
     if (params.integration) {
@@ -118,24 +120,20 @@ export class PaymentInboxTransferRepository {
       whereParams.push(params.integration)
     }
 
-    const keys = await ctx.em.query<{ key: string }[]>(
-      `SELECT DISTINCT key
+    const lockedRows = await ctx.em.query<{ key: string; locked: boolean }[]>(
+      `SELECT key, pg_try_advisory_xact_lock(hashtext(key)) AS locked
+     FROM (
+       SELECT DISTINCT key
        FROM ${PaymentInboxTransferEntity.PATH}
        WHERE ${where}
-       ORDER BY key`,
+       ORDER BY key
+     ) keys`,
       whereParams,
     )
 
-    const lockedKeys: PaymentInboxTransferKey[] = []
-
-    for (const { key } of keys) {
-      const [{ locked }] = await ctx.em.query<[{ locked: boolean }]>(
-        `SELECT pg_try_advisory_xact_lock(hashtext($1)) AS locked`,
-        [key],
-      )
-
-      if (locked) lockedKeys.push(key as PaymentInboxTransferKey)
-    }
+    const lockedKeys = lockedRows
+      .filter(({ locked }) => locked)
+      .map(({ key }) => key as PaymentInboxTransferKey)
 
     return new Set(lockedKeys)
   }
@@ -174,9 +172,8 @@ export class PaymentInboxTransferRepository {
       .createQueryBuilder(PaymentInboxTransferEntity, 'it')
       .where('it.key IN (:...keys)', { keys: [...keys] })
       .andWhere('it.state = :state', { state: PaymentInboxTransferEntityState.BLOCKED })
-      .orderBy('it.key', 'ASC')
-      .addOrderBy('it.created_at', 'ASC')
-      .addOrderBy('it.tx_id', 'ASC')
+      .orderBy('it.tx_id', 'ASC')
+      .addOrderBy('it.transfer_id', 'ASC')
       .getMany()
 
     return result.map((transfer) => PaymentInboxTransferRepositoryMapper.toDomain(transfer))
@@ -225,14 +222,14 @@ export class PaymentInboxTransferRepository {
         `it.key NOT IN (
           SELECT DISTINCT blocked.key
           FROM ${PaymentInboxTransferEntity.PATH} blocked
-          WHERE blocked.key IN (:...keys) AND blocked.state = :blockedState
+          WHERE blocked.key IN (:...keys) AND blocked.state = :blockedState AND blocked.deleted_at IS NULL 
         )`,
         { keys: [...keys], blockedState: PaymentInboxTransferEntityState.BLOCKED },
       )
       .distinctOn(['it.key'])
       .orderBy('it.key', 'ASC')
-      .addOrderBy('it.created_at', 'ASC')
       .addOrderBy('it.tx_id', 'ASC')
+      .addOrderBy('it.transfer_id', 'ASC')
       .getMany()
 
     return result.map((transfer) => PaymentInboxTransferRepositoryMapper.toDomain(transfer))
@@ -248,24 +245,23 @@ export class PaymentInboxTransferRepository {
    *
    * Two updates are performed within the same transaction:
    * 1. The failed transfer itself → state: BLOCKED, reason: <error message>
-   * 2. All CREATED transfers for the same key with created_at > failedCreatedAt
+   * 2. All CREATED transfers for the same key with id > failedId
    *    → state: BLOCKED, reason: predecessor_blocked
    *
    * @example
    * // Before:
-   * //   tx_id=1, created_at=10:00 → CREATED (currently failing)
-   * //   tx_id=2, created_at=10:05 → CREATED
-   * //   tx_id=3, created_at=10:10 → CREATED
+   * //   id=1, tx_id=1 → CREATED (currently failing)
+   * //   id=2, tx_id=2 → CREATED
+   * //   id=3, tx_id=3 → CREATED
    * //
-   * // After markBlockedWithSuccessors(id of tx_id=1, key, 10:00, 'intent broken'):
-   * //   tx_id=1, created_at=10:00 → BLOCKED (reason: intent broken)
-   * //   tx_id=2, created_at=10:05 → BLOCKED (reason: predecessor_blocked)
-   * //   tx_id=3, created_at=10:10 → BLOCKED (reason: predecessor_blocked)
+   * // After markBlockedWithSuccessors(id=1, key, 'intent broken'):
+   * //   id=1 → BLOCKED (reason: intent broken)
+   * //   id=2 → BLOCKED (reason: predecessor_blocked)
+   * //   id=3 → BLOCKED (reason: predecessor_blocked)
    */
   async markBlockedWithSuccessors(
     id: Id,
     key: PaymentInboxTransferKey,
-    failedCreatedAt: Date,
     reason: string,
     ctx: TxContext,
   ): Promise<void> {
@@ -284,8 +280,9 @@ export class PaymentInboxTransferRepository {
         reason: 'predecessor_blocked',
       })
       .where('key = :key', { key })
+      .andWhere('id > :id', { id })
       .andWhere('state = :state', { state: PaymentInboxTransferEntityState.CREATED })
-      .andWhere('created_at > :createdAt', { createdAt: failedCreatedAt })
+      .andWhere('deleted_at IS NULL')
       .execute()
   }
 
@@ -299,7 +296,7 @@ export class PaymentInboxTransferRepository {
    * (e.g. already deleted by another instance — safe to ignore).
    */
   async delete(params: Pick<PaymentInboxTransferModel, 'id'>, ctx: TxContext): Promise<boolean> {
-    const result = await ctx.em.delete(PaymentInboxTransferEntity, { id: params.id })
+    const result = await ctx.em.softDelete(PaymentInboxTransferEntity, { id: params.id })
 
     return result.affected === 1
   }

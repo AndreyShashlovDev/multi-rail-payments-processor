@@ -2,9 +2,9 @@ import { IntegrationType } from '@app/shared'
 import { IntegrationCurrency, IntegrationAccount } from '@app/types'
 import { PaymentIntentStatus } from '../../../module/payment-intent/model/payment-intent.model'
 
-export interface FindActiveByParams {
+export interface FindAvailableByParams {
   readonly integration: IntegrationType
-  readonly status: PaymentIntentStatus
+  readonly status: ReadonlySet<PaymentIntentStatus>
 
   readonly params: ReadonlyArray<{
     readonly to: IntegrationAccount

@@ -1,6 +1,7 @@
 import { Id, IntegrationAccount, IntegrationCurrency } from '@app/types'
 import { TransactionStatus, IntegrationType } from '@app/shared'
 import type { TransactionModel } from '../../../shared/model/transaction.model'
+import { PostgresAdvisoryLock } from '@app/database'
 
 export enum PaymentInboxTransferStatus {
   CREATED = 'CREATED',
@@ -8,11 +9,11 @@ export enum PaymentInboxTransferStatus {
 }
 
 const TRANSFER_ID_BRAND = Symbol('TransferId')
-export type PaymentInboxTransferKey = `${string}:${string}:${string}` & { readonly [TRANSFER_ID_BRAND]: true }
+export type PaymentInboxTransferKey = `${string}${string}:${string}:${string}` & { readonly [TRANSFER_ID_BRAND]: true }
 
 export const PaymentInboxTransferKey = {
   create(integration: IntegrationType, to: IntegrationAccount, currency: IntegrationCurrency): PaymentInboxTransferKey {
-    return `${integration}:${to}:${currency}` as PaymentInboxTransferKey
+    return `${PostgresAdvisoryLock.CORE_PAYMENT_INBOX.name}:${integration}:${to}:${currency}` as PaymentInboxTransferKey
   },
 }
 

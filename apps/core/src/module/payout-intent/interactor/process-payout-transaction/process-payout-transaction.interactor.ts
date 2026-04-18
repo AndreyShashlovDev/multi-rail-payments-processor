@@ -12,7 +12,6 @@ import { PayoutTransactionHandlerStrategy } from '../../transaction-handler/tran
 
 interface TransferAppyResult {
   readonly success: boolean
-  readonly block: boolean
   readonly balanceChanges: ReadonlyArray<BalanceChange>
 }
 
@@ -61,6 +60,7 @@ export class ProcessPayoutTransactionInteractor extends AbstractInteractor<never
           changes.push(...(await this.process(created, ctx)))
 
           if (changes.length) {
+            // fixme write to outbox and fix idempotencyKey
             await this.ledgerRepository.changeBalance({ idempotencyKey: randomUUID(), changes })
           }
         })
@@ -81,7 +81,7 @@ export class ProcessPayoutTransactionInteractor extends AbstractInteractor<never
       for (const transfer of transfers) {
         const result = await this.applyTransfer(transfer, ctx)
 
-        if (result.block) {
+        if (!result.success) {
           break
         }
 
@@ -99,19 +99,18 @@ export class ProcessPayoutTransactionInteractor extends AbstractInteractor<never
 
       await this.payoutInboxTransferRepository.delete({ id: transfer.id }, ctx)
 
-      return { success: true, block: false, balanceChanges: result }
+      return { success: true, balanceChanges: result }
     } catch (err) {
       this.logger.error(err)
 
       await this.payoutInboxTransferRepository.markBlockedWithSuccessors(
         transfer.id,
         transfer.key,
-        transfer.createdAt,
         err instanceof Error ? err.message : String(err),
         ctx,
       )
 
-      return { success: false, block: true, balanceChanges: [] }
+      return { success: false, balanceChanges: [] }
     }
   }
 }

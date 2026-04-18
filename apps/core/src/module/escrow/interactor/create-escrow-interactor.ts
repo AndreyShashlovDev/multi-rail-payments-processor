@@ -37,7 +37,7 @@ export class CreateEscrowInteractor extends AbstractInteractor<CreateEscrowParam
 
         for (const change of params.data.changes) {
           if (change.type === BalanceChangeType.RELEASE_HOLD_IN || change.type === BalanceChangeType.RELEASE_HOLD) {
-            await this.escrowRepository.markAsResolved({ metadataHash: this.generateMetadataHash(change) })
+            await this.escrowRepository.markAsResolved({ metadataHash: this.generateMetadataHash(change) }, ctx)
           } else {
             await this.escrowRepository.create(
               {
@@ -57,10 +57,6 @@ export class CreateEscrowInteractor extends AbstractInteractor<CreateEscrowParam
   }
 
   private getEscrowType(data: BalanceChange): EscrowType {
-    if (!data.intentId && data.type === BalanceChangeType.HOLD_IN) {
-      return EscrowType.UNEXPECTED_PAYMENT
-    }
-
     if (data.type === BalanceChangeType.PLATFORM_FEE_ACCRUED) {
       return EscrowType.PLATFORM_FEE_ACCRUED
     } else if (data.metadata.reason === BalanceChangeReason.UNEXPECTED_PAYMENT) {

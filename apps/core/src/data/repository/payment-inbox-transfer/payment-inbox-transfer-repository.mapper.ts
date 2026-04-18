@@ -19,7 +19,7 @@ export class PaymentInboxTransferRepositoryMapper {
       integration: integrationTypeToDomain(entity.integration),
       to: entity.to,
       currency: entity.currency,
-      txId: entity.id,
+      txId: entity.txId,
       transferId: entity.transferId,
       txStatus: entity.txStatus,
       data: {

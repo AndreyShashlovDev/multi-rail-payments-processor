@@ -21,25 +21,36 @@ export class ExactPaymentConverter extends BasicPaymentConverter {
   }
 
   execute(params: PaymentTransactionContext): TransactionConverterResult<PaymentTransactionContext> {
-    const { matches, unusedPayments, unusedTransfers } = this.matchPairs(params, (payment, transfer) => {
-      const { amount, clientFeeAmount, payerFeeAmount, changes } = this.feeOperation.execute({
-        payment,
-        tx: params.transaction,
-        transferIds: new Set([transfer.id]),
-        transferAmount: transfer.amount,
-      })
-
-      if (amount.eq(payment.amount.minus(clientFeeAmount)) && transfer.amount.eq(payment.amount.plus(payerFeeAmount))) {
-        return {
+    const { matches, unusedPayments, unusedTransfers } = this.matchPairs(
+      params,
+      (payment, transfer, accumulatedAmountNet, accumulatedAmountGross) => {
+        const { amount, clientFeeAmount, payerFeeAmount, changes } = this.feeOperation.execute({
           payment,
-          transfer,
-          feeChanges: changes,
-          amount: transfer.amount,
-        }
-      }
+          tx: params.transaction,
+          transferIds: new Set([transfer.id]),
+          transferAmount: transfer.amount,
+          accumulatedAmount: accumulatedAmountNet,
+          feeCurrency: params.currencies.get(payment.currency)!,
+        })
 
-      return null // не подошло
-    })
+        const totalAmountNet = amount.plus(accumulatedAmountNet)
+        const totalAmountGross = transfer.amount.plus(accumulatedAmountGross)
+
+        if (
+          totalAmountNet.eq(payment.amount.minus(clientFeeAmount)) &&
+          totalAmountGross.eq(payment.amount.plus(payerFeeAmount))
+        ) {
+          return {
+            payment,
+            transfer,
+            feeChanges: changes,
+            amount: transfer.amount,
+          }
+        }
+
+        return null
+      },
+    )
 
     const allChanges = matches.flatMap((match) => {
       const holdIn = this.holdInOperation.execute(

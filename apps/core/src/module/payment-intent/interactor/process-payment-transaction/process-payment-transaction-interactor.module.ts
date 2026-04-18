@@ -4,17 +4,19 @@ import { LedgerRepositoryModule } from '../../../../data/repository/ledger/ledge
 import { InboxRepositoryModule } from '../../../../data/repository/inbox/inbox-repository.module'
 import { TxContextModule } from '../../../../shared/tx-context/tx-context.module'
 import { TransactionBalanceProjectorStrategyModule } from '../../transaction-balance-projector/transaction-balance-projector-strategy.module'
-import { TransactionHandlerModule } from '../../transaction-handler/transaction-handler.module'
 import { PaymentInboxTransferRepositoryModule } from '../../../../data/repository/payment-inbox-transfer/payment-inbox-transfer-repository.module'
+import { PaymentAmountAccumulatorRepositoryModule } from '../../../../data/repository/payment-amount-accumulator/payment-amount-accumulator-repository.module'
+import { PaymentIntentRepositoryModule } from '../../../../data/repository/payment-intent/payment-intent-repository.module'
 
 @Module({
   imports: [
     TxContextModule,
     TransactionBalanceProjectorStrategyModule,
-    TransactionHandlerModule,
     LedgerRepositoryModule,
     InboxRepositoryModule,
+    PaymentIntentRepositoryModule,
     PaymentInboxTransferRepositoryModule,
+    PaymentAmountAccumulatorRepositoryModule,
   ],
   providers: [ProcessPaymentTransactionInteractor],
   exports: [ProcessPaymentTransactionInteractor],

@@ -46,7 +46,6 @@ export class LedgerRepositoryMapper {
       ...metadata,
       overpay: metadata.overpay ? Numeric.create(metadata.overpay) : undefined,
       expectedAmount: metadata.expectedAmount ? Numeric.create(metadata.expectedAmount) : undefined,
-      actualAmount: metadata.actualAmount ? Numeric.create(metadata.actualAmount) : undefined,
       integrationFeeDiff: metadata.integrationFeeDiff ? Numeric.create(metadata.integrationFeeDiff) : undefined,
     }
   }

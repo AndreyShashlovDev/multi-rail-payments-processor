@@ -1,19 +1,18 @@
 import { AbstractInteractor, UUID, Id } from '@app/types'
 import { BalanceUpdatedResult } from '../../../../data/repository/ledger/ledger-repository.types'
 import { Injectable, Logger } from '@nestjs/common'
-import { TxContextRunner, BalanceChangeType } from '@app/shared'
-import { PaymentIntentRepository } from '../../../../data/repository/payment-intent/payment-intent.repository'
+import { TxContextRunner, BalanceChangeType, IntentType } from '@app/shared'
 import {
   BalanceChange,
   BalanceChangeReason,
   BalanceChangeTxStatus,
   PaymentBalanceChangeMetadata,
 } from '@app/shared/types/balance-change'
-import { PaymentStatusNotChangedException } from '../../exception/payment-status-not-changed.exception'
 import { InboxRepository } from '../../../../data/repository/inbox/inbox.repository'
-import { PaymentReceiptRepository } from '../../../../data/repository/payment-receipt/payment-receipt.repository'
+import { ReceiptRepository } from '../../../../data/repository/receipt/receipt.repository'
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { PaymentReceiptData } from '../../model/payment-receipt.model'
+import { FinalizePaymentOperation } from '../operation/finalize-payment.operation'
 
 export interface ChangePaymentStatusParams {
   readonly data: BalanceUpdatedResult<PaymentBalanceChangeMetadata>
@@ -25,8 +24,8 @@ export class ChangePaymentStatusInteractor extends AbstractInteractor<ChangePaym
 
   constructor(
     private readonly txContextRunner: TxContextRunner,
-    private readonly paymentIntentRepository: PaymentIntentRepository,
-    private readonly paymentReceipt: PaymentReceiptRepository,
+    private readonly finalizePaymentOperation: FinalizePaymentOperation,
+    private readonly paymentReceipt: ReceiptRepository,
     private readonly inboxRepository: InboxRepository,
   ) {
     super()
@@ -34,14 +33,6 @@ export class ChangePaymentStatusInteractor extends AbstractInteractor<ChangePaym
 
   async execute(params: ChangePaymentStatusParams): Promise<void> {
     const { data } = params
-
-    const changeByPayment = data.changes.reduce((prev, curr) => {
-      const id = curr.intentId as UUID
-      const arr = prev.get(id) ?? []
-      arr.push(curr)
-
-      return prev.set(id, arr)
-    }, new Map<UUID, BalanceChange<PaymentBalanceChangeMetadata>[]>())
 
     await this.txContextRunner
       .create()
@@ -55,39 +46,34 @@ export class ChangePaymentStatusInteractor extends AbstractInteractor<ChangePaym
           return
         }
 
-        for (const [id, changes] of changeByPayment.entries()) {
-          let skipThrowError: boolean = true
+        const changeByPayment = Map.groupBy(data.changes, (change) => change.intentId as UUID)
 
+        const paymentIds: Set<UUID> = new Set<UUID>()
+
+        for (const [id, changes] of changeByPayment.entries()) {
           const underpay = changes.find(
             (item) =>
-              item.type === BalanceChangeType.HOLD &&
+              item.type === BalanceChangeType.CREDIT &&
               item.metadata.reason === BalanceChangeReason.UNDERPAY &&
               item.metadata.txStatus === BalanceChangeTxStatus.TX_CONFIRMED,
           )
+
           const overpay = changes.find(
             (item) =>
               item.type === BalanceChangeType.HOLD &&
               item.metadata.reason === BalanceChangeReason.OVERPAY &&
               item.metadata.txStatus === BalanceChangeTxStatus.TX_CONFIRMED,
           )
+
           const payment = changes.find(
             (item) =>
-              item.type === BalanceChangeType.CREDIT && item.metadata.txStatus === BalanceChangeTxStatus.TX_CONFIRMED,
+              item.type === BalanceChangeType.CREDIT &&
+              item.metadata.reason === BalanceChangeReason.AMOUNT &&
+              item.metadata.txStatus === BalanceChangeTxStatus.TX_CONFIRMED,
           )
 
-          if (underpay) {
-            skipThrowError = await this.paymentIntentRepository.markAsUnderpay({ id }, ctx)
-            this.logger.debug(`Payment ${id} Underpay`)
-          } else if (overpay) {
-            skipThrowError = await this.paymentIntentRepository.markAsOverpay({ id }, ctx)
-            this.logger.debug(`Payment ${id} Overpay`)
-          } else if (payment) {
-            skipThrowError = await this.paymentIntentRepository.markAsCompleted({ id }, ctx)
-            this.logger.debug(`Payment ${id} success payed`)
-          }
-
-          if (!skipThrowError) {
-            throw new PaymentStatusNotChangedException(changes)
+          if (overpay || payment) {
+            paymentIds.add(id)
           }
 
           const receiptPayment = underpay ?? overpay ?? payment
@@ -96,6 +82,8 @@ export class ChangePaymentStatusInteractor extends AbstractInteractor<ChangePaym
             await this.createReceipt(receiptPayment, ctx)
           }
         }
+
+        await this.finalizePaymentOperation.execute({ paymentIds, ctx })
       })
       .execute()
   }
@@ -118,6 +106,6 @@ export class ChangePaymentStatusInteractor extends AbstractInteractor<ChangePaym
       executedAt,
     }
 
-    await this.paymentReceipt.create(receipt, ctx)
+    await this.paymentReceipt.create({ ...receipt, intentType: IntentType.PAYMENT }, ctx)
   }
 }

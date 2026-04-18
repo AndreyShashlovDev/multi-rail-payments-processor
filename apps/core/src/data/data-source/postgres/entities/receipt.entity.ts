@@ -1,13 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Column } from 'typeorm'
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm'
 import { APP_SCHEMA } from '../core-postgres.config'
 import { type UUID, Numeric, NumericColumn, Id, type IntegrationCurrency, type SourceTransactionId } from '@app/types'
-import { PaymentIntentEntity } from './payment-intent.entity'
 import { BasicEntity } from '@app/database'
-import { IntegrationEntityType } from '@app/shared'
+import { IntegrationEntityType, IntentEntityType } from '@app/shared'
 
-@Entity({ schema: APP_SCHEMA, name: PaymentReceiptEntity.NAME })
-export class PaymentReceiptEntity extends BasicEntity {
-  static readonly NAME = 'payment_receipt'
+@Entity({ schema: APP_SCHEMA, name: ReceiptEntity.NAME })
+export class ReceiptEntity extends BasicEntity {
+  static readonly NAME = 'receipt'
 
   @PrimaryGeneratedColumn('uuid')
   readonly id: UUID
@@ -15,9 +14,8 @@ export class PaymentReceiptEntity extends BasicEntity {
   @Column({ type: 'uuid' })
   readonly intentId: UUID
 
-  @ManyToOne(() => PaymentIntentEntity, { createForeignKeyConstraints: false, persistence: false, eager: false })
-  @JoinColumn()
-  readonly intent: PaymentIntentEntity | undefined
+  @Column({ type: 'smallint' })
+  readonly intentType: IntentEntityType
 
   @NumericColumn()
   readonly amount: Numeric

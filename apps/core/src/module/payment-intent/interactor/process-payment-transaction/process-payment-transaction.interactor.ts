@@ -2,17 +2,17 @@ import { AbstractInteractor } from '@app/types'
 import { Injectable, Logger } from '@nestjs/common'
 import { TransactionBalanceProjectorStrategy } from '../../../../shared/projection/transaction-balance-projector.strategy'
 import { LedgerRepository } from '../../../../data/repository/ledger/ledger.repository'
-import { TxContextRunner } from '@app/shared'
-import { PaymentTransactionHandlerStrategy } from '../../transaction-handler/transaction-handler.module'
+import { TxContextRunner, BalanceChangeType } from '@app/shared'
 import { PaymentInboxTransferRepository } from '../../../../data/repository/payment-inbox-transfer/payment-inbox-transfer.repository'
 import { PaymentInboxTransferModel } from '../../model/payment-inbox-transfer.model'
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { BalanceChange } from '@app/shared/types/balance-change'
-import { randomUUID } from 'node:crypto'
+import { randomUUID, UUID } from 'node:crypto'
+import { PaymentIntentRepository } from '../../../../data/repository/payment-intent/payment-intent.repository'
+import { PaymentAmountAccumulatorRepository } from '../../../../data/repository/payment-amount-accumulator/payment-amount-accumulator.repository'
 
 interface TransferAppyResult {
   readonly success: boolean
-  readonly block: boolean
   readonly balanceChanges: ReadonlyArray<BalanceChange>
 }
 
@@ -24,10 +24,11 @@ export class ProcessPaymentTransactionInteractor extends AbstractInteractor<neve
 
   constructor(
     private readonly txRunner: TxContextRunner,
-    private readonly transactionHandler: PaymentTransactionHandlerStrategy,
     private readonly balanceProjector: TransactionBalanceProjectorStrategy,
     private readonly ledgerRepository: LedgerRepository,
     private readonly paymentInboxTransferRepository: PaymentInboxTransferRepository,
+    private readonly paymentIntentRepository: PaymentIntentRepository,
+    private readonly paymentAmountAccumulatorRepository: PaymentAmountAccumulatorRepository,
   ) {
     super()
   }
@@ -61,6 +62,7 @@ export class ProcessPaymentTransactionInteractor extends AbstractInteractor<neve
           changes.push(...(await this.process(created, ctx)))
 
           if (changes.length) {
+            // fixme write to outbox and fix idempotencyKey
             await this.ledgerRepository.changeBalance({ idempotencyKey: randomUUID(), changes })
           }
         })
@@ -81,7 +83,7 @@ export class ProcessPaymentTransactionInteractor extends AbstractInteractor<neve
       for (const transfer of transfers) {
         const result = await this.applyTransfer(transfer, ctx)
 
-        if (result.block) {
+        if (!result.success) {
           break
         }
 
@@ -92,26 +94,47 @@ export class ProcessPaymentTransactionInteractor extends AbstractInteractor<neve
     return changes
   }
 
-  private async applyTransfer(transfer: PaymentInboxTransferModel, ctx: TxContext): Promise<TransferAppyResult> {
+  private async applyTransfer(inboxTransfer: PaymentInboxTransferModel, ctx: TxContext): Promise<TransferAppyResult> {
     try {
-      await this.transactionHandler.process(transfer.data, ctx)
-      const result = await this.balanceProjector.process(transfer.data, ctx)
+      const result = await this.balanceProjector.process(inboxTransfer.data, ctx)
 
-      await this.paymentInboxTransferRepository.delete({ id: transfer.id }, ctx)
+      await this.paymentInboxTransferRepository.delete({ id: inboxTransfer.id }, ctx)
 
-      return { success: true, block: false, balanceChanges: result }
+      const holdInChange = result.find((item) => item.type === BalanceChangeType.HOLD_IN && item.intentId)
+
+      if (holdInChange) {
+        await this.paymentAmountAccumulatorRepository.create(
+          {
+            paymentId: holdInChange.intentId as UUID,
+            integration: inboxTransfer.integration,
+            txId: inboxTransfer.txId,
+            transferId: inboxTransfer.transferId,
+            amount: holdInChange.amount,
+            from: inboxTransfer.data.transfers[0].from,
+          },
+          ctx,
+        )
+
+        await this.paymentIntentRepository.markAsProcessing(
+          {
+            id: holdInChange.intentId as UUID,
+          },
+          ctx,
+        )
+      }
+
+      return { success: true, balanceChanges: result }
     } catch (err) {
       this.logger.error(err)
 
       await this.paymentInboxTransferRepository.markBlockedWithSuccessors(
-        transfer.id,
-        transfer.key,
-        transfer.createdAt,
+        inboxTransfer.id,
+        inboxTransfer.key,
         err instanceof Error ? err.message : String(err),
         ctx,
       )
 
-      return { success: false, block: true, balanceChanges: [] }
+      return { success: false, balanceChanges: [] }
     }
   }
 }

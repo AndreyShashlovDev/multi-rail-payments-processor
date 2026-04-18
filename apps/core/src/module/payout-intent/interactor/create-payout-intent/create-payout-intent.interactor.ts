@@ -1,9 +1,7 @@
 import { AbstractInteractor, UUID, IntegrationCurrency, Numeric, IntegrationAccount } from '@app/types'
 import { PayoutIntentModel, PayoutOperationType } from '../../model/payout-intent.model'
 import { PayoutIntentRepository } from '../../../../data/repository/payout-intent/payout-intent.repository'
-import {
-  ExternalIntegrationRepository,
-} from '../../../../data/repository/external-integration/external-integration.repository'
+import { ExternalIntegrationRepository } from '../../../../data/repository/external-integration/external-integration.repository'
 import { LedgerRepository } from '../../../../data/repository/ledger/ledger.repository'
 import { Injectable } from '@nestjs/common'
 import { IntegrationType, IntentType } from '@app/shared'
@@ -12,9 +10,7 @@ import {
   CurrencyConverterProvider,
   CurrencyConverterResult,
 } from '../../../../shared/currency/currency-converter.provider'
-import {
-  IntegrationAccountLinkRepository,
-} from '../../../../data/repository/integration-account-link/integration-account-link.repository'
+import { IntegrationAccountLinkRepository } from '../../../../data/repository/integration-account-link/integration-account-link.repository'
 import { PayoutAccountNotFoundException } from '../../exception/payout-account-not-found.exception'
 import { IntegrationAccountLinkModel } from '../../../../shared/model/integration-account-link.model'
 import { EstimatedTransferFeeNotFoundException } from '../../exception/estimated-transfer-fee-not-found.exception'

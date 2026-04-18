@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, Index } from 'typeorm'
+import { Entity, PrimaryGeneratedColumn, Column, Index, DeleteDateColumn } from 'typeorm'
 import { APP_SCHEMA } from '../core-postgres.config'
 import { Id, UUID, IntegrationAccount, Numeric, NumericColumn, type IntegrationCurrency } from '@app/types'
 import { IntegrationEntityType, IntentEntityType } from '@app/shared'
@@ -64,4 +64,7 @@ export class EscrowEntity extends BasicEntity {
 
   @Column({ type: 'text' })
   readonly metadataHash: string
+
+  @DeleteDateColumn()
+  readonly deletedAt: Date
 }

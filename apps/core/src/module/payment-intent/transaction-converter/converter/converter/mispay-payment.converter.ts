@@ -7,12 +7,14 @@ import { HoldInPaymentOperation } from '../operation/hold-in-payment.operation'
 import { TransactionStatus } from '@app/shared'
 import { BalanceChangeTxStatus, BalanceChangeReason } from '@app/shared/types/balance-change'
 import { LinkModelType } from '../../../../../shared/model/integration-account-link.model'
-import { MispaymentInvalidStateException } from '../../../exception/mispayment-Invalid-state.exception'
 import { TransactionConverterResult } from '../../../../../shared/projection/basic-transaction.converter'
+import { Logger } from '@nestjs/common'
 
 export class MispayPaymentConverter extends BasicPaymentConverter {
   readonly name: string = 'MispayPaymentConverter'
   readonly priority: PaymentPriority = PaymentConverterPriority.MISPAY
+
+  private readonly logger = new Logger(MispayPaymentConverter.name)
 
   constructor(
     private readonly mispayOperation: MispayPaymentOperation,
@@ -31,7 +33,8 @@ export class MispayPaymentConverter extends BasicPaymentConverter {
     if (checkByCurrency) {
       // this shouldn't happen, because it would either go through exact/sequential/overpay/underpay/
       // or we've already processed all the payments
-      throw new MispaymentInvalidStateException(checkByCurrency.id)
+      // throw new MispaymentInvalidStateException(checkByCurrency.id)
+      this.logger.warn(`Payment exist in mispayment! ${checkByCurrency.id}`)
     }
 
     const changes = transfers

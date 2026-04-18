@@ -7,15 +7,16 @@ import { IntegrationEntityType } from '@app/shared'
 
 export enum PaymentIntentEntityStatus {
   CREATED = 1,
-  // when we catch the created event from a transaction, we transfer it to confirming
-  // wait for the incoming payment to be validated
-  CONFIRMING = 2,
-  // after receiving the balance update event, we change it to needed status
+  // when we catch the created event from a transaction, we transfer it to Processing
+  // wait for the incoming payment to be finalized
+  PROCESSING = 2,
+
+  // finalized statuses
   UNDERPAY = 3,
   OVERPAY = 4,
-  COMPLETED = 5,
-  EXPIRED = 6,
-  CANCELLED = 7,
+  EXACT = 5, // exact
+  EXPIRED = 6, // without transfers.
+  CANCELLED = 7, // without transfers.
 }
 
 export enum PaymentPlatformFeePayerEntityType {
@@ -31,7 +32,8 @@ export enum PaymentOperationEntityType {
 @Entity({ name: PaymentIntentEntity.NAME, schema: APP_SCHEMA })
 @Index('idx_payment_intent_integration_currency_status', ['integration', 'currency', 'status'])
 export class PaymentIntentEntity extends BasicEntity {
-  public static readonly NAME = 'payment_intent'
+  static readonly NAME = 'payment_intent'
+  static readonly PATH = `"${APP_SCHEMA}".${PaymentIntentEntity.NAME}`
 
   @PrimaryGeneratedColumn('uuid')
   readonly id: UUID

@@ -1,7 +1,9 @@
 import Decimal from 'decimal.js'
 
+const PRECISION = 60
+
 Decimal.set({
-  precision: 60,
+  precision: PRECISION,
   rounding: Decimal.ROUND_DOWN,
   toExpNeg: -30,
   toExpPos: 30,
@@ -10,6 +12,8 @@ Decimal.set({
 export type Numeric = Decimal
 
 export const Numeric = {
+  PRECISION: PRECISION,
+
   ZERO: Decimal(0),
 
   min(...n: Numeric[]): Numeric {

@@ -4,7 +4,7 @@ import {
 } from '../../data-source/nats-jetstream/integration/integration-jetstream-data-source.service'
 import { TransactionEvent, TransferIntentCreateEvent } from '@app/shared/services/external-integration/v1'
 import { ExternalIntegrationMapper } from './external-integration.mapper'
-import { IntegrationType } from '@app/shared'
+import { IntegrationType, integrationTypeToDomain } from '@app/shared'
 import { Injectable } from '@nestjs/common'
 import { TransactionModel } from '../../../shared/model/transaction.model'
 import { DataSource } from 'typeorm'
@@ -64,10 +64,11 @@ export class ExternalIntegrationRepository implements IntegrationJetstreamHandle
       const result = await this.datasource.manager.find(IntegrationCurrencyEntity)
 
       result.reduce((acc, curr) => {
-        const map = acc.get(curr.integration) ?? new Map<IntegrationCurrency, number>()
-        map.set(curr.currency, curr.unitExponent)
+        const integration = integrationTypeToDomain(curr.integration)
+        const map = acc.get(integration) ?? new Map<IntegrationCurrency, number>()
+        map.set(curr.currency, curr.minorUnit)
 
-        return acc.set(curr.integration, map)
+        return acc.set(integration, map)
       }, new Map<IntegrationType, Map<IntegrationCurrency, number>>())
     }
 

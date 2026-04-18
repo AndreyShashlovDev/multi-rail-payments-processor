@@ -1,4 +1,4 @@
-import { Column, Entity, PrimaryGeneratedColumn, Unique } from 'typeorm'
+import { Column, DeleteDateColumn, Entity, PrimaryGeneratedColumn, Unique } from 'typeorm'
 import { APP_SCHEMA } from '../core-postgres.config'
 import { Id, IntegrationAccount, IntegrationCurrency } from '@app/types'
 import { BasicEntity } from '@app/database'
@@ -12,11 +12,16 @@ export enum PaymentInboxTransferEntityState {
 }
 
 @Entity({ schema: APP_SCHEMA, name: PaymentInboxTransferEntity.NAME })
-@Unique('idx_unique_integration_txid_transferid', [...PaymentInboxTransferEntity.UNIQUE])
+@Unique('idx_unique_integration_txid_transferid_txstatus', [...PaymentInboxTransferEntity.UNIQUE])
 export class PaymentInboxTransferEntity extends BasicEntity {
   static readonly NAME = 'payment_inbox_transfer'
   static readonly PATH = `"${APP_SCHEMA}".${PaymentInboxTransferEntity.NAME}`
-  static readonly UNIQUE: ReadonlyArray<keyof PaymentInboxTransferEntity> = ['integration', 'txId', 'transferId']
+  static readonly UNIQUE: ReadonlyArray<keyof PaymentInboxTransferEntity> = [
+    'integration',
+    'txId',
+    'transferId',
+    'txStatus',
+  ]
 
   @PrimaryGeneratedColumn({ type: 'bigint' })
   readonly id: Id
@@ -50,4 +55,7 @@ export class PaymentInboxTransferEntity extends BasicEntity {
 
   @Column({ type: 'text', nullable: true })
   readonly reason?: string | null
+
+  @DeleteDateColumn()
+  readonly deletedAt?: Date
 }

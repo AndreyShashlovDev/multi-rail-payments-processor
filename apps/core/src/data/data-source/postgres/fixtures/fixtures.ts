@@ -11,6 +11,7 @@ import {
   LinkEntityType,
 } from '../entities/integration-account-link.entity'
 import { EntityManager } from 'typeorm'
+import { IntegrationCurrencyEntity } from '../entities/integration-currency.entity'
 
 const integration = IntegrationEntityType.ETHEREUM
 const integrationAccounts: IntegrationAccount[] = [
@@ -27,6 +28,7 @@ async function runFixtures(): Promise<void> {
   await dataSource.initialize()
 
   await dataSource.manager.transaction(async (em) => {
+    await createCurrencies(em)
     await createAccountFixtures(em)
     await createIntegrationAccounts(em)
     await createPermanentLink(em)
@@ -44,6 +46,18 @@ runFixtures()
     console.error('❌ Make fixtures failed:', err)
     process.exit(1)
   })
+
+async function createCurrencies(em: EntityManager) {
+  await em.insert(IntegrationCurrencyEntity, {
+    code: 'eth',
+    name: 'Ethereum',
+    symbol: 'eth',
+    integration: IntegrationEntityType.ETHEREUM,
+    currency: 'native',
+    minorUnit: 18,
+    displayDecimals: 5,
+  })
+}
 
 async function createAccountFixtures(em: EntityManager) {
   await em.insert(AccountEntity, {

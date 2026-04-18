@@ -11,7 +11,7 @@ import {
   PaymentIntentModel,
   PaymentIntentStatus,
 } from '../../../module/payment-intent/model/payment-intent.model'
-import { FindActiveByParams } from './payment-intent-repository.types'
+import { FindAvailableByParams } from './payment-intent-repository.types'
 import { PaymentIntentRepositoryMapper } from './payment-intent-repository.mapper'
 import { FindOptionsWhere } from 'typeorm/find-options/FindOptionsWhere'
 import { integrationTypeFromDomain } from '@app/shared'
@@ -25,17 +25,17 @@ export class PaymentIntentRepository {
     private readonly datasource: DataSource,
   ) {}
 
-  async findActiveByParams(data: FindActiveByParams, ctx?: TxContext): Promise<PaymentIntentModel[]> {
-    if (data.params.length === 0) return []
+  async findByParams(params: FindAvailableByParams, ctx?: TxContext): Promise<PaymentIntentModel[]> {
+    if (params.params.length === 0) return []
 
-    const conditions: FindOptionsWhere<PaymentIntentEntity>[] = data.params.map((dataParam) => ({
+    const conditions: FindOptionsWhere<PaymentIntentEntity>[] = params.params.map((dataParam) => ({
       to: {
         integrationAccount: {
           account: dataParam.to,
         },
       },
-      status: PaymentIntentRepositoryMapper.fromDomainStatus(data.status),
-      integration: integrationTypeFromDomain(data.integration),
+      status: In(Array.from(params.status).map((status) => PaymentIntentRepositoryMapper.fromDomainStatus(status))),
+      integration: integrationTypeFromDomain(params.integration),
       currency: dataParam.currency,
     }))
 
@@ -59,43 +59,51 @@ export class PaymentIntentRepository {
     return PaymentIntentRepositoryMapper.toDomain(result)
   }
 
-  async markAsConfirmingBulk(ids: ReadonlySet<UUID>, ctx: TxContext): Promise<boolean> {
+  async markAsProcessing(params: Pick<PaymentIntentModel, 'id'>, ctx: TxContext): Promise<boolean> {
     const result = await ctx.em.update(
       PaymentIntentEntity,
-      { id: In(Array.from(ids)), status: PaymentIntentEntityStatus.CREATED },
-      { status: PaymentIntentEntityStatus.CONFIRMING },
-    )
-
-    return result.affected === ids.size
-  }
-
-  async markAsUnderpay(data: Pick<PaymentIntentModel, 'id'>, ctx: TxContext): Promise<boolean> {
-    const result = await ctx.em.update(
-      PaymentIntentEntity,
-      { id: data.id, status: PaymentIntentEntityStatus.CONFIRMING },
-      { status: PaymentIntentEntityStatus.UNDERPAY },
+      { id: params.id, status: PaymentIntentEntityStatus.CREATED },
+      { status: PaymentIntentEntityStatus.PROCESSING },
     )
 
     return result.affected === 1
   }
 
-  async markAsOverpay(data: Pick<PaymentIntentModel, 'id'>, ctx: TxContext): Promise<boolean> {
-    const result = await ctx.em.update(
-      PaymentIntentEntity,
-      { id: data.id, status: PaymentIntentEntityStatus.CONFIRMING },
-      { status: PaymentIntentEntityStatus.OVERPAY },
-    )
 
-    return result.affected === 1
+  async findByIds(ids: ReadonlySet<UUID>, ctx?: TxContext): Promise<ReadonlyArray<PaymentIntentModel>> {
+    const em = ctx?.em ?? this.datasource.manager
+
+    const result = await em.find(PaymentIntentEntity, {
+      where: { id: In(Array.from(ids)) },
+    })
+
+    return result.map((payment) => PaymentIntentRepositoryMapper.toDomain(payment))
   }
 
-  async markAsCompleted(data: Pick<PaymentIntentModel, 'id'>, ctx: TxContext): Promise<boolean> {
-    const result = await ctx.em.update(
-      PaymentIntentEntity,
-      { id: data.id, status: PaymentIntentEntityStatus.CONFIRMING },
-      { status: PaymentIntentEntityStatus.COMPLETED },
-    )
+  async changeStatusBulk(
+    data: ReadonlyArray<Pick<PaymentIntentModel, 'id' | 'status'>>,
+    ctx: TxContext,
+  ): Promise<void> {
+    if (!data.length) return
 
-    return result.affected === 1
+    const params: (UUID | PaymentIntentEntityStatus)[] = []
+    const values = data
+      .map((item) => {
+        params.push(item.id, PaymentIntentRepositoryMapper.fromDomainStatus(item.status))
+
+        const idIdx = params.length - 1
+        const statusIdx = params.length
+
+        return `($${idIdx}::uuid, $${statusIdx}::smallint)`
+      })
+      .join(', ')
+
+    await ctx.em.query(
+      `UPDATE ${PaymentIntentEntity.PATH}
+       SET status = v.status FROM (VALUES ${values}) AS v(id
+         , status)
+       WHERE ${PaymentIntentEntity.PATH}.id = v.id`,
+      params,
+    )
   }
 }

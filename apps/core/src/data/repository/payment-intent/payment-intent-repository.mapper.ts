@@ -106,14 +106,14 @@ export class PaymentIntentRepositoryMapper {
     switch (status) {
       case PaymentIntentStatus.CREATED:
         return PaymentIntentEntityStatus.CREATED
-      case PaymentIntentStatus.CONFIRMING:
-        return PaymentIntentEntityStatus.CONFIRMING
+      case PaymentIntentStatus.PROCESSING:
+        return PaymentIntentEntityStatus.PROCESSING
       case PaymentIntentStatus.UNDERPAY:
         return PaymentIntentEntityStatus.UNDERPAY
       case PaymentIntentStatus.OVERPAY:
         return PaymentIntentEntityStatus.OVERPAY
-      case PaymentIntentStatus.COMPLETED:
-        return PaymentIntentEntityStatus.COMPLETED
+      case PaymentIntentStatus.EXACT:
+        return PaymentIntentEntityStatus.EXACT
       case PaymentIntentStatus.EXPIRED:
         return PaymentIntentEntityStatus.EXPIRED
       case PaymentIntentStatus.CANCELLED:
@@ -130,14 +130,14 @@ export class PaymentIntentRepositoryMapper {
     switch (status) {
       case PaymentIntentEntityStatus.CREATED:
         return PaymentIntentStatus.CREATED
-      case PaymentIntentEntityStatus.CONFIRMING:
-        return PaymentIntentStatus.CONFIRMING
+      case PaymentIntentEntityStatus.PROCESSING:
+        return PaymentIntentStatus.PROCESSING
       case PaymentIntentEntityStatus.UNDERPAY:
         return PaymentIntentStatus.UNDERPAY
       case PaymentIntentEntityStatus.OVERPAY:
         return PaymentIntentStatus.OVERPAY
-      case PaymentIntentEntityStatus.COMPLETED:
-        return PaymentIntentStatus.COMPLETED
+      case PaymentIntentEntityStatus.EXACT:
+        return PaymentIntentStatus.EXACT
       case PaymentIntentEntityStatus.EXPIRED:
         return PaymentIntentStatus.EXPIRED
       case PaymentIntentEntityStatus.CANCELLED:
