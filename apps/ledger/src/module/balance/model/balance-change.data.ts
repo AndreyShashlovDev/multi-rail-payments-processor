@@ -4,11 +4,10 @@ import { BalanceChangeMetadata, BalanceChange, BalanceChangeOperationType } from
 
 export interface BalanceChangeDataMetadata extends Omit<
   BalanceChangeMetadata,
-  'overpay' | 'expectedAmount' | 'actualAmount' | 'integrationFeeDiff'
+  'overpay' | 'expectedAmount' | 'integrationFeeDiff'
 > {
   readonly overpay?: RawNumeric
   readonly expectedAmount?: RawNumeric
-  readonly actualAmount?: RawNumeric
   readonly integrationFeeDiff?: RawNumeric
 }
 

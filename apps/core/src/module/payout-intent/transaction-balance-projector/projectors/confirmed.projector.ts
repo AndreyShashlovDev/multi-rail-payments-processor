@@ -2,9 +2,7 @@ import { TransactionModel } from '../../../../shared/model/transaction.model'
 import { BalanceChange } from '@app/shared/types/balance-change'
 import { WrongTransactionHandlerStatusException } from '../../exception/wrong-transaction-handler-status.exception'
 import { PayoutTransactionDataLoader } from '../payout-transaction-data-loader.service'
-import {
-  IntegrationAccountRepository,
-} from '../../../../data/repository/integration-account/integration-account.repository'
+import { IntegrationAccountRepository } from '../../../../data/repository/integration-account/integration-account.repository'
 import { TransactionStatus } from '@app/shared'
 import { PayoutConfirmedTransactionConverter } from '../../transaction-converter/transaction-converter.module'
 import { TxContext } from '@app/shared/types/tx-context.type'

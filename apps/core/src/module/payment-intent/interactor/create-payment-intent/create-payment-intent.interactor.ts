@@ -46,6 +46,7 @@ export class CreatePaymentIntentInteractor extends AbstractInteractor<
       currency: params.currency,
     })
 
+    // todo idempotencyKey check need
     const result = await this.txContextRunner
       .createWithData<{ accountLink: IntegrationAccountLinkModel; payment?: PaymentIntentModel }>()
       .pipeline(async (ctx) => await this.prepareAccountForPayment(params, ctx))

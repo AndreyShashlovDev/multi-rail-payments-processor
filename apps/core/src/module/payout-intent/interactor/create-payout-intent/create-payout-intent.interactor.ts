@@ -4,7 +4,7 @@ import { PayoutIntentRepository } from '../../../../data/repository/payout-inten
 import { ExternalIntegrationRepository } from '../../../../data/repository/external-integration/external-integration.repository'
 import { LedgerRepository } from '../../../../data/repository/ledger/ledger.repository'
 import { Injectable } from '@nestjs/common'
-import { IntegrationType, IntentType } from '@app/shared'
+import { IntegrationType, IntentType, Balance, TxContextRunner } from '@app/shared'
 import { PlatformFeeProvider, PlatformFeeProviderResult } from '../../../../shared/platform-fee/platform-fee.provider'
 import {
   CurrencyConverterProvider,
@@ -39,6 +39,7 @@ export class CreatePayoutIntentInteractor extends AbstractInteractor<
   Promise<PayoutIntentModel>
 > {
   constructor(
+    private readonly txRunner: TxContextRunner,
     private readonly payoutIntentRepository: PayoutIntentRepository,
     private readonly externalIntegrationRepository: ExternalIntegrationRepository,
     private readonly ledgerRepository: LedgerRepository,
@@ -50,47 +51,73 @@ export class CreatePayoutIntentInteractor extends AbstractInteractor<
   }
 
   async execute(params: CreatePayoutIntentParams): Promise<PayoutIntentModel> {
-    const { from, to, platformFeeAccount, convertIntegrationFee, platformFee } = await this.preparePayoutData(params)
+    const { from, to, platformFeeAccount, convertIntegrationFee, platformFee, userBalance } =
+      await this.preparePayoutData(params)
 
-    // todo call some policy for validate payout configuration!
-    const payout = await this.payoutIntentRepository.create({
-      operationType: params.operationType,
-      member: params.platformMember,
-      from, // get platfromAccount (hot account)
-      fromAmount: params.amount,
-      fromCurrency: params.fromCurrency,
-      fromIntegration: params.fromIntegration,
-      estimatedFee: convertIntegrationFee.to.amount,
-      estimatedFeeCurrency: convertIntegrationFee.from.currency,
-      platformFee: platformFee.platformFee,
-      platformFeeAccount,
-      integrationFeeRate: convertIntegrationFee.to.rate,
-      to, // looking for active payment or null
-      toAmount: params.amount,
-      toCurrency: params.fromCurrency,
-      toIntegration: params.fromIntegration,
-      exchangeRate: Numeric.create(1), // same currency and same integration
-      integrationFeePayer: null,
-      integrationFee: null,
-      integrationFeeCurrency: convertIntegrationFee.from.currency,
-    })
+    return this.txRunner
+      .create<PayoutIntentModel>()
+      .pipeline(async (ctx) => {
+        // todo idempotencyKey check need
 
-    await this.externalIntegrationRepository.createTransactionIntent({
-      intentId: payout.id,
-      intentType: IntentType.PAYOUT,
-      estimatedFee: convertIntegrationFee.from.amount,
-      feeCurrency: convertIntegrationFee.from.currency,
-      fromAmount: payout.fromAmount,
-      fromIntegration: payout.fromIntegration,
-      fromCurrency: payout.fromCurrency,
-      from: from.account,
-      toAmount: payout.toAmount,
-      toIntegration: payout.toIntegration,
-      toCurrency: payout.toCurrency,
-      to: to.account,
-    })
+        const pendingAmount = await this.payoutIntentRepository.acquireLockAndGetPendingAmount(
+          {
+            member: params.platformMember,
+            fromIntegration: params.fromIntegration,
+            fromCurrency: params.fromCurrency,
+          },
+          ctx,
+        )
 
-    return payout
+        PayoutBalancePolicy.validateWithPending(userBalance, pendingAmount, params.amount)
+
+        // todo call some policy for validate payout configuration!
+        const payout = await this.payoutIntentRepository.create(
+          {
+            operationType: params.operationType,
+            member: params.platformMember,
+            from, // get platfromAccount (hot account)
+            fromAmount: params.amount,
+            fromCurrency: params.fromCurrency,
+            fromIntegration: params.fromIntegration,
+            estimatedFee: convertIntegrationFee.to.amount,
+            estimatedFeeCurrency: convertIntegrationFee.from.currency,
+            platformFee: platformFee.platformFee,
+            platformFeeAccount,
+            integrationFeeRate: convertIntegrationFee.to.rate,
+            to, // looking for active payment or null
+            toAmount: params.amount,
+            toCurrency: params.fromCurrency,
+            toIntegration: params.fromIntegration,
+            exchangeRate: Numeric.create(1), // same currency and same integration
+            integrationFeePayer: null,
+            integrationFee: null,
+            integrationFeeCurrency: convertIntegrationFee.from.currency,
+          },
+          ctx,
+        )
+
+        // todo use outbox pattern
+        await this.externalIntegrationRepository.createTransactionIntent(
+          {
+            intentId: payout.id,
+            intentType: IntentType.PAYOUT,
+            estimatedFee: convertIntegrationFee.from.amount,
+            feeCurrency: convertIntegrationFee.from.currency,
+            fromAmount: payout.fromAmount,
+            fromIntegration: payout.fromIntegration,
+            fromCurrency: payout.fromCurrency,
+            from: from.account,
+            toAmount: payout.toAmount,
+            toIntegration: payout.toIntegration,
+            toCurrency: payout.toCurrency,
+            to: to.account,
+          },
+          ctx,
+        )
+
+        return payout
+      })
+      .execute()
   }
 
   private async preparePayoutData(params: CreatePayoutIntentParams): Promise<{
@@ -99,6 +126,7 @@ export class CreatePayoutIntentInteractor extends AbstractInteractor<
     readonly platformFeeAccount: SourceIntegrationAccount | null
     readonly convertIntegrationFee: CurrencyConverterResult
     readonly platformFee: PlatformFeeProviderResult
+    readonly userBalance: Balance
   }> {
     const integrationTransferFee = await this.externalIntegrationRepository.getEstimatedTransferFee(
       params.estimatedTransferFeeId,
@@ -134,7 +162,7 @@ export class CreatePayoutIntentInteractor extends AbstractInteractor<
 
     const totalAmount = integrationTransferFee.amount.plus(convertResult.to.amount)
 
-    await this.checkBalances({
+    const { userBalance } = await this.checkBalances({
       integration: params.fromIntegration,
       currency: params.fromCurrency,
       userPlatformAccountId: params.platformMember.accountId,
@@ -171,6 +199,7 @@ export class CreatePayoutIntentInteractor extends AbstractInteractor<
         : null,
       convertIntegrationFee: convertResult,
       platformFee,
+      userBalance,
     }
   }
 
@@ -180,7 +209,7 @@ export class CreatePayoutIntentInteractor extends AbstractInteractor<
     readonly userPlatformAccountId: UUID
     readonly fromLink: IntegrationAccountLinkModel
     readonly amount: Numeric
-  }): Promise<void> {
+  }): Promise<Readonly<{ userBalance: Balance }>> {
     const { integration, currency, userPlatformAccountId, fromLink, amount } = params
     const balanceCurrency = new Set([currency])
 
@@ -208,6 +237,14 @@ export class CreatePayoutIntentInteractor extends AbstractInteractor<
       ?.get(integration)
       ?.get(currency)
 
-    PayoutBalancePolicy.validate(userBalance, hotIntegrationAccountBalance, amount)
+    const amountParams = {
+      userBalance,
+      hotIntegrationBalance: hotIntegrationAccountBalance,
+      totalAmount: amount,
+    }
+
+    PayoutBalancePolicy.validate(amountParams)
+
+    return { userBalance: amountParams.userBalance }
   }
 }

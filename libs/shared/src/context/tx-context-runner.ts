@@ -59,8 +59,8 @@ class ContextPipeline<T> {
 export class TxContextRunner {
   constructor(private readonly contextFactory: ContextFactory) {}
 
-  create(ctx?: TxContext): ContextPipeline<void> {
-    return new ContextPipeline(ctx ?? this.contextFactory.createSimpleTxContext())
+  create<T = void>(ctx?: TxContext): ContextPipeline<T> {
+    return new ContextPipeline<T>(ctx ?? this.contextFactory.createSimpleTxContext())
   }
 
   createWithData<T>(data?: T, ctx?: TxContext): ContextPipeline<T> {

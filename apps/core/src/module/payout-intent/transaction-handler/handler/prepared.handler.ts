@@ -3,9 +3,7 @@ import { TransactionModel } from '../../../../shared/model/transaction.model'
 import { IntentType } from '@app/shared'
 import { UUID } from '@app/types'
 import { PayoutIntentRepository } from '../../../../data/repository/payout-intent/payout-intent.repository'
-import {
-  IntegrationAccountLinkRepository,
-} from '../../../../data/repository/integration-account-link/integration-account-link.repository'
+import { IntegrationAccountLinkRepository } from '../../../../data/repository/integration-account-link/integration-account-link.repository'
 import { PayoutIntentStatus } from '../../model/payout-intent.model'
 import { TxContext } from '@app/shared/types/tx-context.type'
 
@@ -50,10 +48,10 @@ export class PreparedHandler implements TransactionHandler {
           id: payout.id,
           integrationFeePayer: link
             ? {
-              account: link.integrationAccount.account,
-              platformAccountId: link.platformAccountId,
-              accountLinkId: link.id,
-            }
+                account: link.integrationAccount.account,
+                platformAccountId: link.platformAccountId,
+                accountLinkId: link.id,
+              }
             : { account: transfer.initiator },
           // fee per transfer
           integrationFee: data.fee?.div(data.transfers.length) ?? null,

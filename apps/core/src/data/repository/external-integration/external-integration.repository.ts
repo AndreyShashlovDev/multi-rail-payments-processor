@@ -22,6 +22,7 @@ import {
 import { transferIntentSubject } from '@app/shared/nat-stream/transfer-intent-stream.types'
 import { randomUUID } from 'node:crypto'
 import { TransferIntentHeldEvent } from '@app/shared/services/external-integration/v1/event/transfer-intent-held.event'
+import { TxContext } from '@app/shared/types/tx-context.type'
 
 export interface TransactionEventSubscription {
   readonly handler: (tx: TransactionModel) => Promise<void>
@@ -99,7 +100,7 @@ export class ExternalIntegrationRepository implements IntegrationJetstreamHandle
     }
   }
 
-  async createTransactionIntent(data: TransactionIntentData): Promise<void> {
+  async createTransactionIntent(data: TransactionIntentData, _ctx: TxContext): Promise<void> {
     const exponentByCurrency = await this.getCurrencyExponent()
     const currencyExponentByFromIntegration = exponentByCurrency.get(data.fromIntegration)
     const estimatedFee = Numeric.toExponent(

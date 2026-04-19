@@ -3,11 +3,13 @@ import {
   CoreJetstreamHandler,
 } from '../../data-source/nats-jetstream/core/core-jetstream-data-source.service'
 import { Injectable } from '@nestjs/common'
-import { BalanceChangeEvent, BalanceUpdatedData } from './balance-event-repository.types'
+import { BalanceChangeEvent, BalanceUpdatedData, BalanceFailedData } from './balance-event-repository.types'
 import { BalanceUpdatedEvent, BalanceChangeRequestEvent } from '@app/shared/services/ledger/v1'
 import { BALANCE_UPDATED_STREAM_SUBJECT } from '@app/shared/nat-stream/balance-updated-stream.types'
 import { BalanceEventRepositoryMapper } from './balance-event-repository.mapper'
 import { toError } from '@app/utils'
+import { BalanceFailedEvent } from '@app/shared/services/ledger/v1/event/balance-failed.event'
+import { BALANCE_FAILED_STREAM_SUBJECT } from '@app/shared/nat-stream/balance-failed-stream.types'
 
 export interface BalanceEventSubscription {
   readonly handler: (msg: BalanceChangeEvent) => Promise<void>
@@ -39,7 +41,7 @@ export class BalanceEventRepository implements CoreJetstreamHandler {
     this.subscriptions.push(subscription)
   }
 
-  async publish(data: BalanceUpdatedData): Promise<void> {
+  async publishSuccess(data: BalanceUpdatedData): Promise<void> {
     await this.coreJetstreamDataSource.publish(
       BALANCE_UPDATED_STREAM_SUBJECT,
       new BalanceUpdatedEvent(
@@ -48,6 +50,20 @@ export class BalanceEventRepository implements CoreJetstreamHandler {
           ...item,
           amount: item.amount.toString(),
         })),
+      ),
+    )
+  }
+
+  async publishFailed(data: BalanceFailedData): Promise<void> {
+    await this.coreJetstreamDataSource.publish(
+      BALANCE_FAILED_STREAM_SUBJECT,
+      new BalanceFailedEvent(
+        data.uniqueKey,
+        data.changes.map((item) => ({
+          ...item,
+          amount: item.amount.toString(),
+        })),
+        data.errors,
       ),
     )
   }

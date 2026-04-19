@@ -1,7 +1,5 @@
 import { AbstractInteractor, UUID, IntegrationCurrency, Numeric } from '@app/types'
-import {
-  IntegrationAccountLinkRepository,
-} from '../../../data/repository/integration-account-link/integration-account-link.repository'
+import { IntegrationAccountLinkRepository } from '../../../data/repository/integration-account-link/integration-account-link.repository'
 import { LedgerRepository } from '../../../data/repository/ledger/ledger.repository'
 import { Injectable, Logger } from '@nestjs/common'
 import { IntegrationType, BalanceChangeType } from '@app/shared'
@@ -11,16 +9,12 @@ import { ChangeBalanceData } from '../../../data/repository/ledger/ledger-reposi
 import { randomUUID } from 'node:crypto'
 import { BalanceChangeReason } from '@app/shared/types/balance-change'
 import { AccountRepository } from '../../../data/repository/account/account.repository'
-import {
-  CreatePaymentIntentInteractor,
-} from '../../../module/payment-intent/interactor/create-payment-intent/create-payment-intent.interactor'
+import { CreatePaymentIntentInteractor } from '../../../module/payment-intent/interactor/create-payment-intent/create-payment-intent.interactor'
 import {
   PaymentPlatformFeePayerType,
   PaymentOperationType,
 } from '../../../module/payment-intent/model/payment-intent.model'
-import {
-  CreatePayoutIntentInteractor,
-} from '../../../module/payout-intent/interactor/create-payout-intent/create-payout-intent.interactor'
+import { CreatePayoutIntentInteractor } from '../../../module/payout-intent/interactor/create-payout-intent/create-payout-intent.interactor'
 import { PayoutOperationType } from '../../../module/payout-intent/model/payout-intent.model'
 
 /**

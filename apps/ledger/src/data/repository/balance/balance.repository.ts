@@ -13,14 +13,15 @@ import { LedgerPostgresConfig, APP_SCHEMA } from '../../data-source/postgres/led
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { IntegrationAccountEsEntity } from '../../data-source/postgres/entities/integration-account-es.entity'
 import { PlatformAccountEsEntity } from '../../data-source/postgres/entities/platform-account-es.entity'
-import {
-  IntegrationAccountProjectionEntity,
-} from '../../data-source/postgres/entities/integration-account-projection.entity'
+import { IntegrationAccountProjectionEntity } from '../../data-source/postgres/entities/integration-account-projection.entity'
 import { PlatformAccountProjectionEntity } from '../../data-source/postgres/entities/platform-account-projection.entity'
 import {
   BalanceProjectionResult,
   BalanceProjectionPlatformAccountData,
   BalanceProjectionIntegrationAccountData,
+  IntentGroup,
+  BalanceApplyError,
+  IntentApplyResult,
 } from './balance-repository.types'
 import { BalanceChangeData } from '../../../module/balance/model/balance-change.data'
 
@@ -73,6 +74,121 @@ export class BalanceRepository {
     }
   }
 
+  async applyFromGroups(groups: ReadonlyArray<IntentGroup>, ctx: TxContext): Promise<ReadonlyArray<IntentApplyResult>> {
+    const em = this.resolveEntityManager(ctx)
+
+    const allChanges = groups.flatMap((g) => g.changes)
+    const integrationKeys = this.collectIntegrationKeys(allChanges)
+    const platformKeys = this.collectPlatformKeys(allChanges)
+
+    await this.lockProjections(em, integrationKeys, platformKeys)
+
+    const [integrationSnapshots, platformSnapshots] = await Promise.all([
+      this.readIntegrationSnapshots(em, integrationKeys),
+      this.readPlatformSnapshots(em, platformKeys),
+    ])
+
+    const results: IntentApplyResult[] = []
+
+    for (const group of groups) {
+      const error = this.applyGroupToSnapshots(group, integrationSnapshots, platformSnapshots)
+
+      if (error !== null) {
+        results.push({ status: 'failed', intentId: group.intentId, changes: group.changes, error })
+        continue
+      }
+
+      for (const change of group.changes) {
+        await this.applyChange(em, change)
+      }
+
+      results.push({ status: 'success', intentId: group.intentId, changes: group.changes })
+    }
+
+    return results
+  }
+
+  private applyGroupToSnapshots(
+    group: IntentGroup,
+    integrationSnapshots: Map<string, ProjectionSnapshot>,
+    platformSnapshots: Map<string, ProjectionSnapshot>,
+  ): BalanceApplyError | null {
+    const integrationPending = new Map<string, ProjectionSnapshot>()
+    const platformPending = new Map<string, ProjectionSnapshot>()
+
+    for (const change of group.changes) {
+      const delta = this.computeDelta(change)
+
+      if (change.integrationAccount !== null) {
+        const key = `${change.integrationAccount}|${change.integration}|${change.currency}`
+        const snapshot = integrationPending.get(key) ?? integrationSnapshots.get(key)!
+
+        if (snapshot === undefined) {
+          throw new Error(
+            `Projection snapshot not found for integration account: ${change.integrationAccount}, integration: ${change.integration}, currency: ${change.currency}`,
+          )
+        }
+
+        const next = {
+          available: snapshot.available.add(delta.available),
+          hold: snapshot.hold.add(delta.hold),
+          holdIn: snapshot.holdIn.add(delta.holdIn),
+        }
+
+        if (next.available.isNegative() || next.hold.isNegative() || next.holdIn.isNegative()) {
+          return {
+            code: 'INSUFFICIENT_FUNDS',
+            platformAccountId: change.platformAccountId,
+            integrationAccount: change.integrationAccount,
+            available: snapshot.available,
+            required: delta.available.negated(),
+          }
+        }
+
+        integrationPending.set(key, next)
+      }
+
+      if (change.platformAccountId !== null) {
+        const key = `${change.platformAccountId}|${change.integration}|${change.currency}`
+        const snapshot = platformPending.get(key) ?? platformSnapshots.get(key)!
+
+        if (snapshot === undefined) {
+          throw new Error(
+            `Projection snapshot not found for platform account: ${change.platformAccountId}, integration: ${change.integration}, currency: ${change.currency}`,
+          )
+        }
+
+        const next = {
+          available: snapshot.available.add(delta.available),
+          hold: snapshot.hold.add(delta.hold),
+          holdIn: snapshot.holdIn.add(delta.holdIn),
+        }
+
+        if (next.available.isNegative() || next.hold.isNegative() || next.holdIn.isNegative()) {
+          return {
+            code: 'INSUFFICIENT_FUNDS',
+            platformAccountId: change.platformAccountId,
+            integrationAccount: change.integrationAccount,
+            available: snapshot.available,
+            required: delta.available.negated(),
+          }
+        }
+
+        platformPending.set(key, next)
+      }
+    }
+
+    for (const [key, snapshot] of integrationPending) {
+      integrationSnapshots.set(key, snapshot)
+    }
+
+    for (const [key, snapshot] of platformPending) {
+      platformSnapshots.set(key, snapshot)
+    }
+
+    return null
+  }
+
   private async applyChange(em: EntityManager, change: BalanceChangeData): Promise<void> {
     const delta = this.computeDelta(change)
 
@@ -85,6 +201,78 @@ export class BalanceRepository {
       const snapshot = await this.upsertPlatformProjection(em, change, delta)
       await this.insertPlatformEs(em, change, snapshot)
     }
+  }
+
+  private async readIntegrationSnapshots(
+    em: EntityManager,
+    keys: ReadonlyArray<IntegrationAccountKey>,
+  ): Promise<Map<string, ProjectionSnapshot>> {
+    if (keys.length === 0) return new Map()
+
+    const result = await em
+      .createQueryBuilder(IntegrationAccountProjectionEntity, 'i')
+      .where(
+        new Brackets((qb) => {
+          keys.forEach((k, index) => {
+            qb.orWhere(
+              `i.account = :account${index} AND i.integration = :integration${index} AND i.currency = :currency${index}`,
+              {
+                [`account${index}`]: k.account,
+                [`integration${index}`]: k.integration,
+                [`currency${index}`]: k.currency,
+              },
+            )
+          })
+        }),
+      )
+      .getMany()
+
+    return new Map(
+      result.map((row) => [
+        `${row.account}|${row.integration}|${row.currency}`,
+        {
+          available: Numeric.create(row.available),
+          hold: Numeric.create(row.hold),
+          holdIn: Numeric.create(row.holdIn),
+        },
+      ]),
+    )
+  }
+
+  private async readPlatformSnapshots(
+    em: EntityManager,
+    keys: ReadonlyArray<PlatformAccountKey>,
+  ): Promise<Map<string, ProjectionSnapshot>> {
+    if (keys.length === 0) return new Map()
+
+    const result = await em
+      .createQueryBuilder(PlatformAccountProjectionEntity, 'p')
+      .where(
+        new Brackets((qb) => {
+          keys.forEach((k, index) => {
+            qb.orWhere(
+              `p.accountId = :accountId${index} AND p.integration = :integration${index} AND p.currency = :currency${index}`,
+              {
+                [`accountId${index}`]: k.accountId,
+                [`integration${index}`]: k.integration,
+                [`currency${index}`]: k.currency,
+              },
+            )
+          })
+        }),
+      )
+      .getMany()
+
+    return new Map(
+      result.map((row) => [
+        `${row.accountId}|${row.integration}|${row.currency}`,
+        {
+          available: Numeric.create(row.available),
+          hold: Numeric.create(row.hold),
+          holdIn: Numeric.create(row.holdIn),
+        },
+      ]),
+    )
   }
 
   private computeDelta(change: BalanceChangeData): ProjectionDelta {

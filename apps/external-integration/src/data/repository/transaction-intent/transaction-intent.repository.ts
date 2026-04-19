@@ -67,6 +67,7 @@ export class TransactionIntentRepository {
           .getQuery()
         return `EXISTS ${sub}`
       })
+      .orderBy('transaction.createdAt', 'ASC')
       .take(params.take)
       .skip(params.skip)
       .setOnLocked('skip_locked')

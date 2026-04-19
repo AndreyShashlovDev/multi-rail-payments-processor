@@ -9,9 +9,11 @@ import {
 } from '../../../module/payout-intent/model/payout-intent.model'
 import { PayoutIntentEntity, PayoutIntentEntityStatus } from '../../data-source/postgres/entities/payout-intent.entity'
 import { PayoutIntentRepositoryMapper } from './payout-intent-repository.mapper'
-import { UUID } from '@app/types'
+import { UUID, Numeric } from '@app/types'
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { MarkPreparedData, MarkConfirmingData } from './payout-intent-repository.types'
+import { PostgresAdvisoryLock } from '@app/database'
+import { integrationTypeFromDomain } from '@app/shared'
 
 @Injectable()
 export class PayoutIntentRepository {
@@ -28,12 +30,12 @@ export class PayoutIntentRepository {
     return payouts.map((payout) => PayoutIntentRepositoryMapper.toDomain(payout))
   }
 
-  async create(data: Omit<PayoutIntentData, 'status' | 'metadata'>): Promise<PayoutIntentModel> {
+  async create(data: Omit<PayoutIntentData, 'status' | 'metadata'>, ctx: TxContext): Promise<PayoutIntentModel> {
     const entity = PayoutIntentRepositoryMapper.fromDomain(
       { ...data, status: PayoutIntentStatus.CREATED, metadata: null },
-      this.datasource.manager,
+      ctx.em,
     )
-    const result = await this.datasource.manager.save(PayoutIntentEntity, entity)
+    const result = await ctx.em.save(PayoutIntentEntity, entity)
 
     return PayoutIntentRepositoryMapper.toDomain(result)
   }
@@ -98,5 +100,35 @@ export class PayoutIntentRepository {
     )
 
     return result.affected === 1
+  }
+
+  async acquireLockAndGetPendingAmount(
+    params: Pick<PayoutIntentData, 'member' | 'fromIntegration' | 'fromCurrency'>,
+    ctx: TxContext,
+  ): Promise<Numeric> {
+    const lock = PostgresAdvisoryLock.CORE_PAYOUT_INTENT_BALANCE(
+      params.member.accountId,
+      params.fromIntegration,
+      params.fromCurrency,
+    )
+
+    await ctx.em.query(`SELECT pg_advisory_xact_lock($1)`, [lock.key.toString()])
+
+    const result = await ctx.em
+      .createQueryBuilder(PayoutIntentEntity, 'p')
+      .select('COALESCE(SUM(p.fromAmount), 0)', 'total')
+      .where('p.initiator_account_id = :accountId', { accountId: params.member.accountId })
+      .andWhere('p.from_integration = :integration', { integration: integrationTypeFromDomain(params.fromIntegration) })
+      .andWhere('p.from_currency = :currency', { currency: params.fromCurrency })
+      .andWhere('p.status IN (:...statuses)', {
+        statuses: [PayoutIntentEntityStatus.CREATED, PayoutIntentEntityStatus.PREPARED],
+      })
+      .getRawOne<{ total: string }>()
+
+    if (!result) {
+      throw new Error('Payout intent amounts total cannot read')
+    }
+
+    return Numeric.create(result.total)
   }
 }

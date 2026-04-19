@@ -80,7 +80,7 @@ export class MispayPaymentConverter extends BasicPaymentConverter {
         }
 
         const mispay = this.mispayOperation.execute({
-          accountId: link?.platformAccountId ?? null,
+          accountId: platformAccountId,
           integration: params.transaction.integration,
           integrationAccount,
           tx: params.transaction,

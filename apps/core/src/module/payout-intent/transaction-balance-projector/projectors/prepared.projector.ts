@@ -1,8 +1,6 @@
 import { TransactionModel } from '../../../../shared/model/transaction.model'
 import { BalanceChange } from '@app/shared/types/balance-change'
-import {
-  IntegrationAccountRepository,
-} from '../../../../data/repository/integration-account/integration-account.repository'
+import { IntegrationAccountRepository } from '../../../../data/repository/integration-account/integration-account.repository'
 import { PayoutConfirmedTransactionConverter } from '../../transaction-converter/transaction-converter.module'
 import { PayoutTransactionDataLoader } from '../payout-transaction-data-loader.service'
 import { TransactionStatus } from '@app/shared'

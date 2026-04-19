@@ -4,6 +4,7 @@ import type { NatsConfig } from '../../../../config'
 import { balanceChangeConsumer, BALANCE_CHANGE_STREAM } from '@app/shared/nat-stream/balance-change-stream.types'
 import { BALANCE_UPDATED_STREAM } from '@app/shared/nat-stream/balance-updated-stream.types'
 import { BalanceChangeRequestEvent } from '@app/shared/services/ledger/v1'
+import { BALANCE_FAILED_STREAM } from '@app/shared/nat-stream/balance-failed-stream.types'
 
 export interface CoreJetstreamHandler {
   balanceChangeHandler(event: BalanceChangeRequestEvent): Promise<void>
@@ -20,6 +21,7 @@ export class CoreJetstreamDataSource extends BaseNatsService {
   protected async setupStreams(): Promise<void> {
     await this.ensureStream(BALANCE_CHANGE_STREAM)
     await this.ensureStream(BALANCE_UPDATED_STREAM)
+    await this.ensureStream(BALANCE_FAILED_STREAM)
 
     for (const integration of Object.values(IntegrationType)) {
       await this.ensureConsumer(balanceChangeConsumer(integration))

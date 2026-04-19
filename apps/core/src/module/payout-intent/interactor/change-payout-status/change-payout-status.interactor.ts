@@ -9,14 +9,10 @@ import {
   BalanceChangeTxStatus,
   PayoutBalanceChangeMetadata,
 } from '@app/shared/types/balance-change'
-import {
-  ChangePaymentStatusParams,
-} from '../../../payment-intent/interactor/change-payment-status/change-payment-status.interactor'
+import { ChangePaymentStatusParams } from '../../../payment-intent/interactor/change-payment-status/change-payment-status.interactor'
 import { BalanceUpdatedResult } from '../../../../data/repository/ledger/ledger-repository.types'
 import { PayoutStatusNotChangedException } from '../../exception/payout-status-not-changed.exception'
-import {
-  ExternalIntegrationRepository,
-} from '../../../../data/repository/external-integration/external-integration.repository'
+import { ExternalIntegrationRepository } from '../../../../data/repository/external-integration/external-integration.repository'
 
 export interface ChangePayoutStatusParams {
   readonly data: BalanceUpdatedResult<PayoutBalanceChangeMetadata>
