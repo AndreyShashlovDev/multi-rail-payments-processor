@@ -1,8 +1,6 @@
 import { EvmTransactionWebhookRequest, EvmBlockchain } from './request/evm-transaction-webhook.request'
 import { IntegrationType } from '@app/shared'
-import {
-  AcceptTransactionParams,
-} from '../../../module/transaction/interactor/webhook-accept-transaction/webhook-accept-transaction-interactor'
+import { AcceptTransactionParams } from '../../../module/transaction/interactor/webhook-accept-transaction/webhook-accept-transaction-interactor'
 import { RawDataType } from '../../../module/transaction/service/transaction-parser/transaction-parser.strategy'
 
 export class WebhookControllerMapper {

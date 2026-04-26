@@ -1,8 +1,4 @@
-import {
-  BalanceChange,
-  BalanceChangeReason,
-  BalanceChangeTxStatus,
-} from '@app/shared/types/balance-change'
+import { BalanceChange, BalanceChangeReason, BalanceChangeTxStatus } from '@app/shared/types/balance-change'
 import { PaymentIntentModel } from '../../../model/payment-intent.model'
 import { Numeric, Id, AbstractInteractor, UUID } from '@app/types'
 import { IntentType, BalanceChangeType, IntegrationType } from '@app/shared'

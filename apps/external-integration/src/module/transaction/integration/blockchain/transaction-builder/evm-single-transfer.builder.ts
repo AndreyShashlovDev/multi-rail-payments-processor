@@ -3,7 +3,8 @@ import {
   IntegrationAccount,
   type IntegrationCurrency,
   SourceTransactionId,
-  Numeric, RawNumeric,
+  Numeric,
+  RawNumeric,
 } from '@app/types'
 import { IntegrationType } from '@app/shared'
 import { randomBytes } from 'node:crypto'

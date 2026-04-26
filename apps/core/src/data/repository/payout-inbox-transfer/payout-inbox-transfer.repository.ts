@@ -74,13 +74,7 @@ export class PayoutInboxTransferRepository {
           return { ...entity, key, state, reason }
         })
 
-        await manager
-          .createQueryBuilder()
-          .insert()
-          .into(PayoutInboxTransferEntity)
-          .values(values)
-          .orIgnore()
-          .execute()
+        await manager.createQueryBuilder().insert().into(PayoutInboxTransferEntity).values(values).orIgnore().execute()
       })
     }
   }
@@ -132,9 +126,7 @@ export class PayoutInboxTransferRepository {
       whereParams,
     )
 
-    const lockedKeys = lockedRows
-      .filter(({ locked }) => locked)
-      .map(({ key }) => key as PayoutInboxTransferKey)
+    const lockedKeys = lockedRows.filter(({ locked }) => locked).map(({ key }) => key as PayoutInboxTransferKey)
 
     return new Set(lockedKeys)
   }
@@ -260,12 +252,7 @@ export class PayoutInboxTransferRepository {
    * //   id=2 → BLOCKED (reason: predecessor_blocked)
    * //   id=3 → BLOCKED (reason: predecessor_blocked)
    */
-  async markBlockedWithSuccessors(
-    id: Id,
-    key: PayoutInboxTransferKey,
-    reason: string,
-    ctx: TxContext,
-  ): Promise<void> {
+  async markBlockedWithSuccessors(id: Id, key: PayoutInboxTransferKey, reason: string, ctx: TxContext): Promise<void> {
     await ctx.em
       .createQueryBuilder()
       .update(PayoutInboxTransferEntity)

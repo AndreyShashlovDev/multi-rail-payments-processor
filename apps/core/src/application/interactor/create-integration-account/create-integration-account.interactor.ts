@@ -1,7 +1,5 @@
 import { AbstractInteractor } from '@app/types'
-import {
-  IntegrationAccountRepository,
-} from '../../../data/repository/integration-account/integration-account.repository'
+import { IntegrationAccountRepository } from '../../../data/repository/integration-account/integration-account.repository'
 import { IntegrationAccountResult } from '../../../data/repository/custody/custody-repository.types'
 import { Injectable } from '@nestjs/common'
 

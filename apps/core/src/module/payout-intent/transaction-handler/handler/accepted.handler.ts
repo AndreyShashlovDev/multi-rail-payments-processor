@@ -1,8 +1,6 @@
 import { PayoutIntentStatus } from '../../model/payout-intent.model'
 import { PayoutIntentRepository } from '../../../../data/repository/payout-intent/payout-intent.repository'
-import {
-  IntegrationAccountLinkRepository,
-} from '../../../../data/repository/integration-account-link/integration-account-link.repository'
+import { IntegrationAccountLinkRepository } from '../../../../data/repository/integration-account-link/integration-account-link.repository'
 import { TransactionModel } from '../../../../shared/model/transaction.model'
 import { IntentType } from '@app/shared'
 import { UUID } from '@app/types'

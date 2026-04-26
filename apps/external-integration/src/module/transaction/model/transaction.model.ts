@@ -52,10 +52,10 @@ export function getTransactionTypedMetadata<T extends IntegrationType>(
       return metadata
 
     case IntegrationEntityType.ETHEREUM:
-      return metadata as IntegrationMetadataModelMap[typeof type]
+      return metadata
 
     case IntegrationEntityType.POLYGON:
-      return metadata as IntegrationMetadataModelMap[typeof type]
+      return metadata
 
     default: {
       const _exhaustive: never = integrationEntityType

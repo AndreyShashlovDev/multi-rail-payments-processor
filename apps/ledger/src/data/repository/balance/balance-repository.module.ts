@@ -3,9 +3,7 @@ import { BalanceRepository } from './balance.repository'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { LedgerPostgresConfig } from '../../data-source/postgres/ledger-postgres.config'
 import { IntegrationAccountEsEntity } from '../../data-source/postgres/entities/integration-account-es.entity'
-import {
-  IntegrationAccountProjectionEntity,
-} from '../../data-source/postgres/entities/integration-account-projection.entity'
+import { IntegrationAccountProjectionEntity } from '../../data-source/postgres/entities/integration-account-projection.entity'
 import { PlatformAccountEsEntity } from '../../data-source/postgres/entities/platform-account-es.entity'
 import { PlatformAccountProjectionEntity } from '../../data-source/postgres/entities/platform-account-projection.entity'
 

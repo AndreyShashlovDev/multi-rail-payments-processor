@@ -2,10 +2,7 @@ import {
   IntegrationAccountEntity,
   IntegrationAccountEntityStatus,
 } from '../../data-source/postgres/entities/integration-account.entity'
-import {
-  IntegrationAccountModel,
-  IntegrationAccountModelStatus,
-} from '../../../shared/model/integration-account.model'
+import { IntegrationAccountModel, IntegrationAccountModelStatus } from '../../../shared/model/integration-account.model'
 import { integrationTypeToDomain, integrationTypeFromDomain } from '@app/shared'
 import { EntityManager } from 'typeorm'
 

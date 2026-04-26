@@ -62,9 +62,7 @@ export class PaymentInboxTransferRepository {
           .andWhere('it.state = :state', { state: PaymentInboxTransferEntityState.BLOCKED })
           .getExists()
 
-        const state = hasBlocked
-          ? PaymentInboxTransferEntityState.BLOCKED
-          : PaymentInboxTransferEntityState.CREATED
+        const state = hasBlocked ? PaymentInboxTransferEntityState.BLOCKED : PaymentInboxTransferEntityState.CREATED
 
         const reason = hasBlocked ? 'predecessor_blocked' : null
 
@@ -73,13 +71,7 @@ export class PaymentInboxTransferRepository {
           return { ...entity, key, state, reason }
         })
 
-        await manager
-          .createQueryBuilder()
-          .insert()
-          .into(PaymentInboxTransferEntity)
-          .values(values)
-          .orIgnore()
-          .execute()
+        await manager.createQueryBuilder().insert().into(PaymentInboxTransferEntity).values(values).orIgnore().execute()
       })
     }
   }
@@ -131,9 +123,7 @@ export class PaymentInboxTransferRepository {
       whereParams,
     )
 
-    const lockedKeys = lockedRows
-      .filter(({ locked }) => locked)
-      .map(({ key }) => key as PaymentInboxTransferKey)
+    const lockedKeys = lockedRows.filter(({ locked }) => locked).map(({ key }) => key as PaymentInboxTransferKey)
 
     return new Set(lockedKeys)
   }
@@ -259,12 +249,7 @@ export class PaymentInboxTransferRepository {
    * //   id=2 → BLOCKED (reason: predecessor_blocked)
    * //   id=3 → BLOCKED (reason: predecessor_blocked)
    */
-  async markBlockedWithSuccessors(
-    id: Id,
-    key: PaymentInboxTransferKey,
-    reason: string,
-    ctx: TxContext,
-  ): Promise<void> {
+  async markBlockedWithSuccessors(id: Id, key: PaymentInboxTransferKey, reason: string, ctx: TxContext): Promise<void> {
     await ctx.em
       .createQueryBuilder()
       .update(PaymentInboxTransferEntity)

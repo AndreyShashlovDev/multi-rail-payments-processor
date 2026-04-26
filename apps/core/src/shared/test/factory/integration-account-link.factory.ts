@@ -1,9 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import {
-  IntegrationAccountLinkModel,
-  LinkModelType,
-  LinkModelStatus,
-} from '../../model/integration-account-link.model'
+import { IntegrationAccountLinkModel, LinkModelType, LinkModelStatus } from '../../model/integration-account-link.model'
 import { IntegrationAccountFactory } from './integration-account.factory'
 import { Id } from '@app/types'
 

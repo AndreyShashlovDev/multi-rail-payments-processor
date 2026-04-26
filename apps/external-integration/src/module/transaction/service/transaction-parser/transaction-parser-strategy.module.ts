@@ -1,11 +1,7 @@
 import { Module, FactoryProvider } from '@nestjs/common'
-import {
-  WebhookEvmTransactionParserModule,
-} from '../../integration/blockchain/simple-webhook-parser/webhook-evm-transaction-parser.module'
+import { WebhookEvmTransactionParserModule } from '../../integration/blockchain/simple-webhook-parser/webhook-evm-transaction-parser.module'
 import { TransactionParserStrategy, DataSourceType, RawDataType } from './transaction-parser.strategy'
-import {
-  WebhookEvmTransactionParser,
-} from '../../integration/blockchain/simple-webhook-parser/webhook-evm-transaction-parser'
+import { WebhookEvmTransactionParser } from '../../integration/blockchain/simple-webhook-parser/webhook-evm-transaction-parser'
 import { TransactionParser, TransactionParseResult } from './transaction-parser'
 import { IntegrationType } from '@app/shared'
 

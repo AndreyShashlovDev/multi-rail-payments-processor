@@ -4,9 +4,7 @@ import {
   PlatformFeeProviderResult,
 } from '../../../shared/platform-fee/platform-fee.provider'
 import { Injectable } from '@nestjs/common'
-import {
-  IntegrationAccountLinkRepository,
-} from '../../../data/repository/integration-account-link/integration-account-link.repository'
+import { IntegrationAccountLinkRepository } from '../../../data/repository/integration-account-link/integration-account-link.repository'
 import { PlatformFeeAccountNotFoundException } from '../exception/platform-fee-account-not-found.exception'
 import { Numeric } from '@app/types'
 

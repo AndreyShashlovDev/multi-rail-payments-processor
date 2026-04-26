@@ -1,13 +1,9 @@
 import { Module, FactoryProvider, Injectable } from '@nestjs/common'
 import { TransactionHandler } from '../../../shared/transaction-handler/transaction-handler'
-import {
-  IntegrationAccountLinkRepositoryModule,
-} from '../../../data/repository/integration-account-link/integration-account-link-repository.module'
+import { IntegrationAccountLinkRepositoryModule } from '../../../data/repository/integration-account-link/integration-account-link-repository.module'
 import { PayoutIntentRepositoryModule } from '../../../data/repository/payout-intent/payout-intent-repository.module'
 import { TransactionStatus } from '@app/shared'
-import {
-  IntegrationAccountLinkRepository,
-} from '../../../data/repository/integration-account-link/integration-account-link.repository'
+import { IntegrationAccountLinkRepository } from '../../../data/repository/integration-account-link/integration-account-link.repository'
 import { PayoutIntentRepository } from '../../../data/repository/payout-intent/payout-intent.repository'
 import { PreparedHandler } from './handler/prepared.handler'
 import { AcceptedHandler } from './handler/accepted.handler'

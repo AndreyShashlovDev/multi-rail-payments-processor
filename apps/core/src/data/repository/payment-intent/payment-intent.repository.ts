@@ -69,7 +69,6 @@ export class PaymentIntentRepository {
     return result.affected === 1
   }
 
-
   async findByIds(ids: ReadonlySet<UUID>, ctx?: TxContext): Promise<ReadonlyArray<PaymentIntentModel>> {
     const em = ctx?.em ?? this.datasource.manager
 

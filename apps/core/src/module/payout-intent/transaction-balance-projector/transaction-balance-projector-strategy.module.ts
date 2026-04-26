@@ -12,16 +12,10 @@ import {
   PayoutConfirmedTransactionConverter,
   PayoutPreparedTransactionConverter,
 } from '../transaction-converter/transaction-converter.module'
-import {
-  IntegrationAccountLinkRepositoryModule,
-} from '../../../data/repository/integration-account-link/integration-account-link-repository.module'
+import { IntegrationAccountLinkRepositoryModule } from '../../../data/repository/integration-account-link/integration-account-link-repository.module'
 import { PayoutIntentRepositoryModule } from '../../../data/repository/payout-intent/payout-intent-repository.module'
-import {
-  IntegrationAccountRepositoryModule,
-} from '../../../data/repository/integration-account/integration-account-repository.module'
-import {
-  IntegrationAccountRepository,
-} from '../../../data/repository/integration-account/integration-account.repository'
+import { IntegrationAccountRepositoryModule } from '../../../data/repository/integration-account/integration-account-repository.module'
+import { IntegrationAccountRepository } from '../../../data/repository/integration-account/integration-account.repository'
 import { TransactionStatus } from '@app/shared'
 import { PreparedProjector } from './projectors/prepared.projector'
 import { RejectedProjector } from './projectors/rejected.projector'
