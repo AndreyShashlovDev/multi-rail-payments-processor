@@ -1,8 +1,7 @@
 import { AbstractInteractor } from '@app/types'
 import { Injectable, Logger } from '@nestjs/common'
 import { TransactionBalanceProjectorStrategy } from '../../../../shared/projection/transaction-balance-projector.strategy'
-import { LedgerRepository } from '../../../../data/repository/ledger/ledger.repository'
-import { TxContextRunner, BalanceChangeType } from '@app/shared'
+import { BalanceChangeType, OutboxTxContextRunner } from '@app/shared'
 import { PaymentInboxTransferRepository } from '../../../../data/repository/payment-inbox-transfer/payment-inbox-transfer.repository'
 import { PaymentInboxTransferModel } from '../../model/payment-inbox-transfer.model'
 import { TxContext } from '@app/shared/types/tx-context.type'
@@ -10,6 +9,7 @@ import { BalanceChange } from '@app/shared/types/balance-change'
 import { randomUUID, UUID } from 'node:crypto'
 import { PaymentIntentRepository } from '../../../../data/repository/payment-intent/payment-intent.repository'
 import { PaymentAmountAccumulatorRepository } from '../../../../data/repository/payment-amount-accumulator/payment-amount-accumulator.repository'
+import { LedgerPublisher } from '../../../../data/publisher/ledger/ledger.publisher'
 
 interface TransferAppyResult {
   readonly success: boolean
@@ -23,9 +23,9 @@ export class ProcessPaymentTransactionInteractor extends AbstractInteractor<neve
   private readonly logger = new Logger(ProcessPaymentTransactionInteractor.name)
 
   constructor(
-    private readonly txRunner: TxContextRunner,
+    private readonly txRunner: OutboxTxContextRunner,
     private readonly balanceProjector: TransactionBalanceProjectorStrategy,
-    private readonly ledgerRepository: LedgerRepository,
+    private readonly ledgerPublisher: LedgerPublisher,
     private readonly paymentInboxTransferRepository: PaymentInboxTransferRepository,
     private readonly paymentIntentRepository: PaymentIntentRepository,
     private readonly paymentAmountAccumulatorRepository: PaymentAmountAccumulatorRepository,
@@ -61,9 +61,9 @@ export class ProcessPaymentTransactionInteractor extends AbstractInteractor<neve
           const created = await this.paymentInboxTransferRepository.findNextCreated(availableKeys, ctx)
           changes.push(...(await this.process(created, ctx)))
 
-          if (changes.length) {
+          if (changes.length > 0) {
             // fixme write to outbox and fix idempotencyKey
-            await this.ledgerRepository.changeBalance({ idempotencyKey: randomUUID(), changes })
+            await this.ledgerPublisher.enqueue({ idempotencyKey: randomUUID(), changes }, ctx)
           }
         })
         .execute()

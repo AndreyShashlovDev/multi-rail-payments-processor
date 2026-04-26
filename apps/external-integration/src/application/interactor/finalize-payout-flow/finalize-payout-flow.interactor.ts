@@ -1,19 +1,11 @@
 import { AbstractInteractor, EvmHashType, Numeric, IntegrationAccount, EvmAddress } from '@app/types'
 import { TransactionIntentRepository } from '../../../data/repository/transaction-intent/transaction-intent.repository'
-import { TxContextRunner } from '@app/shared'
-import {
-  WebhookAcceptTransactionInteractor,
-} from '../../../module/transaction/interactor/webhook-accept-transaction/webhook-accept-transaction-interactor'
-import {
-  PromoteTransactionInteractor,
-} from '../../../module/transaction/interactor/promote-transaction/promote-transaction.interactor'
-import {
-  SignTransactionInteractor,
-} from '../../../module/transaction/interactor/sign-transaction/sign-transaction.interactor'
+import { OutboxTxContextRunner } from '@app/shared'
+import { WebhookAcceptTransactionInteractor } from '../../../module/transaction/interactor/webhook-accept-transaction/webhook-accept-transaction-interactor'
+import { PromoteTransactionInteractor } from '../../../module/transaction/interactor/promote-transaction/promote-transaction.interactor'
+import { SignTransactionInteractor } from '../../../module/transaction/interactor/sign-transaction/sign-transaction.interactor'
 import { Injectable, Logger } from '@nestjs/common'
-import {
-  ConfirmTransactionInteractor,
-} from '../../../module/transaction/interactor/confirm-transaction/confirm-transaction.interactor'
+import { ConfirmTransactionInteractor } from '../../../module/transaction/interactor/confirm-transaction/confirm-transaction.interactor'
 import { randomBytes } from 'node:crypto'
 
 /**
@@ -22,17 +14,18 @@ import { randomBytes } from 'node:crypto'
 // todo remove it in real project! just for example. simulation finalize tx
 @Injectable()
 export class FinalizePayoutFlowInteractor extends AbstractInteractor<never, Promise<void>> {
+  private readonly logger: Logger = new Logger()
+
   constructor(
-    private readonly txRunner: TxContextRunner,
+    private readonly txRunner: OutboxTxContextRunner,
     private readonly transactionIntentRepository: TransactionIntentRepository,
     private readonly signTransactionInteractor: SignTransactionInteractor,
     private readonly promoteTransactionInteractor: PromoteTransactionInteractor,
     private readonly acceptTransactionInteractor: WebhookAcceptTransactionInteractor,
     private readonly confirmTransactionInteractor: ConfirmTransactionInteractor,
-    logger: Logger,
   ) {
     super()
-    logger.warn(`Enabled FinalizePayoutFlowInteractor! Remove it!!`)
+    this.logger.warn(`Enabled FinalizePayoutFlowInteractor! Remove it!!`)
   }
 
   async execute(): Promise<void> {

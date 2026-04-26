@@ -1,5 +1,4 @@
 import { AbstractInteractor, UUID, Id } from '@app/types'
-import { BalanceUpdatedResult } from '../../../../data/repository/ledger/ledger-repository.types'
 import { Injectable, Logger } from '@nestjs/common'
 import { TxContextRunner, BalanceChangeType, IntentType } from '@app/shared'
 import {
@@ -13,6 +12,7 @@ import { ReceiptRepository } from '../../../../data/repository/receipt/receipt.r
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { PaymentReceiptData } from '../../model/payment-receipt.model'
 import { FinalizePaymentOperation } from '../operation/finalize-payment.operation'
+import { BalanceUpdatedResult } from '../../../../data/consumer/ledger/ledger-consumer.types'
 
 export interface ChangePaymentStatusParams {
   readonly data: BalanceUpdatedResult<PaymentBalanceChangeMetadata>

@@ -8,10 +8,11 @@ import { IntegrationPostgresConfig } from '../../data-source/postgres/integratio
 
 @Injectable()
 export class InboxRepository {
+  private readonly logger: Logger = new Logger(InboxRepository.name)
+
   constructor(
     @InjectDataSource(IntegrationPostgresConfig.DATASOURCE_NAME)
     private readonly datasource: DataSource,
-    private readonly logger: Logger,
   ) {}
 
   async create(data: CreateInboxData, ctx?: TxContext): Promise<boolean> {

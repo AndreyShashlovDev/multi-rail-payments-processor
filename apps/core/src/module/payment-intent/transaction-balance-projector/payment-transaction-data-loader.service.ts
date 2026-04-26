@@ -55,11 +55,9 @@ export class PaymentTransactionDataLoader {
       (transfer) => accounts.has(transfer.from) || accounts.has(transfer.to),
     )
 
-    const [accountLinks, payments, currencies] = await Promise.all([
-      this.loadAssignments(transaction.integration, actualTransfers, ctx),
-      this.loadPayments(transaction.integration, actualTransfers, paymentConfig, ctx),
-      this.loadCurrencies(transaction.integration, ctx),
-    ])
+    const accountLinks = await this.loadAssignments(transaction.integration, actualTransfers, ctx)
+    const payments = await this.loadPayments(transaction.integration, actualTransfers, paymentConfig, ctx)
+    const currencies = await this.loadCurrencies(transaction.integration, ctx)
 
     const accountLinksByAccount = new Map(
       accountLinks.map((assigment) => [assigment.integrationAccount.account, assigment]),

@@ -13,6 +13,7 @@ import { TransferIntentEntity } from './entities/transfer-intent.entity'
 import { TransactionRawEntity } from './entities/transaction-raw.entity'
 import { TransactionIntentEntity } from './entities/transaction-intent.entity'
 import { InboxEntity } from './entities/inbox.entity'
+import { OutboxEntity } from './entities/outbox.entity'
 
 export const APP_SCHEMA = 'external_integration'
 
@@ -40,11 +41,12 @@ export class IntegrationPostgresConfig extends BaseDatabaseConfig {
         TransferEntity,
         TransactionIntentEntity,
         InboxEntity,
+        OutboxEntity,
       ],
       migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
       synchronize: false,
       logging: dbConfig.logging,
-    }) as PostgresConnectionOptions
+    })
   }
 
   static getMigrationConfig(): DataSourceOptions {

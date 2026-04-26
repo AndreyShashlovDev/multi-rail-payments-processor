@@ -3,6 +3,8 @@ import { UUID, BasicEvent } from '@app/types'
 import { IsUUID, IsEnum, IsArray } from 'class-validator'
 
 export class TransferIntentHeldEvent extends BasicEvent {
+  static readonly EVENT_NAME = 'integrations:transfer-intent.held'
+
   @IsEnum(IntentType)
   readonly intentType: IntentType
 

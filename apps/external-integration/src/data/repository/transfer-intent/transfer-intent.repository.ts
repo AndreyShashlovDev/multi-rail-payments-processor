@@ -1,11 +1,5 @@
 import { Injectable } from '@nestjs/common'
 import {
-  CoreJetstreamHandler,
-  CoreJetstreamDataSource,
-} from '../../data-source/nats-jetstream/core-jetstream.data-source'
-import { TransferIntentCreateEvent } from '@app/shared/services/external-integration/v1'
-import { toError } from '@app/utils'
-import {
   TransferIntentData,
   TransferIntentModel,
   TransferIntentStatus,
@@ -20,56 +14,15 @@ import {
 } from '../../data-source/postgres/entities/transfer-intent.entity'
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { Id } from '@app/types'
-import {
-  TransferIntentEventModel,
-  MarkAsPreparedParams,
-  TransferIntentEventKeyType,
-  MarkAsProcessingParams,
-} from './transfer-intent-repository.types'
+import { MarkAsPreparedParams, MarkAsProcessingParams } from './transfer-intent-repository.types'
 import { intentTypeFromDomain } from '@app/shared'
 
-export interface TransferIntentEventSubscription<T extends TransferIntentEventKeyType = TransferIntentEventKeyType> {
-  readonly filter?: { type: T }
-  readonly handler: (event: TransferIntentEventModel<T>, type: T) => Promise<void>
-}
-
 @Injectable()
-export class TransferIntentRepository implements CoreJetstreamHandler {
-  private readonly subscriptions: TransferIntentEventSubscription[] = []
-
+export class TransferIntentRepository {
   constructor(
     @InjectDataSource(IntegrationPostgresConfig.DATASOURCE_NAME)
     private readonly datasource: DataSource,
-    private readonly coreJetstreamDataSource: CoreJetstreamDataSource,
-  ) {
-    this.coreJetstreamDataSource.setupHandler(this)
-  }
-
-  async transferIntentEventHandler<T extends TransferIntentEventKeyType>(
-    type: T,
-    event: TransferIntentCreateEvent,
-  ): Promise<void> {
-    const model = await TransferIntentRepositoryMapper.validateTransferIntentEvent<T>(type, event)
-
-    const result = await Promise.allSettled(
-      this.subscriptions
-        .filter((sub): sub is TransferIntentEventSubscription<T> => !sub.filter || sub.filter.type === type)
-        .map(async (sub) => await sub.handler(model, type)),
-    )
-
-    const failed = result.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-
-    if (failed.length > 0) {
-      const reasons = failed.map((r) => toError(r.reason).message).join(', ')
-      throw new Error(`${failed.length} handler(s) failed: ${reasons}`)
-    }
-  }
-
-  subscribeToTransferIntentEvent<T extends TransferIntentEventKeyType = TransferIntentEventKeyType>(
-    subscription: TransferIntentEventSubscription<T>,
-  ): void {
-    this.subscriptions.push(subscription)
-  }
+  ) {}
 
   async create(
     data: Omit<TransferIntentData, 'status' | 'transactionIntentId'>,

@@ -73,6 +73,8 @@ export class BalanceChangeRequestData {
 }
 
 export class BalanceChangeRequestEvent extends BasicEvent {
+  static readonly EVENT_NAME = 'ledger:balance.change-request'
+
   @IsEnum(IntegrationType)
   readonly integration: IntegrationType
 

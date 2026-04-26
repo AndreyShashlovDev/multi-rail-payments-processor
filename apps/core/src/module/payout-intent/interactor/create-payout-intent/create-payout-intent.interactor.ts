@@ -1,10 +1,9 @@
 import { AbstractInteractor, UUID, IntegrationCurrency, Numeric, IntegrationAccount } from '@app/types'
 import { PayoutIntentModel, PayoutOperationType } from '../../model/payout-intent.model'
 import { PayoutIntentRepository } from '../../../../data/repository/payout-intent/payout-intent.repository'
-import { ExternalIntegrationRepository } from '../../../../data/repository/external-integration/external-integration.repository'
 import { LedgerRepository } from '../../../../data/repository/ledger/ledger.repository'
 import { Injectable } from '@nestjs/common'
-import { IntegrationType, IntentType, Balance, TxContextRunner } from '@app/shared'
+import { IntegrationType, IntentType, Balance, OutboxTxContextRunner } from '@app/shared'
 import { PlatformFeeProvider, PlatformFeeProviderResult } from '../../../../shared/platform-fee/platform-fee.provider'
 import {
   CurrencyConverterProvider,
@@ -20,6 +19,9 @@ import {
   DestinationIntegrationAccount,
   SourceIntegrationAccount,
 } from '../../../../shared/model/composite-integration-account.model'
+import { ExternalIntegrationPublisher } from '../../../../data/publisher/external-integration/external-integration.publisher'
+import { ExternalIntegrationRepository } from '../../../../data/repository/external-integration/external-integration.repository'
+import { CurrencyRepository } from '../../../../data/repository/currency/currency.repository'
 
 export interface CreatePayoutIntentParams {
   readonly operationType: PayoutOperationType
@@ -39,13 +41,15 @@ export class CreatePayoutIntentInteractor extends AbstractInteractor<
   Promise<PayoutIntentModel>
 > {
   constructor(
-    private readonly txRunner: TxContextRunner,
+    private readonly txRunner: OutboxTxContextRunner,
     private readonly payoutIntentRepository: PayoutIntentRepository,
+    private readonly externalIntegrationPublisher: ExternalIntegrationPublisher,
     private readonly externalIntegrationRepository: ExternalIntegrationRepository,
     private readonly ledgerRepository: LedgerRepository,
     private readonly platformFeeProvider: PlatformFeeProvider,
     private readonly currencyConverterProvider: CurrencyConverterProvider,
     private readonly integrationAccountLinkRepository: IntegrationAccountLinkRepository,
+    private readonly currencyRepository: CurrencyRepository,
   ) {
     super()
   }
@@ -54,7 +58,7 @@ export class CreatePayoutIntentInteractor extends AbstractInteractor<
     const { from, to, platformFeeAccount, convertIntegrationFee, platformFee, userBalance } =
       await this.preparePayoutData(params)
 
-    return this.txRunner
+    return await this.txRunner
       .create<PayoutIntentModel>()
       .pipeline(async (ctx) => {
         // todo idempotencyKey check need
@@ -96,21 +100,23 @@ export class CreatePayoutIntentInteractor extends AbstractInteractor<
           ctx,
         )
 
-        // todo use outbox pattern
-        await this.externalIntegrationRepository.createTransactionIntent(
+        await this.externalIntegrationPublisher.enqueueTransferCreate(
           {
-            intentId: payout.id,
-            intentType: IntentType.PAYOUT,
-            estimatedFee: convertIntegrationFee.from.amount,
-            feeCurrency: convertIntegrationFee.from.currency,
-            fromAmount: payout.fromAmount,
-            fromIntegration: payout.fromIntegration,
-            fromCurrency: payout.fromCurrency,
-            from: from.account,
-            toAmount: payout.toAmount,
-            toIntegration: payout.toIntegration,
-            toCurrency: payout.toCurrency,
-            to: to.account,
+            transfer: {
+              intentId: payout.id,
+              intentType: IntentType.PAYOUT,
+              estimatedFee: convertIntegrationFee.from.amount,
+              feeCurrency: convertIntegrationFee.from.currency,
+              fromAmount: payout.fromAmount,
+              fromIntegration: payout.fromIntegration,
+              fromCurrency: payout.fromCurrency,
+              from: from.account,
+              toAmount: payout.toAmount,
+              toIntegration: payout.toIntegration,
+              toCurrency: payout.toCurrency,
+              to: to.account,
+            },
+            exponentByCurrency: await this.currencyRepository.getExponents(ctx),
           },
           ctx,
         )

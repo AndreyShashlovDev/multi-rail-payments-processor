@@ -87,6 +87,9 @@ export class TransferEventData {
 }
 
 export class TransactionEvent extends BasicEvent {
+  static readonly EVENT_VER: number = 1
+  static readonly EVENT_NAME = 'TransactionEvent'
+
   @IsNumberString({ no_symbols: true })
   readonly id: Id
 
@@ -126,7 +129,7 @@ export class TransactionEvent extends BasicEvent {
     executedDate: Date | null,
   ) {
     // todo signature!
-    super(TransactionEvent.createUniqueKey(integration, sourceTxId, status), 1, null)
+    super(TransactionEvent.createUniqueKey(integration, sourceTxId, status), TransactionEvent.EVENT_VER, null)
 
     this.id = id
     this.sourceTxId = sourceTxId

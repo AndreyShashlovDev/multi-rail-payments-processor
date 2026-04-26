@@ -41,4 +41,28 @@ export class EvmTransactionWebhookRequest {
 
   @IsNumber({ allowNaN: false, allowInfinity: false, maxDecimalPlaces: 0 })
   readonly timestamp: number
+
+  constructor(
+    chain: EvmBlockchain,
+    index: number,
+    from: EvmAddress,
+    to: EvmAddress,
+    amount: RawNumeric,
+    status: TransactionWebhookStatus,
+    blockNumber: RawNumeric,
+    blockHash: EvmHashType,
+    hash: EvmHashType,
+    timestamp: number,
+  ) {
+    this.chain = chain
+    this.index = index
+    this.from = from
+    this.to = to
+    this.amount = amount
+    this.status = status
+    this.blockNumber = blockNumber
+    this.blockHash = blockHash
+    this.hash = hash
+    this.timestamp = timestamp
+  }
 }

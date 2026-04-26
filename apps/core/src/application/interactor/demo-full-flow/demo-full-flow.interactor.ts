@@ -2,10 +2,9 @@ import { AbstractInteractor, UUID, IntegrationCurrency, Numeric } from '@app/typ
 import { IntegrationAccountLinkRepository } from '../../../data/repository/integration-account-link/integration-account-link.repository'
 import { LedgerRepository } from '../../../data/repository/ledger/ledger.repository'
 import { Injectable, Logger } from '@nestjs/common'
-import { IntegrationType, BalanceChangeType } from '@app/shared'
+import { IntegrationType, BalanceChangeType, OutboxTxContextRunner } from '@app/shared'
 import { WrongCreditFundsAmountException } from '../../exception/wrong-credit-funds-amount.exception'
 import { PlatformDepositAccountNotFoundException } from '../../exception/platform-deposit-account-not-found.exception'
-import { ChangeBalanceData } from '../../../data/repository/ledger/ledger-repository.types'
 import { randomUUID } from 'node:crypto'
 import { BalanceChangeReason } from '@app/shared/types/balance-change'
 import { AccountRepository } from '../../../data/repository/account/account.repository'
@@ -16,6 +15,8 @@ import {
 } from '../../../module/payment-intent/model/payment-intent.model'
 import { CreatePayoutIntentInteractor } from '../../../module/payout-intent/interactor/create-payout-intent/create-payout-intent.interactor'
 import { PayoutOperationType } from '../../../module/payout-intent/model/payout-intent.model'
+import { LedgerPublisher } from '../../../data/publisher/ledger/ledger.publisher'
+import { ChangeBalanceData } from '../../../data/publisher/ledger/ledger-publisher.types'
 
 /**
  * @deprecated remove it in real project! just for example. simulation
@@ -27,13 +28,16 @@ export class DemoFullFlowInteractor extends AbstractInteractor<never, Promise<vo
   private static readonly BASIC_AMOUNT: Numeric = Numeric.create(5)
   private static readonly EXCHANGE_AMOUNT: Numeric = Numeric.create(5)
 
+  private readonly logger: Logger = new Logger(DemoFullFlowInteractor.name)
+
   constructor(
+    private readonly txRunner: OutboxTxContextRunner,
     private readonly integrationAccountLinkRepository: IntegrationAccountLinkRepository,
     private readonly accountRepository: AccountRepository,
     private readonly ledgerRepository: LedgerRepository,
+    private readonly ledgerPublisher: LedgerPublisher,
     private readonly createPaymentIntentInteractor: CreatePaymentIntentInteractor,
     private readonly createPayoutIntentInteractor: CreatePayoutIntentInteractor,
-    private readonly logger: Logger,
   ) {
     super()
     this.logger.fatal('DemoFullFlowInteractor ENABLED! Remove it!')
@@ -211,6 +215,9 @@ export class DemoFullFlowInteractor extends AbstractInteractor<never, Promise<vo
       ],
     }
 
-    await this.ledgerRepository.changeBalance(data)
+    await this.txRunner
+      .create()
+      .pipeline(async (ctx) => await this.ledgerPublisher.enqueue(data, ctx))
+      .execute()
   }
 }

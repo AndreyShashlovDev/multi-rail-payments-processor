@@ -1,10 +1,14 @@
-import { TxContext } from '@app/shared/types/tx-context.type'
+import { BasicTypeOrmContext, OutboxTypeOrmContext } from '@app/shared/types/tx-context.type'
 import { DataSource } from 'typeorm'
 
 export class ContextFactory {
   constructor(private readonly datasource: DataSource) {}
 
-  createSimpleTxContext(): TxContext {
-    return { em: this.datasource.manager, source: this.datasource }
+  createSimpleTxContext(ctx?: BasicTypeOrmContext): BasicTypeOrmContext {
+    return ctx ? ctx : new BasicTypeOrmContext(this.datasource.manager, this.datasource)
+  }
+
+  createOutboxTxContext(ctx?: OutboxTypeOrmContext): OutboxTypeOrmContext {
+    return ctx ? ctx : new OutboxTypeOrmContext(this.datasource.manager, this.datasource)
   }
 }

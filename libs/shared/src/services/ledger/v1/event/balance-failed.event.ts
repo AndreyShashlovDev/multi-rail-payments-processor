@@ -13,6 +13,8 @@ export type BalanceApplyError =
   | { code: 'PROJECTION_NOT_FOUND'; integrationAccount: IntegrationAccount | null; platformAccountId: UUID | null }
 
 export class BalanceFailedEvent extends BalanceUpdatedEvent {
+  static readonly EVENT_NAME: string = 'ledger:balance.failed'
+
   // todo additional checks
   @IsArray()
   readonly error: ReadonlyArray<BalanceApplyError>

@@ -1,8 +1,6 @@
 import { AbstractInteractor, Id } from '@app/types'
 import { Injectable } from '@nestjs/common'
-import {
-  TransactionIntentRepository,
-} from '../../../../data/repository/transaction-intent/transaction-intent.repository'
+import { TransactionIntentRepository } from '../../../../data/repository/transaction-intent/transaction-intent.repository'
 import { TxContext } from '@app/shared/types/tx-context.type'
 
 export interface SignTransactionParams {

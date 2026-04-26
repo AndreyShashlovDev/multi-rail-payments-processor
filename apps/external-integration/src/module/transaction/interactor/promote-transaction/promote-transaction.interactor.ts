@@ -1,26 +1,16 @@
 import { SourceTransactionId } from '@app/types'
 import { Injectable } from '@nestjs/common'
-import {
-  TransactionIntentRepository,
-} from '../../../../data/repository/transaction-intent/transaction-intent.repository'
-import { TransactionEventRepository } from '../../../../data/repository/transaction-event/transaction-event.repository'
+import { TransactionIntentRepository } from '../../../../data/repository/transaction-intent/transaction-intent.repository'
+import { TransactionEventPublisher } from '../../../../data/publisher/transaction-event/transaction-event.publisher'
 import { TransactionRepository } from '../../../../data/repository/transaction/transaction.repository'
-import { TxContextRunner, IntegrationType } from '@app/shared'
+import { IntegrationType, OutboxTxContextRunner } from '@app/shared'
 import { BasicTransactionInteractor } from '../basic-transaction.interactor'
 import { TransferIntentRepository } from '../../../../data/repository/transfer-intent/transfer-intent.repository'
 import { TxContext } from '@app/shared/types/tx-context.type'
-import {
-  TransactionIntentNotMarkAsPromotedException,
-} from '../../exception/transaction-intent-not-mark-as-promoted.exception'
+import { TransactionIntentNotMarkAsPromotedException } from '../../exception/transaction-intent-not-mark-as-promoted.exception'
 import { TransactionNotMarkAsPromotedException } from '../../exception/transaction-not-mark-as-promoted.exception'
 import { TransactionNotFoundException } from '../../exception/transaction-not-found.exception'
-import { TransactionModel } from '../../model/transaction.model'
-import {
-  TransferEventWithIntent,
-} from '../../../../data/repository/transaction-event/transaction-event-repository.types'
-import {
-  TransferIntentsNotMarkedAsProcessingException
-} from '../../exception/transfer-intents-not-marked-as-processing.exception'
+import { TransferIntentsNotMarkedAsProcessingException } from '../../exception/transfer-intents-not-marked-as-processing.exception'
 
 export interface PromoteTransactionParams {
   readonly sourceTxId: SourceTransactionId
@@ -31,9 +21,9 @@ export interface PromoteTransactionParams {
 @Injectable()
 export class PromoteTransactionInteractor extends BasicTransactionInteractor<PromoteTransactionParams> {
   constructor(
-    private readonly txRunner: TxContextRunner,
+    private readonly txRunner: OutboxTxContextRunner,
     private readonly transactionIntentRepository: TransactionIntentRepository,
-    private readonly transactionEventRepository: TransactionEventRepository,
+    private readonly transactionEventPublisher: TransactionEventPublisher,
     private readonly transactionRepository: TransactionRepository,
     transferIntentRepository: TransferIntentRepository,
   ) {
@@ -42,8 +32,8 @@ export class PromoteTransactionInteractor extends BasicTransactionInteractor<Pro
 
   async execute({ sourceTxId, integration, ctx }: PromoteTransactionParams): Promise<void> {
     // call integration implementation for each Integration type
-    const result = await this.txRunner
-      .createWithData<{ tx: TransactionModel; transfers: ReadonlyArray<TransferEventWithIntent> }>(undefined, ctx)
+    await this.txRunner
+      .create(ctx)
       .pipeline(async (ctx) => {
         const updatedTransactionIntentId = await this.transactionIntentRepository.markPromoted(
           { txId: sourceTxId, integration },
@@ -77,13 +67,10 @@ export class PromoteTransactionInteractor extends BasicTransactionInteractor<Pro
 
         const transfers = await this.mergeTransfersWithTransferIntent(tx.transfers, ctx)
 
-        return { tx, transfers }
+        const result = { ...tx, transfers }
+
+        await this.transactionEventPublisher.enqueue(result, ctx)
       })
       .execute()
-
-    await this.transactionEventRepository.publish({
-      ...result.tx,
-      transfers: result.transfers,
-    })
   }
 }

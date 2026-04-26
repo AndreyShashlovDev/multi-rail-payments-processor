@@ -21,6 +21,7 @@ import { InboxEntity } from './entities/inbox.entity'
 import { ReceiptEntity } from './entities/receipt.entity'
 import { PayoutInboxTransferEntity } from './entities/payout-inbox-transfer.entity'
 import { PaymentInboxTransferEntity } from './entities/payment-inbox-transfer.entity'
+import { OutboxEntity } from './entities/outbox.entity'
 
 export class CorePostgresConfig extends BaseDatabaseConfig {
   static readonly DATASOURCE_NAME = 'core'
@@ -52,6 +53,7 @@ export class CorePostgresConfig extends BaseDatabaseConfig {
         ReceiptEntity,
         EscrowEntity,
         InboxEntity,
+        OutboxEntity,
       ],
       migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
       synchronize: false,

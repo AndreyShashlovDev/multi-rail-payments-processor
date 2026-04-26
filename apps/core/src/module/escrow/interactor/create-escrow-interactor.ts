@@ -1,12 +1,12 @@
 import { AbstractInteractor } from '@app/types'
 import { Injectable } from '@nestjs/common'
-import { BalanceUpdatedResult } from '../../../data/repository/ledger/ledger-repository.types'
 import { EscrowRepository } from '../../../data/repository/escrow/escrow.repository'
 import { EscrowType } from '../model/escrow.model'
 import { BalanceChange, BalanceChangeReason } from '@app/shared/types/balance-change'
 import { BalanceChangeType, TxContextRunner } from '@app/shared'
 import { UnknownEscrowTypeException } from '../exception/unknown-escrow-type.exception'
 import { InboxRepository } from '../../../data/repository/inbox/inbox.repository'
+import { BalanceUpdatedResult } from '../../../data/consumer/ledger/ledger-consumer.types'
 
 export interface CreateEscrowParams {
   readonly data: BalanceUpdatedResult

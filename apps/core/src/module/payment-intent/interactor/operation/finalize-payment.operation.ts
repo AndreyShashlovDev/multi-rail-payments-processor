@@ -1,8 +1,6 @@
 import { AbstractInteractor, type UUID, Numeric } from '@app/types'
 import { Injectable } from '@nestjs/common'
-import {
-  PaymentAmountAccumulatorRepository,
-} from '../../../../data/repository/payment-amount-accumulator/payment-amount-accumulator.repository'
+import { PaymentAmountAccumulatorRepository } from '../../../../data/repository/payment-amount-accumulator/payment-amount-accumulator.repository'
 import { PaymentIntentRepository } from '../../../../data/repository/payment-intent/payment-intent.repository'
 import { ReceiptRepository } from '../../../../data/repository/receipt/receipt.repository'
 import { PaymentIntentStatus } from '../../model/payment-intent.model'
@@ -36,14 +34,12 @@ export class FinalizePaymentOperation extends AbstractInteractor<FinalizePayment
       return
     }
 
-    const [payments, received, receipt] = await Promise.all([
-      this.paymentIntentRepository.findByIds(params.paymentIds, params.ctx),
-      this.paymentAmountAccumulatorRepository.sumAmountByPaymentIds(params.paymentIds, params.ctx),
-      this.paymentReceiptRepository.sumAmountByIntentIds(
-        { intentIds: params.paymentIds, intentType: IntentType.PAYMENT },
-        params.ctx,
-      ),
-    ])
+    const payments = await this.paymentIntentRepository.findByIds(params.paymentIds, params.ctx)
+    const received = await this.paymentAmountAccumulatorRepository.sumAmountByPaymentIds(params.paymentIds, params.ctx)
+    const receipt = await this.paymentReceiptRepository.sumAmountByIntentIds(
+      { intentIds: params.paymentIds, intentType: IntentType.PAYMENT },
+      params.ctx,
+    )
 
     const paymentsMap = new Map(payments.map((payment) => [payment.id, payment]))
 

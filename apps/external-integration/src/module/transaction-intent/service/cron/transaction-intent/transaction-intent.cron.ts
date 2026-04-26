@@ -1,7 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common'
-import {
-  CreateTransactionIntentInteractor,
-} from '../../../interactor/create-transaction-intent/create-transaction-intent.interactor'
+import { CreateTransactionIntentInteractor } from '../../../interactor/create-transaction-intent/create-transaction-intent.interactor'
 import { CronExpression, Cron } from '@nestjs/schedule'
 
 @Injectable()
@@ -11,10 +9,9 @@ export class TransactionIntentCron implements OnModuleDestroy {
   private static readonly task: Set<string> = new Set()
   private static gracefulShutdown: boolean = false
 
-  constructor(
-    private readonly logger: Logger,
-    private readonly createTransactionIntentInteractor: CreateTransactionIntentInteractor,
-  ) {}
+  private readonly logger: Logger = new Logger(TransactionIntentCron.name)
+
+  constructor(private readonly createTransactionIntentInteractor: CreateTransactionIntentInteractor) {}
 
   @Cron(CronExpression.EVERY_5_SECONDS)
   async prepareTransactionIntent(): Promise<void> {

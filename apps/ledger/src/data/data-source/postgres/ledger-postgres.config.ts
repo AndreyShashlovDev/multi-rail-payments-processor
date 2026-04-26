@@ -12,6 +12,7 @@ import { IntegrationAccountEsEntity } from './entities/integration-account-es.en
 import { IntegrationAccountProjectionEntity } from './entities/integration-account-projection.entity'
 import { PlatformAccountEsEntity } from './entities/platform-account-es.entity'
 import { PlatformAccountProjectionEntity } from './entities/platform-account-projection.entity'
+import { OutboxEntity } from './entities/outbox.entity'
 
 export const APP_SCHEMA = 'ledger'
 
@@ -38,11 +39,12 @@ export class LedgerPostgresConfig extends BaseDatabaseConfig {
         IntegrationAccountProjectionEntity,
         PlatformAccountEsEntity,
         PlatformAccountProjectionEntity,
+        OutboxEntity,
       ],
       migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
       synchronize: false,
       logging: dbConfig.logging,
-    }) as PostgresConnectionOptions
+    })
   }
 
   static getMigrationConfig(): DataSourceOptions {

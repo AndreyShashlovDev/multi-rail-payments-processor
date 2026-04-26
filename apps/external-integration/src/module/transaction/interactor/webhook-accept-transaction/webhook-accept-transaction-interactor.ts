@@ -1,21 +1,13 @@
 import { Injectable } from '@nestjs/common'
-import { TransactionEventRepository } from '../../../../data/repository/transaction-event/transaction-event.repository'
+import { TransactionEventPublisher } from '../../../../data/publisher/transaction-event/transaction-event.publisher'
 import { TransactionParserStrategy, RawDataType } from '../../service/transaction-parser/transaction-parser.strategy'
 import { TransactionSaverStrategy } from '../../service/transaction-saver/transaction-saver.strategy'
-import { IntegrationType, TransactionStatus, TxContextRunner } from '@app/shared'
-import {
-  IntegrationAccountRepository,
-} from '../../../../data/repository/integration-account/integration-account.repository'
+import { IntegrationType, TransactionStatus, OutboxTxContextRunner } from '@app/shared'
+import { IntegrationAccountRepository } from '../../../../data/repository/integration-account/integration-account.repository'
 import { TransferIntentRepository } from '../../../../data/repository/transfer-intent/transfer-intent.repository'
 import { BasicTransactionInteractor } from '../basic-transaction.interactor'
-import {
-  TransactionIntentRepository,
-} from '../../../../data/repository/transaction-intent/transaction-intent.repository'
-import { TransactionModel } from '../../model/transaction.model'
+import { TransactionIntentRepository } from '../../../../data/repository/transaction-intent/transaction-intent.repository'
 import { TxContext } from '@app/shared/types/tx-context.type'
-import {
-  TransferEventWithIntent,
-} from '../../../../data/repository/transaction-event/transaction-event-repository.types'
 
 export interface AcceptTransactionParams {
   readonly integration: IntegrationType
@@ -27,8 +19,8 @@ export interface AcceptTransactionParams {
 @Injectable()
 export class WebhookAcceptTransactionInteractor extends BasicTransactionInteractor<AcceptTransactionParams> {
   constructor(
-    private readonly txRunner: TxContextRunner,
-    private readonly transactionEventRepository: TransactionEventRepository,
+    private readonly txRunner: OutboxTxContextRunner,
+    private readonly transactionEventPublisher: TransactionEventPublisher,
     private readonly transactionParser: TransactionParserStrategy,
     private readonly transactionSaver: TransactionSaverStrategy,
     private readonly transactionIntentRepository: TransactionIntentRepository,
@@ -42,11 +34,8 @@ export class WebhookAcceptTransactionInteractor extends BasicTransactionInteract
     const parsedTransaction = await this.transactionParser.parse(params.source, params.integration, params.raw)
     // this.integrationAccountRepository.hasAccounts() - todo call for check before save and publish event (grpc request to Core)
 
-    const result = await this.txRunner
-      .createWithData<{ tx: TransactionModel; transfers: ReadonlyArray<TransferEventWithIntent> }>(
-        undefined,
-        params.ctx,
-      )
+    await this.txRunner
+      .create(params.ctx)
       .pipeline(async (ctx) => {
         const transaction = await this.transactionSaver.save(
           {
@@ -66,10 +55,10 @@ export class WebhookAcceptTransactionInteractor extends BasicTransactionInteract
 
         const transfers = await this.mergeTransfersWithTransferIntent(transaction.transfers, params.ctx)
 
-        return { tx: transaction, transfers }
+        const result = { ...transaction, transfers }
+
+        await this.transactionEventPublisher.enqueue(result, ctx)
       })
       .execute()
-
-    await this.transactionEventRepository.publish({ ...result.tx, transfers: result.transfers })
   }
 }

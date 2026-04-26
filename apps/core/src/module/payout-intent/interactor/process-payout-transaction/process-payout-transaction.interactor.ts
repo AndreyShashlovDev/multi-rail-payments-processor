@@ -1,14 +1,14 @@
 import { AbstractInteractor } from '@app/types'
 import { Injectable, Logger } from '@nestjs/common'
 import { TransactionBalanceProjectorStrategy } from '../../../../shared/projection/transaction-balance-projector.strategy'
-import { LedgerRepository } from '../../../../data/repository/ledger/ledger.repository'
-import { TxContextRunner } from '@app/shared'
+import { OutboxTxContextRunner } from '@app/shared'
 import { BalanceChange } from '@app/shared/types/balance-change'
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { PayoutInboxTransferRepository } from '../../../../data/repository/payout-inbox-transfer/payout-inbox-transfer.repository'
 import { PayoutInboxTransferModel } from '../../model/payout-inbox-transfer.model'
 import { randomUUID } from 'node:crypto'
 import { PayoutTransactionHandlerStrategy } from '../../transaction-handler/transaction-handler.module'
+import { LedgerPublisher } from '../../../../data/publisher/ledger/ledger.publisher'
 
 interface TransferAppyResult {
   readonly success: boolean
@@ -22,10 +22,10 @@ export class ProcessPayoutTransactionInteractor extends AbstractInteractor<never
   private readonly logger = new Logger(ProcessPayoutTransactionInteractor.name)
 
   constructor(
-    private readonly txRunner: TxContextRunner,
+    private readonly txRunner: OutboxTxContextRunner,
     private readonly transactionHandler: PayoutTransactionHandlerStrategy,
     private readonly balanceProjector: TransactionBalanceProjectorStrategy,
-    private readonly ledgerRepository: LedgerRepository,
+    private readonly ledgerPublisher: LedgerPublisher,
     private readonly payoutInboxTransferRepository: PayoutInboxTransferRepository,
   ) {
     super()
@@ -42,6 +42,7 @@ export class ProcessPayoutTransactionInteractor extends AbstractInteractor<never
       await this.txRunner
         .create()
         .pipeline(async (ctx) => {
+          // todo use inbox before!
           const availableKeys = await this.payoutInboxTransferRepository.findAndLockAvailableKeys(
             { integration: null },
             ctx,
@@ -59,9 +60,9 @@ export class ProcessPayoutTransactionInteractor extends AbstractInteractor<never
           const created = await this.payoutInboxTransferRepository.findNextCreated(availableKeys, ctx)
           changes.push(...(await this.process(created, ctx)))
 
-          if (changes.length) {
+          if (changes.length > 0) {
             // fixme write to outbox and fix idempotencyKey
-            await this.ledgerRepository.changeBalance({ idempotencyKey: randomUUID(), changes })
+            await this.ledgerPublisher.enqueue({ idempotencyKey: randomUUID(), changes }, ctx)
           }
         })
         .execute()

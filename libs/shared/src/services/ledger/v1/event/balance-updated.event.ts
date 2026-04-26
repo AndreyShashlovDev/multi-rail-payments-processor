@@ -78,6 +78,8 @@ export class BalanceUpdatedData {
 }
 
 export class BalanceUpdatedEvent extends BasicEvent {
+  static readonly EVENT_NAME: string = 'ledger:balance.updated'
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => BalanceUpdatedData)

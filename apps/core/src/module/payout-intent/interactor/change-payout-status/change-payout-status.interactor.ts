@@ -1,6 +1,6 @@
 import { AbstractInteractor, UUID } from '@app/types'
 import { Injectable, Logger } from '@nestjs/common'
-import { TxContextRunner, BalanceChangeType, IntentType } from '@app/shared'
+import { BalanceChangeType, IntentType, OutboxTxContextRunner } from '@app/shared'
 import { InboxRepository } from '../../../../data/repository/inbox/inbox.repository'
 import { PayoutIntentRepository } from '../../../../data/repository/payout-intent/payout-intent.repository'
 import {
@@ -10,9 +10,9 @@ import {
   PayoutBalanceChangeMetadata,
 } from '@app/shared/types/balance-change'
 import { ChangePaymentStatusParams } from '../../../payment-intent/interactor/change-payment-status/change-payment-status.interactor'
-import { BalanceUpdatedResult } from '../../../../data/repository/ledger/ledger-repository.types'
 import { PayoutStatusNotChangedException } from '../../exception/payout-status-not-changed.exception'
-import { ExternalIntegrationRepository } from '../../../../data/repository/external-integration/external-integration.repository'
+import { ExternalIntegrationPublisher } from '../../../../data/publisher/external-integration/external-integration.publisher'
+import { BalanceUpdatedResult } from '../../../../data/consumer/ledger/ledger-consumer.types'
 
 export interface ChangePayoutStatusParams {
   readonly data: BalanceUpdatedResult<PayoutBalanceChangeMetadata>
@@ -23,10 +23,10 @@ export class ChangePayoutStatusInteractor extends AbstractInteractor<ChangePayou
   private readonly logger = new Logger(ChangePayoutStatusInteractor.name)
 
   constructor(
-    private readonly txContextRunner: TxContextRunner,
+    private readonly txRunner: OutboxTxContextRunner,
     private readonly payoutIntentRepository: PayoutIntentRepository,
     private readonly inboxRepository: InboxRepository,
-    private readonly externalIntegrationRepository: ExternalIntegrationRepository,
+    private readonly externalIntegrationPublisher: ExternalIntegrationPublisher,
   ) {
     super()
   }
@@ -42,8 +42,8 @@ export class ChangePayoutStatusInteractor extends AbstractInteractor<ChangePayou
       return prev.set(id, arr)
     }, new Map<UUID, BalanceChange<PayoutBalanceChangeMetadata>[]>())
 
-    const pipelineResult = await this.txContextRunner
-      .createWithData<{ heldIntentIds: Set<UUID> }>({ heldIntentIds: new Set<UUID>() })
+    await this.txRunner
+      .create()
       .pipeline(async (ctx, data) => {
         if (
           !(await this.inboxRepository.create(
@@ -53,6 +53,8 @@ export class ChangePayoutStatusInteractor extends AbstractInteractor<ChangePayou
         ) {
           return data
         }
+
+        const heldIntentIds: Set<UUID> = new Set<UUID>()
 
         for (const [id, changes] of changeByPayout.entries()) {
           let wasChangedSuccess: boolean = false
@@ -67,7 +69,7 @@ export class ChangePayoutStatusInteractor extends AbstractInteractor<ChangePayou
 
           if (heldEvent) {
             wasChangedSuccess = await this.payoutIntentRepository.markAsHeld({ id }, ctx)
-            data.heldIntentIds.add(id)
+            heldIntentIds.add(id)
           } else {
             const payment = changes.find(
               (item) =>
@@ -87,15 +89,16 @@ export class ChangePayoutStatusInteractor extends AbstractInteractor<ChangePayou
           }
         }
 
-        return data
+        if (heldIntentIds.size > 0) {
+          await this.externalIntegrationPublisher.enqueueTransferHeld(
+            {
+              intentType: IntentType.PAYOUT,
+              intentIds: Array.from(heldIntentIds),
+            },
+            ctx,
+          )
+        }
       })
       .execute()
-
-    if (pipelineResult.heldIntentIds.size > 0) {
-      await this.externalIntegrationRepository.heldTransactionIntent({
-        intentType: IntentType.PAYOUT,
-        intentIds: Array.from(pipelineResult.heldIntentIds),
-      })
-    }
   }
 }

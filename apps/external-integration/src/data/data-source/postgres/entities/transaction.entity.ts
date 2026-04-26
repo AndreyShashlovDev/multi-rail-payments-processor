@@ -1,4 +1,4 @@
-import { Column, Entity, PrimaryGeneratedColumn, Unique, OneToMany, OneToOne, Index } from 'typeorm'
+import { Column, Entity, PrimaryGeneratedColumn, Unique, OneToMany, OneToOne } from 'typeorm'
 import { BasicEntity } from '@app/database'
 import { Id, type IntegrationCurrency, RawNumeric } from '@app/types'
 import type { TransactionBlockId, TransactionMetadata } from '../../../../module/transaction/model/transaction.model'

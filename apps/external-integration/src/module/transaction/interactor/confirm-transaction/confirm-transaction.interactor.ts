@@ -1,16 +1,12 @@
 import { SourceTransactionId } from '@app/types'
-import { TransactionEventRepository } from '../../../../data/repository/transaction-event/transaction-event.repository'
+import { TransactionEventPublisher } from '../../../../data/publisher/transaction-event/transaction-event.publisher'
 import { TransactionNotFoundException } from '../../exception/transaction-not-found.exception'
 import { Injectable } from '@nestjs/common'
 import { BasicTransactionInteractor } from '../basic-transaction.interactor'
 import { TransferIntentRepository } from '../../../../data/repository/transfer-intent/transfer-intent.repository'
-import { IntegrationType, TxContextRunner } from '@app/shared'
+import { IntegrationType, OutboxTxContextRunner } from '@app/shared'
 import { TransactionRepository } from '../../../../data/repository/transaction/transaction.repository'
 import { TxContext } from '@app/shared/types/tx-context.type'
-import { TransactionModel } from '../../model/transaction.model'
-import {
-  TransferEventWithIntent,
-} from '../../../../data/repository/transaction-event/transaction-event-repository.types'
 
 export interface ConfirmTransactionParams {
   readonly sourceTxId: SourceTransactionId
@@ -21,17 +17,17 @@ export interface ConfirmTransactionParams {
 @Injectable()
 export class ConfirmTransactionInteractor extends BasicTransactionInteractor<ConfirmTransactionParams> {
   constructor(
-    private readonly txRunner: TxContextRunner,
+    private readonly txRunner: OutboxTxContextRunner,
     private readonly transactionRepository: TransactionRepository,
-    private readonly transactionEventRepository: TransactionEventRepository,
+    private readonly transactionEventPublisher: TransactionEventPublisher,
     transferIntentRepository: TransferIntentRepository,
   ) {
     super(transferIntentRepository)
   }
 
   async execute({ sourceTxId, integration, ctx }: ConfirmTransactionParams): Promise<void> {
-    const result = await this.txRunner
-      .createWithData<{ tx: TransactionModel; transfers: ReadonlyArray<TransferEventWithIntent> }>(undefined, ctx)
+    await this.txRunner
+      .create(ctx)
       .pipeline(async (ctx) => {
         const wasUpdated = await this.transactionRepository.markAsConfirmed({ sourceTxId, integration }, ctx)
         const tx = await this.transactionRepository.getConfirmed({ sourceTxId, integration }, ctx)
@@ -42,13 +38,10 @@ export class ConfirmTransactionInteractor extends BasicTransactionInteractor<Con
 
         const transfers = await this.mergeTransfersWithTransferIntent(tx.transfers, ctx)
 
-        return { tx, transfers }
+        const result = { ...tx, transfers }
+
+        await this.transactionEventPublisher.enqueue(result, ctx)
       })
       .execute()
-
-    await this.transactionEventRepository.publish({
-      ...result.tx,
-      transfers: result.transfers,
-    })
   }
 }

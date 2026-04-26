@@ -1,40 +1,35 @@
 import { AbstractInteractor } from '@app/types'
 import { Injectable } from '@nestjs/common'
 import { TransferIntentRepository } from '../../../../data/repository/transfer-intent/transfer-intent.repository'
-import { TxContextRunner, TransactionStatus } from '@app/shared'
-import {
-  TransactionIntentRepository,
-} from '../../../../data/repository/transaction-intent/transaction-intent.repository'
-import {
-  EvmSingleTransferBuilder,
-} from '../../../transaction/integration/blockchain/transaction-builder/evm-single-transfer.builder'
+import { TransactionStatus, OutboxTxContextRunner } from '@app/shared'
+import { TransactionIntentRepository } from '../../../../data/repository/transaction-intent/transaction-intent.repository'
+import { EvmSingleTransferBuilder } from '../../../transaction/integration/blockchain/transaction-builder/evm-single-transfer.builder'
 import { OperationType } from '../../../transaction/model/transfer.model'
-import { TransactionEventRepository } from '../../../../data/repository/transaction-event/transaction-event.repository'
-import { TransactionEventData } from '../../../../data/repository/transaction-event/transaction-event-repository.types'
+import { TransactionEventPublisher } from '../../../../data/publisher/transaction-event/transaction-event.publisher'
 import { TransactionSaverStrategy } from '../../../transaction/service/transaction-saver/transaction-saver.strategy'
 
 @Injectable()
 export class CreateTransactionIntentInteractor extends AbstractInteractor<never, Promise<void>> {
   constructor(
-    private readonly contextRunner: TxContextRunner,
+    private readonly contextRunner: OutboxTxContextRunner,
     private readonly transferIntentRepository: TransferIntentRepository,
     private readonly transactionIntentRepository: TransactionIntentRepository,
     private readonly transactionBuilderStrategy: EvmSingleTransferBuilder,
     private readonly transactionSaverStrategy: TransactionSaverStrategy,
-    private readonly transactionEventRepository: TransactionEventRepository,
+    private readonly transactionEventPublisher: TransactionEventPublisher,
   ) {
     super()
   }
 
   async execute(): Promise<void> {
     // make simple strategy for example. take one transfer intent and create transaction
-    const result = await this.contextRunner
-      .createWithData<TransactionEventData | null>()
+    await this.contextRunner
+      .create()
       .pipeline(async (ctx) => {
         const transferIntent = await this.transferIntentRepository.claimOne(ctx)
 
         if (!transferIntent) {
-          return null
+          return
         }
 
         const tx = await this.transactionBuilderStrategy.execute({
@@ -91,11 +86,11 @@ export class CreateTransactionIntentInteractor extends AbstractInteractor<never,
         )
 
         await this.transferIntentRepository.updateTransactionId(
-          { id: transferIntent.id, transactionIntentId: transferIntent.id },
+          { id: transferIntent.id, transactionIntentId: transactionIntent.id },
           ctx,
         )
 
-        return {
+        const result = {
           ...transaction,
           transfers: [
             {
@@ -108,13 +103,9 @@ export class CreateTransactionIntentInteractor extends AbstractInteractor<never,
             },
           ],
         }
+
+        await this.transactionEventPublisher.enqueue(result, ctx)
       })
       .execute()
-
-    if (!result) {
-      return
-    }
-
-    await this.transactionEventRepository.publish(result)
   }
 }

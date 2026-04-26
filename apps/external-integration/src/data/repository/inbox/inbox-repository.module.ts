@@ -1,4 +1,4 @@
-import { Module, Logger } from '@nestjs/common'
+import { Module } from '@nestjs/common'
 import { InboxRepository } from './inbox.repository'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { InboxEntity } from '../../data-source/postgres/entities/inbox.entity'
@@ -6,7 +6,7 @@ import { IntegrationPostgresConfig } from '../../data-source/postgres/integratio
 
 @Module({
   imports: [TypeOrmModule.forFeature([InboxEntity], IntegrationPostgresConfig.DATASOURCE_NAME)],
-  providers: [Logger, InboxRepository],
+  providers: [InboxRepository],
   exports: [InboxRepository],
 })
 export class InboxRepositoryModule {}

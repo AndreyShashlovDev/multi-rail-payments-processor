@@ -1,16 +1,12 @@
 import { AbstractInteractor } from '@app/types'
-import { TxContextRunner } from '@app/shared/context/tx-context-runner'
 import { Logger, Injectable } from '@nestjs/common'
 import { BalanceEventInboxRepository } from '../../../../data/repository/balance-event-inbox/balance-event-inbox.repository'
 import { BalanceRepository } from '../../../../data/repository/balance/balance.repository'
-import { BalanceEventRepository } from '../../../../data/repository/balance-event/balance-event-repository'
 import { BalanceChangeData } from '../../model/balance-change.data'
-import {
-  IntentGroup,
-  IntentApplyResult,
-  BalanceApplyError,
-} from '../../../../data/repository/balance/balance-repository.types'
+import { IntentGroup, BalanceApplyError } from '../../../../data/repository/balance/balance-repository.types'
 import { randomUUID } from 'node:crypto'
+import { OutboxTxContextRunner } from '@app/shared'
+import { BalanceEventPublisher } from '../../../../data/publisher/balance-event/balance-event.publisher'
 
 export interface ProcessApplyBalanceParams {
   readonly uniqueKey: string
@@ -19,12 +15,13 @@ export interface ProcessApplyBalanceParams {
 
 @Injectable()
 export class ProcessApplyBalanceInteractor extends AbstractInteractor<ProcessApplyBalanceParams, Promise<void>> {
+  private readonly logger: Logger = new Logger(ProcessApplyBalanceInteractor.name)
+
   constructor(
-    private readonly txContextRunner: TxContextRunner,
-    private readonly logger: Logger,
+    private readonly txContextRunner: OutboxTxContextRunner,
     private readonly balanceEventInboxRepository: BalanceEventInboxRepository,
     private readonly balanceRepository: BalanceRepository,
-    private readonly balanceEventRepository: BalanceEventRepository,
+    private readonly balanceEventPublisher: BalanceEventPublisher,
   ) {
     super()
   }
@@ -35,40 +32,38 @@ export class ProcessApplyBalanceInteractor extends AbstractInteractor<ProcessApp
 
     const groups = this.groupByIntent(changes)
 
-    const results = await this.txContextRunner
-      .create<ReadonlyArray<IntentApplyResult>>()
+    await this.txContextRunner
+      .create()
       .pipeline(async (ctx) => {
         try {
           await this.balanceEventInboxRepository.create(uniqueKey, ctx)
         } catch {
           this.logger.warn(`event duplicate ${uniqueKey}`)
-          return []
+          return
         }
-        return this.balanceRepository.applyFromGroups(groups, ctx)
+
+        const results = await this.balanceRepository.applyFromGroups(groups, ctx)
+
+        const { success, failed } = results.reduce(
+          (acc, result) => {
+            if (result.status === 'success') {
+              acc.success.push(...result.changes)
+            } else {
+              acc.failed.changes.push(...result.changes)
+              acc.failed.errors.push(result.error)
+            }
+            return acc
+          },
+          {
+            success: [] as BalanceChangeData[],
+            failed: { changes: [] as BalanceChangeData[], errors: [] as BalanceApplyError[] },
+          },
+        )
+
+        await this.balanceEventPublisher.enqueueSuccess({ uniqueKey: `${uniqueKey}:success`, changes: success }, ctx)
+        await this.balanceEventPublisher.enqueueFailed({ uniqueKey: `${uniqueKey}:failed`, ...failed }, ctx)
       })
       .execute()
-
-    const { success, failed } = results.reduce(
-      (acc, result) => {
-        if (result.status === 'success') {
-          acc.success.push(...result.changes)
-        } else {
-          acc.failed.changes.push(...result.changes)
-          acc.failed.errors.push(result.error)
-        }
-        return acc
-      },
-      {
-        success: [] as BalanceChangeData[],
-        failed: { changes: [] as BalanceChangeData[], errors: [] as BalanceApplyError[] },
-      },
-    )
-
-    // todo use outbox pattern
-    await Promise.all([
-      this.balanceEventRepository.publishSuccess({ uniqueKey, changes: success }),
-      this.balanceEventRepository.publishFailed({ uniqueKey, ...failed }),
-    ])
   }
 
   private groupByIntent(changes: ReadonlyArray<BalanceChangeData>): ReadonlyArray<IntentGroup> {

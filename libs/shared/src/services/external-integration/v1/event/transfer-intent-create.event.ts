@@ -3,6 +3,8 @@ import { type UUID, type IntegrationCurrency, type IntegrationAccount, BasicEven
 import { IsUUID, IsEnum, IsNumberString, IsString } from 'class-validator'
 
 export class TransferIntentCreateEvent extends BasicEvent {
+  static readonly EVENT_NAME = 'integrations:transfer-intent.create'
+
   @IsUUID()
   readonly intentId: UUID
 

@@ -1,18 +1,18 @@
 import { Module } from '@nestjs/common'
 import { ProcessPaymentTransactionInteractor } from './process-payment-transaction.interactor'
-import { LedgerRepositoryModule } from '../../../../data/repository/ledger/ledger-repository.module'
 import { InboxRepositoryModule } from '../../../../data/repository/inbox/inbox-repository.module'
-import { TxContextModule } from '../../../../shared/tx-context/tx-context.module'
 import { TransactionBalanceProjectorStrategyModule } from '../../transaction-balance-projector/transaction-balance-projector-strategy.module'
 import { PaymentInboxTransferRepositoryModule } from '../../../../data/repository/payment-inbox-transfer/payment-inbox-transfer-repository.module'
 import { PaymentAmountAccumulatorRepositoryModule } from '../../../../data/repository/payment-amount-accumulator/payment-amount-accumulator-repository.module'
 import { PaymentIntentRepositoryModule } from '../../../../data/repository/payment-intent/payment-intent-repository.module'
+import { OutboxTxContextModule } from '../../../../shared/tx-context/outbox-tx-context.module'
+import { LedgerPublisherModule } from '../../../../data/publisher/ledger/ledger-publisher.module'
 
 @Module({
   imports: [
-    TxContextModule,
+    OutboxTxContextModule,
     TransactionBalanceProjectorStrategyModule,
-    LedgerRepositoryModule,
+    LedgerPublisherModule,
     InboxRepositoryModule,
     PaymentIntentRepositoryModule,
     PaymentInboxTransferRepositoryModule,
