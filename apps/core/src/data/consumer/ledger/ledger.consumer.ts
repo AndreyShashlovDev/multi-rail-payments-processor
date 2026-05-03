@@ -8,6 +8,7 @@ import {
 import { BalanceChangeType, IntentType } from '@app/shared'
 import { BalanceUpdatedEvent } from '@app/shared/services/ledger/v1'
 import { toError } from '@app/utils'
+import { JsonObject } from '@app/types'
 
 export interface BalanceUpdatedSubscription {
   readonly handler: (item: BalanceUpdatedResult) => Promise<void>
@@ -21,11 +22,11 @@ export interface BalanceUpdatedSubscription {
 export class LedgerConsumer implements LedgerJetstreamHandler {
   private readonly subscriptions: BalanceUpdatedSubscription[] = []
 
-  constructor(private readonly ledgerJetstreamDataSource: LedgerJetstreamDataSource) {
-    this.ledgerJetstreamDataSource.setupHandler(this)
+  constructor(ledgerJetstreamDataSource: LedgerJetstreamDataSource) {
+    ledgerJetstreamDataSource.setupHandler(this)
   }
 
-  async balanceUpdatedEventHandler(event: BalanceUpdatedEvent): Promise<void> {
+  async balanceUpdatedEventHandler(event: JsonObject<BalanceUpdatedEvent>): Promise<void> {
     const validated = LedgerConsumerMapper.balanceUpdatedEventValidate(event)
     const data = LedgerConsumerMapper.eventToBalanceUpdatedResult(validated)
 

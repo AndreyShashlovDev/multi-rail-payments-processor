@@ -6,10 +6,9 @@ import { DemoFullFlowInteractor } from '../../../application/interactor/demo-ful
  */
 @Controller()
 export class DemoController implements OnModuleInit {
-  constructor(
-    private readonly demoFullFlowInteractor: DemoFullFlowInteractor,
-    private readonly logger: Logger,
-  ) {}
+  private readonly logger: Logger = new Logger(DemoController.name)
+
+  constructor(private readonly demoFullFlowInteractor: DemoFullFlowInteractor) {}
 
   onModuleInit() {
     this.logger.debug('Wait 2 seconds before run simulation demo!')

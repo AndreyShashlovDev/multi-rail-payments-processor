@@ -6,7 +6,7 @@ import {
 } from '@app/shared/types/balance-change'
 import { PaymentIntentModel } from '../../../model/payment-intent.model'
 import { Numeric, Id, AbstractInteractor } from '@app/types'
-import { IntentType, BalanceChangeType, IntegrationType } from '@app/shared'
+import { IntentType, BalanceChangeType } from '@app/shared'
 import { OperationTypeMapper } from '../../../../../shared/projection/operation-type.mapper'
 import { TransactionModel } from '../../../../../shared/model/transaction.model'
 
@@ -26,8 +26,7 @@ export class OverpayPaymentOperation extends AbstractInteractor<
   execute(params: OverpayPaymentOperationParams): ReadonlyArray<BalanceChange<PaymentBalanceChangeMetadata>> {
     const { payment, overpay, transferAmount, transferIds, tx, expectedAmount } = params
 
-    const isInternalTransfer =
-      payment.to.account === payment.member.accountId && payment.integration === IntegrationType.INTERNAL
+    const isInternalTransfer = payment.to.account === payment.member.accountId
 
     const integrationAccount = isInternalTransfer ? null : payment.to.account
 

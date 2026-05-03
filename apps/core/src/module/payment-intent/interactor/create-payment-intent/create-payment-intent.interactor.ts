@@ -9,8 +9,11 @@ import { IntegrationAccountLinkModel } from '../../../../shared/model/integratio
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { PlatformFeeProvider } from '../../../../shared/platform-fee/platform-fee.provider'
 import { NotFoundAvailableLinkAccountException } from '../../exception/not-found-available-link-account.exception'
+import { InboxRepository } from '../../../../data/repository/inbox/inbox.repository'
+import { DuplicateRequestException } from '../../../../shared/exception/duplicate-request.exception'
 
 export interface CreatePaymentParams {
+  readonly idempotencyKey: string
   readonly operationType: PaymentOperationType
   readonly platformAccountId: UUID
   readonly userId: UUID
@@ -32,6 +35,7 @@ export class CreatePaymentIntentInteractor extends AbstractInteractor<
     private readonly integrationAccountRepository: IntegrationAccountRepository,
     private readonly integrationAccountLinkRepository: IntegrationAccountLinkRepository,
     private readonly platformFeeProvider: PlatformFeeProvider,
+    private readonly inboxRepository: InboxRepository,
   ) {
     super()
   }
@@ -42,9 +46,22 @@ export class CreatePaymentIntentInteractor extends AbstractInteractor<
       currency: params.currency,
     })
 
-    // todo idempotencyKey check need
     const result = await this.txContextRunner
       .createWithData<{ accountLink: IntegrationAccountLinkModel; payment?: PaymentIntentModel }>()
+      .pipeline(async (ctx, data) => {
+        const isUniqueRequest = await this.inboxRepository.create(
+          {
+            serviceName: CreatePaymentIntentInteractor.name,
+            idempotencyKey: params.idempotencyKey,
+          },
+          ctx,
+        )
+
+        if (!isUniqueRequest) {
+          throw new DuplicateRequestException(params.idempotencyKey)
+        }
+        return data
+      })
       .pipeline(async (ctx) => await this.prepareAccountForPayment(params, ctx))
       .pipeline(async (ctx, data) => {
         const payment = await this.paymentRepository.create(

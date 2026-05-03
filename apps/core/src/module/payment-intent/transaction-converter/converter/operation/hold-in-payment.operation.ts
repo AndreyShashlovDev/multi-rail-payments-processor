@@ -43,8 +43,7 @@ export class HoldInPaymentOperation extends AbstractInteractor<
     readonly reason: BalanceChangeReason
     readonly txStatus: BalanceChangeTxStatus.TX_ACCEPTED | BalanceChangeTxStatus.TX_CONFIRMED
   }): HoldInOperationParams {
-    const isInternalTransfer =
-      data.payment.to.account === data.payment.member.accountId && data.payment.integration === IntegrationType.INTERNAL
+    const isInternalTransfer = data.payment.to.account === data.payment.member.accountId
 
     const integrationAccount = isInternalTransfer ? null : data.payment.to.account
 

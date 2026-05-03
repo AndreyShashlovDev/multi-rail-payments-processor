@@ -2,16 +2,25 @@ import {
   IntegrationAccountEntity,
   IntegrationAccountEntityStatus,
 } from '../../data-source/postgres/entities/integration-account.entity'
-import { IntegrationAccountModel, IntegrationAccountModelStatus } from '../../../shared/model/integration-account.model'
+import {
+  IntegrationAccountModel,
+  IntegrationAccountModelStatus,
+  IntegrationAccountData,
+} from '../../../shared/model/integration-account.model'
 import { integrationTypeToDomain, integrationTypeFromDomain } from '@app/shared'
 import { EntityManager } from 'typeorm'
 
 export class IntegrationAccountRepositoryMapper {
   static toDomain(entity: IntegrationAccountEntity): IntegrationAccountModel {
     return {
-      ...entity, // fixme remove it. need clear mapping
+      id: entity.id,
       integration: integrationTypeToDomain(entity.integration),
+      account: entity.account,
+      currency: entity.currency,
       status: IntegrationAccountRepositoryMapper.toDomainStatus(entity.status),
+      custodyAccountId: entity.custodyAccountId,
+      createdAt: entity.createdAt,
+      updatedAt: entity.updatedAt,
     }
   }
 
@@ -51,11 +60,13 @@ export class IntegrationAccountRepositoryMapper {
     }
   }
 
-  static fromDomain(model: IntegrationAccountModel, manager: EntityManager): IntegrationAccountEntity {
+  static fromDomain(model: IntegrationAccountData, manager: EntityManager): IntegrationAccountEntity {
     return manager.create(IntegrationAccountEntity, {
-      ...model,
       integration: integrationTypeFromDomain(model.integration),
+      account: model.account,
+      currency: model.currency,
       status: IntegrationAccountRepositoryMapper.fromDomainStatus(model.status),
+      custodyAccountId: model.custodyAccountId,
     })
   }
 }

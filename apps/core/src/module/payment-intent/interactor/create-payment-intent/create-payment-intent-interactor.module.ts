@@ -4,6 +4,7 @@ import { IntegrationAccountRepositoryModule } from '../../../../data/repository/
 import { IntegrationAccountLinkRepositoryModule } from '../../../../data/repository/integration-account-link/integration-account-link-repository.module'
 import { CreatePaymentIntentInteractor } from './create-payment-intent.interactor'
 import { TxContextModule } from '../../../../shared/tx-context/tx-context.module'
+import { InboxRepositoryModule } from '../../../../data/repository/inbox/inbox-repository.module'
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { TxContextModule } from '../../../../shared/tx-context/tx-context.module
     PaymentIntentRepositoryModule,
     IntegrationAccountRepositoryModule,
     IntegrationAccountLinkRepositoryModule,
+    InboxRepositoryModule,
   ],
   providers: [CreatePaymentIntentInteractor],
   exports: [CreatePaymentIntentInteractor],

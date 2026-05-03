@@ -5,15 +5,25 @@ import { BalanceChangeType, OutboxTxContextRunner } from '@app/shared'
 import { PaymentInboxTransferRepository } from '../../../../data/repository/payment-inbox-transfer/payment-inbox-transfer.repository'
 import { PaymentInboxTransferModel } from '../../model/payment-inbox-transfer.model'
 import { TxContext } from '@app/shared/types/tx-context.type'
-import { BalanceChange } from '@app/shared/types/balance-change'
-import { randomUUID, UUID } from 'node:crypto'
+import { BalanceChange, PaymentBalanceChangeMetadata } from '@app/shared/types/balance-change'
+import { UUID, createHash } from 'node:crypto'
 import { PaymentIntentRepository } from '../../../../data/repository/payment-intent/payment-intent.repository'
 import { PaymentAmountAccumulatorRepository } from '../../../../data/repository/payment-amount-accumulator/payment-amount-accumulator.repository'
 import { LedgerPublisher } from '../../../../data/publisher/ledger/ledger.publisher'
 
 interface TransferAppyResult {
   readonly success: boolean
-  readonly balanceChanges: ReadonlyArray<BalanceChange>
+  readonly balanceChanges: ReadonlyArray<BalanceChange<PaymentBalanceChangeMetadata>>
+}
+
+interface ProcessResult {
+  readonly source: PaymentInboxTransferModel
+  readonly balanceChanges: ReadonlyArray<BalanceChange<PaymentBalanceChangeMetadata>>
+}
+
+interface GroupedResult {
+  readonly idempotencyKey: string
+  readonly balanceChanges: ReadonlyArray<BalanceChange<PaymentBalanceChangeMetadata>>
 }
 
 @Injectable()
@@ -35,7 +45,7 @@ export class ProcessPaymentTransactionInteractor extends AbstractInteractor<neve
 
   async execute(): Promise<void> {
     if (ProcessPaymentTransactionInteractor.RUNNING_PROCESS) {
-      this.logger.log(`Skip! ${ProcessPaymentTransactionInteractor.name} Already running!`)
+      this.logger.warn(`Skip! ${ProcessPaymentTransactionInteractor.name} Already running!`)
       return
     }
 
@@ -53,17 +63,22 @@ export class ProcessPaymentTransactionInteractor extends AbstractInteractor<neve
             return
           }
 
-          const changes: BalanceChange[] = []
+          const processResults: ProcessResult[] = []
 
           const blocked = await this.paymentInboxTransferRepository.findBlocked(availableKeys, ctx)
-          changes.push(...(await this.process(blocked, ctx)))
+          processResults.push(...(await this.process(blocked, ctx)))
 
           const created = await this.paymentInboxTransferRepository.findNextCreated(availableKeys, ctx)
-          changes.push(...(await this.process(created, ctx)))
+          processResults.push(...(await this.process(created, ctx)))
 
-          if (changes.length > 0) {
-            // fixme write to outbox and fix idempotencyKey
-            await this.ledgerPublisher.enqueue({ idempotencyKey: randomUUID(), changes }, ctx)
+          if (processResults.length > 0) {
+            const groups = this.groupForPublish(processResults)
+
+            for (const { idempotencyKey, balanceChanges } of groups) {
+              if (balanceChanges.length === 0) continue
+
+              await this.ledgerPublisher.enqueue({ idempotencyKey, changes: balanceChanges }, ctx)
+            }
           }
         })
         .execute()
@@ -72,12 +87,63 @@ export class ProcessPaymentTransactionInteractor extends AbstractInteractor<neve
     }
   }
 
+  private groupForPublish(results: ReadonlyArray<ProcessResult>): ReadonlyArray<GroupedResult> {
+    const groupMap = new Map<
+      string,
+      {
+        readonly idempotencyKey: string
+        readonly balanceChanges: BalanceChange<PaymentBalanceChangeMetadata>[]
+      }
+    >()
+    const groupOrder: string[] = []
+
+    for (const { source, balanceChanges } of results) {
+      for (const change of balanceChanges) {
+        const groupKey = change.intentId
+          ? `intent:${change.intentId}:${change.metadata.txStatus}`
+          : `tx:${source.txId}:${source.transferId}:${change.metadata.txStatus}`
+
+        if (!groupMap.has(groupKey)) {
+          groupMap.set(groupKey, {
+            idempotencyKey: '',
+            balanceChanges: [],
+          })
+          groupOrder.push(groupKey)
+        }
+
+        groupMap.get(groupKey)!.balanceChanges.push(change)
+      }
+    }
+
+    return groupOrder.map((key) => {
+      const group = groupMap.get(key)!
+      return {
+        ...group,
+        idempotencyKey: this.buildIdempotencyKey(group.balanceChanges),
+      }
+    })
+  }
+
+  private buildIdempotencyKey(changes: ReadonlyArray<BalanceChange<PaymentBalanceChangeMetadata>>): string {
+    const unique = new Set(
+      changes.flatMap((change) =>
+        change.metadata.transferIds.map(
+          (id) => `${id}:${change.intentType}:${change.intentId}:${change.metadata.txId}:${change.metadata.txStatus}`,
+        ),
+      ),
+    )
+
+    return createHash('sha256')
+      .update([...unique].sort().join(':'))
+      .digest('hex')
+  }
+
   private async process(
     transfers: ReadonlyArray<PaymentInboxTransferModel>,
     ctx: TxContext,
-  ): Promise<ReadonlyArray<BalanceChange>> {
+  ): Promise<ReadonlyArray<ProcessResult>> {
     const byKey = Map.groupBy(transfers, (transfer) => transfer.key)
-    const changes: BalanceChange[] = []
+    const results: ProcessResult[] = []
 
     for (const transfers of byKey.values()) {
       for (const transfer of transfers) {
@@ -87,11 +153,14 @@ export class ProcessPaymentTransactionInteractor extends AbstractInteractor<neve
           break
         }
 
-        changes.push(...result.balanceChanges)
+        results.push({
+          source: transfer,
+          balanceChanges: result.balanceChanges,
+        })
       }
     }
 
-    return changes
+    return results
   }
 
   private async applyTransfer(inboxTransfer: PaymentInboxTransferModel, ctx: TxContext): Promise<TransferAppyResult> {
@@ -123,7 +192,7 @@ export class ProcessPaymentTransactionInteractor extends AbstractInteractor<neve
         )
       }
 
-      return { success: true, balanceChanges: result }
+      return { success: true, balanceChanges: result as ReadonlyArray<BalanceChange<PaymentBalanceChangeMetadata>> }
     } catch (err) {
       this.logger.error(err)
 

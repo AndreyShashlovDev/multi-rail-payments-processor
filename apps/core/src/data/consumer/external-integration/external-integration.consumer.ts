@@ -8,6 +8,7 @@ import { Injectable } from '@nestjs/common'
 import { TransactionModel } from '../../../shared/model/transaction.model'
 import { toError } from '@app/utils'
 import { CurrencyRepository } from '../../repository/currency/currency.repository'
+import { JsonObject } from '@app/types'
 
 export interface TransactionEventSubscription {
   readonly handler: (tx: TransactionModel) => Promise<void>
@@ -24,7 +25,7 @@ export class ExternalIntegrationConsumer implements IntegrationJetstreamHandler 
     integrationJetstreamDataSource.setupHandler(this)
   }
 
-  async transactionEventHandler(event: TransactionEvent): Promise<void> {
+  async transactionEventHandler(event: JsonObject<TransactionEvent>): Promise<void> {
     const exponents = await this.currencyRepository.getExponents()
     const validated = ExternalIntegrationConsumerMapper.transactionEventValidate(event)
     const data = ExternalIntegrationConsumerMapper.transactionEventToDomain(validated, exponents)

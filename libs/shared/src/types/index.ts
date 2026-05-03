@@ -1,4 +1,5 @@
 export * from './balance-change.type'
+export * from './exchange.type'
 export * from './get-balances.types'
 export * from './integration.type'
 export * from './intent.type'

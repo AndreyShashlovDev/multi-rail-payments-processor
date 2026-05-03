@@ -6,7 +6,7 @@ import {
 } from '@app/shared/types/balance-change'
 import { PaymentIntentModel, PaymentPlatformFeePayerType } from '../../../model/payment-intent.model'
 import { Numeric, Id, AbstractInteractor } from '@app/types'
-import { IntentType, BalanceChangeType, IntegrationType } from '@app/shared'
+import { IntentType, BalanceChangeType } from '@app/shared'
 import { OperationTypeMapper } from '../../../../../shared/projection/operation-type.mapper'
 import { TransactionModel } from '../../../../../shared/model/transaction.model'
 import { PaymentFeeCalculate } from '../payment-fee-calculate'
@@ -47,8 +47,7 @@ export class FeePaymentOperation extends AbstractInteractor<FeePaymentOperationP
     const payerFeeAmount = isPayerFeePayed ? payment.platformFee : Numeric.ZERO
     const clientFeeAmount = isPayerFeePayed ? Numeric.ZERO : payment.platformFee
 
-    const isInternalTransfer =
-      payment.to.account === payment.member.accountId && payment.integration === IntegrationType.INTERNAL
+    const isInternalTransfer = payment.to.account === payment.member.accountId
 
     const basicData: Pick<BalanceChange, 'intentType' | 'intentId' | 'operationType'> = {
       intentType: IntentType.PAYMENT,

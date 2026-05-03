@@ -5,11 +5,13 @@ import { TransferIntentEventModel, TransferIntentEventKeyType } from './transfer
 import { TransferIntentHeldEvent } from '@app/shared/services/external-integration/v1/event/transfer-intent-held.event'
 import { TransferIntentCreateEventModel } from '../../../module/transfer-intent/model/transfer-intent.create-event.model'
 import { TransferIntentHeldEventModel } from '../../../module/transfer-intent/model/transfer-intent-held-event.model'
+import { JsonObject } from '@app/types'
+import { TransferIntentIncomingEventType } from '../../data-source/nats-jetstream/core-jetstream.data-source'
 
 export class TransferIntentConsumerMapper {
   static async validateTransferIntentEvent<T extends TransferIntentEventKeyType>(
     type: T,
-    event: TransferIntentCreateEvent | TransferIntentHeldEvent,
+    event: JsonObject<TransferIntentIncomingEventType>,
   ): Promise<TransferIntentEventModel<T>> {
     if (type === 'create') {
       const instance = plainToInstance(TransferIntentCreateEvent, event, {

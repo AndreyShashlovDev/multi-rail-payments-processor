@@ -19,18 +19,25 @@ export class IntegrationAccountLinkRepositoryMapper {
     integrationAccount: IntegrationAccountEntity,
   ): IntegrationAccountLinkModel {
     return {
-      ...entity, // fixme remove it. need clear mapping
+      id: entity.id,
+      platformAccountId: entity.platformAccountId,
+      userId: entity.userId,
       integrationAccount: IntegrationAccountRepositoryMapper.toDomain(integrationAccount),
       status: IntegrationAccountLinkRepositoryMapper.toDomainStatus(entity.status),
       linkType: IntegrationAccountLinkRepositoryMapper.toDomainType(entity.linkType),
+      createdAt: entity.createdAt,
+      releasedAt: entity.releasedAt,
+      expiresAt: entity.expiresAt,
+      updatedAt: entity.updatedAt,
     }
   }
 
   static fromDomain(model: IntegrationAccountLinkData, manager: EntityManager): IntegrationAccountLinkEntity {
     return manager.create(IntegrationAccountLinkEntity, {
-      ...model,
+      platformAccountId: model.platformAccountId,
+      userId: model.userId,
       integrationAccountId: model.integrationAccount.id,
-      integrationAccount: IntegrationAccountRepositoryMapper.fromDomain(model.integrationAccount, manager),
+      integrationAccount: undefined,
       status: IntegrationAccountLinkRepositoryMapper.fromDomainStatus(model.status),
       linkType: IntegrationAccountLinkRepositoryMapper.fromDomainType(model.linkType),
     })

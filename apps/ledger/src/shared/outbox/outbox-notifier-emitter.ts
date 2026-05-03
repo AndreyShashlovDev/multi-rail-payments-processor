@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common'
 
 @Injectable()
 export class OutboxNotifierEmitter implements OutboxNotifier {
-  public static readonly EMIT_EVENT_NAME = 'outbox.publish'
+  static readonly EMIT_EVENT_NAME = 'outbox.publish'
 
   constructor(private readonly eventEmitter: EventEmitter2) {}
 

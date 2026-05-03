@@ -15,7 +15,7 @@ export interface EthereumMetadata {
 export interface PolygonMetadata extends EthereumMetadata {}
 
 export type IntegrationMetadataModelMap = {
-  [IntegrationType.INTERNAL]: {}
+  [IntegrationType.PLATFORM]: {}
   [IntegrationType.ETHEREUM]: EthereumMetadata
   [IntegrationType.POLYGON]: PolygonMetadata
 }
@@ -48,7 +48,7 @@ export function getTransactionTypedMetadata<T extends IntegrationType>(
   const integrationEntityType = integrationTypeFromDomain(type)
 
   switch (integrationEntityType) {
-    case IntegrationEntityType.INTERNAL:
+    case IntegrationEntityType.PLATFORM:
       return metadata
 
     case IntegrationEntityType.ETHEREUM:

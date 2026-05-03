@@ -7,6 +7,7 @@ import { BalanceChangeEvent } from './balance-event-consumer.types'
 import { BalanceChangeRequestEvent } from '@app/shared/services/ledger/v1'
 import { BalanceEventConsumerMapper } from './balance-event-consumer.mapper'
 import { toError } from '@app/utils'
+import { JsonObject } from '@app/types'
 
 export interface BalanceEventSubscription {
   readonly handler: (msg: BalanceChangeEvent) => Promise<void>
@@ -16,11 +17,11 @@ export interface BalanceEventSubscription {
 export class BalanceEventConsumer implements CoreJetstreamHandler {
   private readonly subscriptions: BalanceEventSubscription[] = []
 
-  constructor(private readonly coreJetstreamDataSource: CoreJetstreamDataSource) {
+  constructor(coreJetstreamDataSource: CoreJetstreamDataSource) {
     coreJetstreamDataSource.setupHandler(this)
   }
 
-  async balanceChangeHandler(event: BalanceChangeRequestEvent): Promise<void> {
+  async balanceChangeHandler(event: JsonObject<BalanceChangeRequestEvent>): Promise<void> {
     const validated = BalanceEventConsumerMapper.validateEvent(event)
     const data = BalanceEventConsumerMapper.toDomain(validated)
 

@@ -11,21 +11,36 @@ import {
 export class EscrowRepositoryMapper {
   static fromDomain(model: EscrowData, manager: EntityManager): EscrowEntity {
     return manager.create(EscrowEntity, {
-      ...model,
       integration: integrationTypeFromDomain(model.integration),
+      platformAccountId: model.platformAccountId,
+      integrationAccount: model.integrationAccount,
+      amount: model.amount,
+      currency: model.currency,
       type: EscrowRepositoryMapper.fromDomainType(model.type),
-      status: EscrowRepositoryMapper.fromDomainStatus(model.status),
       intentType: model.intentType ? intentTypeFromDomain(model.intentType) : null,
+      intentId: model.intentId,
+      status: EscrowRepositoryMapper.fromDomainStatus(model.status),
+      metadata: model.metadata,
+      metadataHash: model.metadataHash,
     })
   }
 
   static toDomain(entity: EscrowEntity): EscrowModel {
     return {
-      ...entity, // fixme remove it. need clear mapping
+      id: entity.id,
       integration: integrationTypeToDomain(entity.integration),
+      platformAccountId: entity.platformAccountId,
+      integrationAccount: entity.integrationAccount,
+      amount: entity.amount,
+      currency: entity.currency,
       type: EscrowRepositoryMapper.toDomainType(entity.type),
-      status: EscrowRepositoryMapper.toDomainStatus(entity.status),
       intentType: entity.intentType ? intentTypeToDomain(entity.intentType) : null,
+      intentId: entity.intentId,
+      status: EscrowRepositoryMapper.toDomainStatus(entity.status),
+      metadata: entity.metadata,
+      metadataHash: entity.metadataHash,
+      createdAt: entity.createdAt,
+      updatedAt: entity.updatedAt,
     }
   }
 

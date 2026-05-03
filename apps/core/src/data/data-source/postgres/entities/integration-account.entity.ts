@@ -17,8 +17,8 @@ export enum IntegrationAccountEntityStatus {
 @Index('idx_integration_account_integration_currency_status', ['integration', 'currency', 'status'])
 @Unique('idx_unique_integration_account_custody_account_id', [...IntegrationAccountEntity.UNIQUE])
 export class IntegrationAccountEntity extends BasicEntity {
-  public static readonly NAME = 'integration_account'
-  public static readonly UNIQUE: ReadonlyArray<keyof IntegrationAccountEntity> = ['custodyAccountId']
+  static readonly NAME = 'integration_account'
+  static readonly UNIQUE: ReadonlyArray<keyof IntegrationAccountEntity> = ['custodyAccountId']
 
   @PrimaryGeneratedColumn({ type: 'bigint' })
   readonly id: Id

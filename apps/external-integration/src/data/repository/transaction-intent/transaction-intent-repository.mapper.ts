@@ -20,11 +20,16 @@ export class TransactionIntentRepositoryMapper {
     transfers: ReadonlyArray<TransferIntentModel>,
   ): TransactionIntentModel {
     return {
-      ...entity, // fixme remove it. need clear mapping
+      id: entity.id,
+      txId: entity.txId,
       integration: integrationTypeToDomain(entity.integration),
       status: TransactionIntentRepositoryMapper.toDomainStatus(entity.status),
-      transfers,
+      nonce: entity.nonce,
       rawData: entity.rawData as unknown as TransactionIntentMetadata,
+      signedData: entity.signedData,
+      transfers,
+      createdAt: entity.createdAt,
+      updatedAt: entity.updatedAt,
     }
   }
 
@@ -33,21 +38,28 @@ export class TransactionIntentRepositoryMapper {
     transfers: ReadonlyArray<TransferIntentEntity>,
   ): TransactionIntentModel {
     return {
-      ...entity, // fixme remove it. need clear mapping
+      id: entity.id,
+      txId: entity.txId,
       integration: integrationTypeToDomain(entity.integration),
       status: TransactionIntentRepositoryMapper.toDomainStatus(entity.status),
-      transfers: transfers.map((transfer) => TransferIntentRepositoryMapper.toDomain(transfer)),
+      nonce: entity.nonce,
       rawData: entity.rawData as unknown as TransactionIntentMetadata,
+      signedData: entity.signedData,
+      transfers: transfers.map((transfer) => TransferIntentRepositoryMapper.toDomain(transfer)),
+      createdAt: entity.createdAt,
+      updatedAt: entity.updatedAt,
     }
   }
 
   static fromDomain(model: TransactionIntentData, manager: EntityManager): TransactionIntentEntity {
     return manager.create(TransactionIntentEntity, {
-      ...model,
+      txId: model.txId,
       integration: integrationTypeFromDomain(model.integration),
       status: TransactionIntentRepositoryMapper.fromDomainStatus(model.status),
-      transfers: model.transfers.map((transfer) => TransferIntentRepositoryMapper.fromDomain(transfer, manager)),
+      nonce: model.nonce,
       rawData: model.rawData as unknown as Record<string, unknown>,
+      signedData: model.signedData,
+      transfers: model.transfers.map((transfer) => TransferIntentRepositoryMapper.fromDomain(transfer, manager)),
     })
   }
 

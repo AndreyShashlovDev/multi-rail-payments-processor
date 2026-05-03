@@ -13,8 +13,7 @@ export class TransferIntentHeldEvent extends BasicEvent {
   readonly intentIds: ReadonlyArray<UUID>
 
   constructor(uniqueKey: string, intentType: IntentType, intentIds: ReadonlyArray<UUID>) {
-    // todo signature!
-    super(uniqueKey, 1, null)
+    super(uniqueKey, 1)
 
     this.intentType = intentType
     this.intentIds = intentIds

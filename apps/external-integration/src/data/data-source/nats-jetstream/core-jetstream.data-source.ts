@@ -1,4 +1,4 @@
-import { TRANSACTION_STREAM, BaseNatsService } from '@app/shared'
+import { TRANSACTION_STREAM, BaseNatsService, SignatureService } from '@app/shared'
 import { Injectable } from '@nestjs/common'
 import type { NatsConfig } from '../../../config'
 import { TransferIntentCreateEvent } from '@app/shared/services/external-integration/v1'
@@ -8,11 +8,15 @@ import {
   TRANSFER_INTENT_STREAM,
 } from '@app/shared/nat-stream/transfer-intent-stream.types'
 import { TransferIntentHeldEvent } from '@app/shared/services/external-integration/v1/event/transfer-intent-held.event'
+import { SignedEnvelopeEvent, JsonObject } from '@app/types'
 
-export type TransferIntentResponseType = TransferIntentCreateEvent | TransferIntentHeldEvent
+export type TransferIntentIncomingEventType = TransferIntentCreateEvent | TransferIntentHeldEvent
 
 export interface CoreJetstreamHandler {
-  transferIntentEventHandler(type: TransferIntentEventType, event: TransferIntentResponseType): Promise<void>
+  transferIntentEventHandler(
+    type: TransferIntentEventType,
+    event: JsonObject<TransferIntentIncomingEventType>,
+  ): Promise<void>
 }
 
 const TRANSFER_INTENT_SUBSCRIPTION_TYPES: ReadonlyArray<TransferIntentEventType> = ['create', 'update', 'held']
@@ -21,7 +25,10 @@ const TRANSFER_INTENT_SUBSCRIPTION_TYPES: ReadonlyArray<TransferIntentEventType>
 export class CoreJetstreamDataSource extends BaseNatsService {
   private handler: CoreJetstreamHandler | null = null
 
-  constructor(config: NatsConfig) {
+  constructor(
+    config: NatsConfig,
+    private readonly signatureService: SignatureService,
+  ) {
     super(config.url)
   }
 
@@ -42,11 +49,16 @@ export class CoreJetstreamDataSource extends BaseNatsService {
     await super.onModuleInit()
 
     for (const type of TRANSFER_INTENT_SUBSCRIPTION_TYPES) {
-      await this.startConsuming<TransferIntentCreateEvent>(transferIntentConsumer(type), async (data) => {
-        if (this.handler) {
-          await this.handler?.transferIntentEventHandler(type, data)
-        }
-      })
+      await this.startConsuming<JsonObject<SignedEnvelopeEvent<TransferIntentIncomingEventType>>>(
+        transferIntentConsumer(type),
+        async (data) => {
+          if (this.handler) {
+            this.signatureService.verifyEnvelop(data)
+
+            await this.handler.transferIntentEventHandler(type, data.meta.payload)
+          }
+        },
+      )
     }
   }
 }

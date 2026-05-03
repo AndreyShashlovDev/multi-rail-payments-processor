@@ -128,6 +128,7 @@ export class DemoFullFlowInteractor extends AbstractInteractor<never, Promise<vo
     }
 
     const payment = await this.createPaymentIntentInteractor.execute({
+      idempotencyKey: randomUUID(),
       operationType: PaymentOperationType.USER_REQUEST,
       platformAccountId: paymentMerchant.id,
       userId: paymentMerchant.owner,
@@ -140,6 +141,7 @@ export class DemoFullFlowInteractor extends AbstractInteractor<never, Promise<vo
     this.logger.debug(`Payment id ${payment.id}`)
 
     const payout = await this.createPayoutIntentInteractor.execute({
+      idempotencyKey: randomUUID(),
       operationType: PayoutOperationType.USER_REQUEST,
       platformMember: {
         accountId: payoutMerchant.id,

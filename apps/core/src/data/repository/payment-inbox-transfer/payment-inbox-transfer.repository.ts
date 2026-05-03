@@ -162,7 +162,8 @@ export class PaymentInboxTransferRepository {
       .createQueryBuilder(PaymentInboxTransferEntity, 'it')
       .where('it.key IN (:...keys)', { keys: [...keys] })
       .andWhere('it.state = :state', { state: PaymentInboxTransferEntityState.BLOCKED })
-      .orderBy('it.tx_id', 'ASC')
+      .orderBy('it.created_at', 'ASC')
+      .addOrderBy('it.tx_id', 'ASC')
       .addOrderBy('it.transfer_id', 'ASC')
       .getMany()
 
@@ -218,6 +219,7 @@ export class PaymentInboxTransferRepository {
       )
       .distinctOn(['it.key'])
       .orderBy('it.key', 'ASC')
+      .addOrderBy('it.created_at', 'ASC')
       .addOrderBy('it.tx_id', 'ASC')
       .addOrderBy('it.transfer_id', 'ASC')
       .getMany()

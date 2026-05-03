@@ -1,5 +1,16 @@
 import { plainToClass } from 'class-transformer'
-import { IsEnum, IsNumber, IsString, IsBoolean, IsOptional, validateSync, Min, Max } from 'class-validator'
+import {
+  IsEnum,
+  IsNumber,
+  IsString,
+  IsBoolean,
+  IsOptional,
+  validateSync,
+  Min,
+  Max,
+  IsJSON,
+  IsNotEmpty,
+} from 'class-validator'
 
 export enum Environment {
   development = 'development',
@@ -7,7 +18,7 @@ export enum Environment {
   test = 'test',
 }
 
-export class EnvironmentVariables {
+class EnvironmentVariables {
   // App
   @IsEnum(Environment)
   @IsOptional()
@@ -16,6 +27,10 @@ export class EnvironmentVariables {
   @IsString()
   @IsOptional()
   readonly SERVICE_NAME: string = 'integration'
+
+  @IsJSON()
+  @IsNotEmpty()
+  readonly SECURE_SIGNATURE_SECRETS: Record<string, string>
 
   @IsNumber()
   @Min(1)

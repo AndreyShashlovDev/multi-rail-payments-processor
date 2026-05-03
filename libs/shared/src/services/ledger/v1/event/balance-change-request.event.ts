@@ -85,7 +85,7 @@ export class BalanceChangeRequestEvent extends BasicEvent {
 
   constructor(uniqueKey: string, integration: IntegrationType, changes: ReadonlyArray<BalanceChangeRequestData>) {
     // todo signature!
-    super(uniqueKey, 1, null)
+    super(uniqueKey, 1)
 
     this.integration = integration
     this.changes = changes

@@ -1,4 +1,4 @@
-import { Controller } from '@nestjs/common'
+import { Controller, Logger } from '@nestjs/common'
 import { UUID } from '@app/types'
 import { ExternalIntegrationConsumer } from '../../../../data/consumer/external-integration/external-integration.consumer'
 import { PayoutInboxTransferRepository } from '../../../../data/repository/payout-inbox-transfer/payout-inbox-transfer.repository'
@@ -9,6 +9,8 @@ import { IntentType } from '@app/shared'
 
 @Controller()
 export class ExternalIntegrationEventListener {
+  private readonly logger: Logger = new Logger(ExternalIntegrationEventListener.name)
+
   constructor(
     readonly externalIntegrationConsumer: ExternalIntegrationConsumer,
     private readonly payoutInboxTransferRepository: PayoutInboxTransferRepository,
@@ -35,6 +37,6 @@ export class ExternalIntegrationEventListener {
       }))
 
     await this.payoutInboxTransferRepository.insertTransfers(intentTransfers)
-    this.processPayoutTransactionInteractor.execute().catch((e) => console.error(e))
+    this.processPayoutTransactionInteractor.execute().catch((e) => this.logger.error(e))
   }
 }

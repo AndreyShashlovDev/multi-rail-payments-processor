@@ -2,7 +2,7 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm'
 import { DatabaseConnectionOptions } from '@app/database/database-options.interface'
 
 export abstract class BaseDatabaseConfig {
-  public static createTypeOrmOptions(options: DatabaseConnectionOptions): TypeOrmModuleOptions {
+  static createTypeOrmOptions(options: DatabaseConnectionOptions): TypeOrmModuleOptions {
     return {
       type: options.type as unknown as undefined,
       name: options.name || 'default',

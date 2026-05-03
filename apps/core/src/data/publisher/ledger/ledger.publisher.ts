@@ -6,6 +6,9 @@ import { BalanceChangeRequestEvent } from '@app/shared/services/ledger/v1'
 import { balanceChangeSubject } from '@app/shared/nat-stream/balance-change-stream.types'
 import { LedgerPublisherMapper } from './ledger-publisher.mapper'
 import { ChangeBalanceData } from './ledger-publisher.types'
+import { validateSync } from 'class-validator'
+import { SignatureService } from '@app/shared/signature/signature.service'
+import { JsonObject } from '@app/types'
 
 @Injectable()
 export class LedgerPublisher {
@@ -14,6 +17,7 @@ export class LedgerPublisher {
   constructor(
     private readonly source: LedgerJetstreamDataSource,
     private readonly outboxRepository: OutboxRepository,
+    private readonly signatureService: SignatureService,
   ) {}
 
   isSupportEvent(event: string): boolean {
@@ -25,7 +29,12 @@ export class LedgerPublisher {
 
     const payload = Array.from(events.entries()).map(([integration, changes]) => {
       const transformed = changes.map((item) => LedgerPublisherMapper.balanceChangeToEvent(item))
-      return new BalanceChangeRequestEvent(`${data.idempotencyKey}:${integration}`, integration, transformed)
+      const item = new BalanceChangeRequestEvent(`${data.idempotencyKey}:${integration}`, integration, transformed)
+
+      const errors = validateSync(item)
+      if (errors.length) throw new Error(`Invalid BalanceChangeRequestEvent structure ${JSON.stringify(errors)}`)
+
+      return item
     })
 
     await this.outboxRepository.create(
@@ -38,9 +47,11 @@ export class LedgerPublisher {
     )
   }
 
-  async publish(data: ReadonlyArray<BalanceChangeRequestEvent>): Promise<void> {
+  async publish(data: ReadonlyArray<JsonObject<BalanceChangeRequestEvent>>): Promise<void> {
     for (const request of data) {
-      await this.source.publish(balanceChangeSubject(request.integration), request)
+      const envelope = this.signatureService.createSignedEnvelop(request)
+
+      await this.source.publish(balanceChangeSubject(request.integration), envelope)
     }
   }
 }

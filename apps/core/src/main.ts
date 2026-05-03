@@ -12,4 +12,6 @@ async function bootstrap() {
   await app.listen(appConfig.http.port)
 }
 
-bootstrap()
+bootstrap().catch((e) => {
+  throw e
+})

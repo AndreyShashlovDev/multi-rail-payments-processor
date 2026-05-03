@@ -26,7 +26,7 @@ export type PayoutIntentEntityMetadata = Record<string, unknown>
 @Entity({ name: PayoutIntentEntity.NAME, schema: APP_SCHEMA })
 @Index('idx_payout_intent_status', ['status'])
 export class PayoutIntentEntity extends BasicEntity {
-  public static readonly NAME = 'payout_intent'
+  static readonly NAME = 'payout_intent'
 
   @PrimaryGeneratedColumn('uuid')
   readonly id: UUID

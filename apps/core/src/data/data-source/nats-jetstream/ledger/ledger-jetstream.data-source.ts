@@ -1,19 +1,23 @@
-import { BaseNatsService } from '@app/shared'
+import { BaseNatsService, SignatureService } from '@app/shared'
 import { Injectable } from '@nestjs/common'
 import type { NatsConfig } from '../../../../config'
 import { BALANCE_CHANGE_STREAM } from '@app/shared/nat-stream/balance-change-stream.types'
 import { BALANCE_UPDATED_CONSUMER, BALANCE_UPDATED_STREAM } from '@app/shared/nat-stream/balance-updated-stream.types'
 import { BalanceUpdatedEvent } from '@app/shared/services/ledger/v1'
+import { JsonObject, SignedEnvelopeEvent } from '@app/types'
 
 export interface LedgerJetstreamHandler {
-  balanceUpdatedEventHandler(event: BalanceUpdatedEvent): Promise<void>
+  balanceUpdatedEventHandler(event: JsonObject<BalanceUpdatedEvent>): Promise<void>
 }
 
 @Injectable()
 export class LedgerJetstreamDataSource extends BaseNatsService {
   private handler: LedgerJetstreamHandler | null = null
 
-  constructor(config: NatsConfig) {
+  constructor(
+    config: NatsConfig,
+    private readonly signatureService: SignatureService,
+  ) {
     super(config.url)
   }
 
@@ -31,10 +35,15 @@ export class LedgerJetstreamDataSource extends BaseNatsService {
   async onModuleInit(): Promise<void> {
     await super.onModuleInit()
 
-    await this.startConsuming<BalanceUpdatedEvent>(BALANCE_UPDATED_CONSUMER, async (data) => {
-      if (this.handler) {
-        await this.handler?.balanceUpdatedEventHandler(data)
-      }
-    })
+    await this.startConsuming<JsonObject<SignedEnvelopeEvent<BalanceUpdatedEvent>>>(
+      BALANCE_UPDATED_CONSUMER,
+      async (data) => {
+        if (this.handler) {
+          this.signatureService.verifyEnvelop(data)
+
+          await this.handler.balanceUpdatedEventHandler(data.meta.payload)
+        }
+      },
+    )
   }
 }

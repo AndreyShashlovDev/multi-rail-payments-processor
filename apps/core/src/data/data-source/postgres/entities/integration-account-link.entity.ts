@@ -21,7 +21,7 @@ export enum LinkEntityType {
 @Index('idx_integration_account_link_integration_account_id_status', ['integrationAccountId', 'status'])
 @Index('idx_integration_account_link_platform_account_id', ['platformAccountId'])
 export class IntegrationAccountLinkEntity extends BasicEntity {
-  public static readonly NAME = 'integration_account_link'
+  static readonly NAME = 'integration_account_link'
 
   @PrimaryGeneratedColumn({ type: 'bigint' })
   readonly id: Id

@@ -6,7 +6,8 @@ import { transferIntentSubject } from '@app/shared/nat-stream/transfer-intent-st
 import { TransferIntentHeldEvent } from '@app/shared/services/external-integration/v1/event/transfer-intent-held.event'
 import { TransferIntentCreateEvent } from '@app/shared/services/external-integration/v1'
 import { Numeric } from '@app/types'
-import { TxContext } from '@app/shared'
+import { TxContext, SignatureService } from '@app/shared'
+import { validateSync } from 'class-validator'
 
 @Injectable()
 export class ExternalIntegrationPublisher {
@@ -15,6 +16,7 @@ export class ExternalIntegrationPublisher {
   constructor(
     private readonly integrationJetstreamDataSource: IntegrationJetstreamDataSource,
     private readonly outboxRepository: OutboxRepository,
+    private readonly signatureService: SignatureService,
   ) {}
 
   isTransferCreateEvent(event: string): boolean {
@@ -48,6 +50,7 @@ export class ExternalIntegrationPublisher {
       transfer.intentId,
       transfer.intentId,
       transfer.intentType,
+      transfer.exchangeType,
       estimatedFee,
       transfer.feeCurrency,
       fromAmount,
@@ -59,6 +62,9 @@ export class ExternalIntegrationPublisher {
       transfer.toCurrency,
       transfer.to,
     )
+
+    const errors = validateSync(payload)
+    if (errors.length) throw new Error(`Invalid TransferIntentCreateEvent structure ${JSON.stringify(errors)}`)
 
     await this.outboxRepository.create(
       {
@@ -88,10 +94,14 @@ export class ExternalIntegrationPublisher {
   }
 
   async publishTransferCreate(data: TransferIntentCreateEvent): Promise<void> {
-    await this.integrationJetstreamDataSource.publish(transferIntentSubject('create'), data)
+    const envelope = this.signatureService.createSignedEnvelop(data)
+
+    await this.integrationJetstreamDataSource.publish(transferIntentSubject('create'), envelope)
   }
 
   async publishTransferHeld(data: TransferIntentHeldEvent): Promise<void> {
-    await this.integrationJetstreamDataSource.publish(transferIntentSubject('held'), data)
+    const envelope = this.signatureService.createSignedEnvelop(data)
+
+    await this.integrationJetstreamDataSource.publish(transferIntentSubject('held'), envelope)
   }
 }

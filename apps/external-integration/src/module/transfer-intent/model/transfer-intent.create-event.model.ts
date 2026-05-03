@@ -1,9 +1,10 @@
 import { UUID, IntegrationCurrency, IntegrationAccount, RawNumeric } from '@app/types'
-import { IntentType, IntegrationType } from '@app/shared'
+import { IntentType, IntegrationType, ExchangeType } from '@app/shared'
 
 export interface TransferIntentCreateEventModel {
   readonly intentId: UUID
   readonly intentType: IntentType
+  readonly exchangeType: ExchangeType
   readonly estimatedRawFee: RawNumeric
   readonly feeCurrency: IntegrationCurrency
   readonly fromRawAmount: RawNumeric

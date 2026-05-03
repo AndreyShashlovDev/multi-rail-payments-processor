@@ -3,11 +3,11 @@ import { plainToInstance } from 'class-transformer'
 import { validateSync } from 'class-validator'
 import { TransactionModel } from '../../../shared/model/transaction.model'
 import { TransferModel } from '../../../shared/model/transfer.model'
-import { IntegrationCurrency, Numeric } from '@app/types'
+import { IntegrationCurrency, Numeric, JsonObject } from '@app/types'
 import { IntegrationType } from '@app/shared'
 
 export class ExternalIntegrationConsumerMapper {
-  static transactionEventValidate<T extends TransactionEvent>(event: T): TransactionEvent {
+  static transactionEventValidate(event: JsonObject<TransactionEvent>): TransactionEvent {
     // check by event.ver
     const instance = plainToInstance(TransactionEvent, event, {
       exposeDefaultValues: true,
@@ -46,7 +46,7 @@ export class ExternalIntegrationConsumerMapper {
       status: event.status,
       feeCurrency: event.feeCurrency,
       fee,
-      executedAt: event.executedDate,
+      executedAt: event.executedDate ? new Date(event.executedDate) : null,
       transfers,
     }
   }

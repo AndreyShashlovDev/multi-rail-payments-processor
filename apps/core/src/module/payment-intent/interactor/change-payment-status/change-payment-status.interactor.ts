@@ -11,7 +11,7 @@ import { InboxRepository } from '../../../../data/repository/inbox/inbox.reposit
 import { ReceiptRepository } from '../../../../data/repository/receipt/receipt.repository'
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { PaymentReceiptData } from '../../model/payment-receipt.model'
-import { FinalizePaymentOperation } from '../operation/finalize-payment.operation'
+import { FinalizePaymentOperation } from '../operation/finalize-payment/finalize-payment.operation'
 import { BalanceUpdatedResult } from '../../../../data/consumer/ledger/ledger-consumer.types'
 
 export interface ChangePaymentStatusParams {

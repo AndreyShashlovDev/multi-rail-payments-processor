@@ -1,11 +1,11 @@
 import { BalanceChangeRequestEvent } from '@app/shared/services/ledger/v1'
 import { BalanceChangeEvent } from './balance-event-consumer.types'
-import { Numeric } from '@app/types'
+import { Numeric, JsonObject } from '@app/types'
 import { plainToInstance } from 'class-transformer'
 import { validateSync } from 'class-validator'
 
 export class BalanceEventConsumerMapper {
-  static validateEvent(event: BalanceChangeRequestEvent): BalanceChangeRequestEvent {
+  static validateEvent(event: JsonObject<BalanceChangeRequestEvent>): BalanceChangeRequestEvent {
     const instance = plainToInstance(BalanceChangeRequestEvent, event, {
       exposeDefaultValues: true,
     })

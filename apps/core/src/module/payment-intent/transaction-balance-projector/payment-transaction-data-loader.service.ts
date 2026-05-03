@@ -160,7 +160,7 @@ export class PaymentTransactionDataLoader {
 
     const result = await this.accountRepository.getByIds(new Set(uuids), ctx)
 
-    return new Map(result.map((account) => [IntegrationAccount.create(IntegrationType.INTERNAL, account.id), account]))
+    return new Map(result.map((account) => [IntegrationAccount.create(IntegrationType.PLATFORM, account.id), account]))
   }
 
   private async loadPaymentAccumulatedAmounts(

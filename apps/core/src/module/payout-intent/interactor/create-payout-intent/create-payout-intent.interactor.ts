@@ -3,7 +3,7 @@ import { PayoutIntentModel, PayoutOperationType } from '../../model/payout-inten
 import { PayoutIntentRepository } from '../../../../data/repository/payout-intent/payout-intent.repository'
 import { LedgerRepository } from '../../../../data/repository/ledger/ledger.repository'
 import { Injectable } from '@nestjs/common'
-import { IntegrationType, IntentType, Balance, OutboxTxContextRunner } from '@app/shared'
+import { IntegrationType, IntentType, Balance, OutboxTxContextRunner, ExchangeType } from '@app/shared'
 import { PlatformFeeProvider, PlatformFeeProviderResult } from '../../../../shared/platform-fee/platform-fee.provider'
 import {
   CurrencyConverterProvider,
@@ -22,8 +22,11 @@ import {
 import { ExternalIntegrationPublisher } from '../../../../data/publisher/external-integration/external-integration.publisher'
 import { ExternalIntegrationRepository } from '../../../../data/repository/external-integration/external-integration.repository'
 import { CurrencyRepository } from '../../../../data/repository/currency/currency.repository'
+import { InboxRepository } from '../../../../data/repository/inbox/inbox.repository'
+import { DuplicateRequestException } from '../../../../shared/exception/duplicate-request.exception'
 
 export interface CreatePayoutIntentParams {
+  readonly idempotencyKey: string
   readonly operationType: PayoutOperationType
 
   readonly platformMember: PlatformMemberModel
@@ -50,6 +53,7 @@ export class CreatePayoutIntentInteractor extends AbstractInteractor<
     private readonly currencyConverterProvider: CurrencyConverterProvider,
     private readonly integrationAccountLinkRepository: IntegrationAccountLinkRepository,
     private readonly currencyRepository: CurrencyRepository,
+    private readonly inboxRepository: InboxRepository,
   ) {
     super()
   }
@@ -61,7 +65,17 @@ export class CreatePayoutIntentInteractor extends AbstractInteractor<
     return await this.txRunner
       .create<PayoutIntentModel>()
       .pipeline(async (ctx) => {
-        // todo idempotencyKey check need
+        const isUniqueRequest = await this.inboxRepository.create(
+          {
+            serviceName: CreatePayoutIntentInteractor.name,
+            idempotencyKey: params.idempotencyKey,
+          },
+          ctx,
+        )
+
+        if (!isUniqueRequest) {
+          throw new DuplicateRequestException(params.idempotencyKey)
+        }
 
         const pendingAmount = await this.payoutIntentRepository.acquireLockAndGetPendingAmount(
           {
@@ -79,7 +93,7 @@ export class CreatePayoutIntentInteractor extends AbstractInteractor<
           {
             operationType: params.operationType,
             member: params.platformMember,
-            from, // get platfromAccount (hot account)
+            from, // get platformAccount (hot account) or platform account
             fromAmount: params.amount,
             fromCurrency: params.fromCurrency,
             fromIntegration: params.fromIntegration,
@@ -105,6 +119,7 @@ export class CreatePayoutIntentInteractor extends AbstractInteractor<
             transfer: {
               intentId: payout.id,
               intentType: IntentType.PAYOUT,
+              exchangeType: ExchangeType.NATIVE,
               estimatedFee: convertIntegrationFee.from.amount,
               feeCurrency: convertIntegrationFee.from.currency,
               fromAmount: payout.fromAmount,

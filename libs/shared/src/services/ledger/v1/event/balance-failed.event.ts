@@ -1,5 +1,5 @@
 import { IsArray } from 'class-validator'
-import { BalanceUpdatedEvent, BalanceUpdatedData } from './balance-updated.event'
+import { BalanceUpdatedEvent, BalanceUpdatedDataEvent } from './balance-updated.event'
 import { IntegrationAccount, UUID, Numeric } from '@app/types'
 
 export type BalanceApplyError =
@@ -19,8 +19,11 @@ export class BalanceFailedEvent extends BalanceUpdatedEvent {
   @IsArray()
   readonly error: ReadonlyArray<BalanceApplyError>
 
-  constructor(uniqueKey: string, changes: ReadonlyArray<BalanceUpdatedData>, error: ReadonlyArray<BalanceApplyError>) {
-    // todo signature!
+  constructor(
+    uniqueKey: string,
+    changes: ReadonlyArray<BalanceUpdatedDataEvent>,
+    error: ReadonlyArray<BalanceApplyError>,
+  ) {
     super(uniqueKey, changes)
     this.error = error
   }

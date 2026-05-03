@@ -18,7 +18,7 @@ import { OutboxEntity } from './entities/outbox.entity'
 export const APP_SCHEMA = 'external_integration'
 
 export class IntegrationPostgresConfig extends BaseDatabaseConfig {
-  public static readonly DATASOURCE_NAME = 'integration'
+  static readonly DATASOURCE_NAME = 'integration'
 
   static getTypeOrmConfig(configService?: PostgresConfig): TypeOrmModuleOptions {
     const dbConfig = configService ? configService : this.getEnvConfig()

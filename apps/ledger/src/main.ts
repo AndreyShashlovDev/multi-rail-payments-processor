@@ -37,4 +37,6 @@ async function bootstrap() {
   logger.log(`HTTP server listening on port ${httpPort}`)
 }
 
-bootstrap()
+bootstrap().catch((e) => {
+  throw e
+})

@@ -15,7 +15,7 @@ export class TransactionEventPublisherMapper {
       model.transfers.map((item) => TransactionEventPublisherMapper.transferToTransferData(item)),
       model.fee?.toString() ?? null,
       model.feeCurrency,
-      model.blockTime,
+      model.blockTime?.toISOString() ?? null,
     )
   }
 

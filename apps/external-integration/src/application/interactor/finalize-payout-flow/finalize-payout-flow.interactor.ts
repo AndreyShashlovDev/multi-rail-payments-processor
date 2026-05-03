@@ -14,7 +14,7 @@ import { randomBytes } from 'node:crypto'
 // todo remove it in real project! just for example. simulation finalize tx
 @Injectable()
 export class FinalizePayoutFlowInteractor extends AbstractInteractor<never, Promise<void>> {
-  private readonly logger: Logger = new Logger()
+  private readonly logger: Logger = new Logger(FinalizePayoutFlowInteractor.name)
 
   constructor(
     private readonly txRunner: OutboxTxContextRunner,

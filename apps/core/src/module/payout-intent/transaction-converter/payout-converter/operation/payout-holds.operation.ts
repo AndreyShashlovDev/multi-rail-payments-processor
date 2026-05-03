@@ -5,7 +5,7 @@ import {
   PayoutBalanceChangeMetadata,
 } from '@app/shared/types/balance-change'
 import { Id, AbstractInteractor } from '@app/types'
-import { IntentType, BalanceChangeType, IntegrationType } from '@app/shared'
+import { IntentType, BalanceChangeType } from '@app/shared'
 import { PayoutIntentModel } from '../../../model/payout-intent.model'
 import { OperationTypeMapper } from '../../../../../shared/projection/operation-type.mapper'
 import { TransactionModel } from '../../../../../shared/model/transaction.model'
@@ -24,8 +24,7 @@ export class PayoutHoldsOperation extends AbstractInteractor<
     const { payout, transferIds, tx } = params
 
     const optionalHolds: BalanceChange<PayoutBalanceChangeMetadata>[] = []
-    const isInternalTransfer =
-      payout.member.accountId === payout.from.account && payout.fromIntegration === IntegrationType.INTERNAL
+    const isInternalTransfer = payout.member.accountId === payout.from.account
 
     const amountIntegrationAccount = isInternalTransfer ? null : payout.from.account
     const platformFeeIntegrationAccount = isInternalTransfer ? null : payout.from.account

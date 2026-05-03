@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm'
 
-export class Migration1777195295658 implements MigrationInterface {
-  name = 'Migration1777195295658'
+export class Migration1777806611608 implements MigrationInterface {
+  name = 'Migration1777806611608'
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
@@ -23,7 +23,7 @@ export class Migration1777195295658 implements MigrationInterface {
       `CREATE INDEX "idx_transaction_intent_status" ON "external_integration"."transaction_intent" ("status") `,
     )
     await queryRunner.query(
-      `CREATE TABLE "external_integration"."transfer_intent" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" BIGSERIAL NOT NULL, "intent_type" smallint NOT NULL, "intent_id" text NOT NULL, "estimated_raw_fee" text NOT NULL, "fee_currency" text NOT NULL, "from_account" text NOT NULL, "from_raw_amount" text NOT NULL, "from_currency" text NOT NULL, "from_integration" smallint NOT NULL, "to_account" text NOT NULL, "to_raw_amount" text NOT NULL, "to_currency" text NOT NULL, "to_integration" smallint NOT NULL, "status" smallint NOT NULL, "metadata" jsonb, "transaction_intent_id" bigint, CONSTRAINT "idx_unique_transfer_intent_intenttype_intentid" UNIQUE ("intent_type", "intent_id"), CONSTRAINT "PK_f72f801793b62aba3858f923bfd" PRIMARY KEY ("id"))`,
+      `CREATE TABLE "external_integration"."transfer_intent" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" BIGSERIAL NOT NULL, "intent_type" smallint NOT NULL, "intent_id" text NOT NULL, "exchange_type" smallint NOT NULL, "estimated_raw_fee" text NOT NULL, "fee_currency" text NOT NULL, "from_account" text NOT NULL, "from_raw_amount" text NOT NULL, "from_currency" text NOT NULL, "from_integration" smallint NOT NULL, "to_account" text NOT NULL, "to_raw_amount" text NOT NULL, "to_currency" text NOT NULL, "to_integration" smallint NOT NULL, "status" smallint NOT NULL, "metadata" jsonb, "transaction_intent_id" bigint, CONSTRAINT "idx_unique_transfer_intent_intenttype_intentid" UNIQUE ("intent_type", "intent_id"), CONSTRAINT "PK_f72f801793b62aba3858f923bfd" PRIMARY KEY ("id"))`,
     )
     await queryRunner.query(
       `CREATE INDEX "idx_transfer_intent_transaction_intent_id" ON "external_integration"."transfer_intent" ("transaction_intent_id") `,

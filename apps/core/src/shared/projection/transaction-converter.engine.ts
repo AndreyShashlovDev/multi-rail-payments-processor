@@ -40,7 +40,7 @@ export class TransactionConverterEngine<T extends TransactionContext = Transacti
       const result = matcher.execute(currentContext)
       currentContext = result.context as T
 
-      this.logger.log(`Apply matcher ${matcher.name}`)
+      this.logger.debug(`Apply matcher ${matcher.name}`)
       allChanges.push(...result.changes)
     }
 

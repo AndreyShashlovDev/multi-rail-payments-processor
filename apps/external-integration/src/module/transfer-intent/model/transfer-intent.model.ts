@@ -1,5 +1,5 @@
 import type { UUID, IntegrationCurrency, IntegrationAccount, Id, RawNumeric } from '@app/types'
-import { IntentType, IntegrationType } from '@app/shared'
+import { IntentType, IntegrationType, ExchangeType } from '@app/shared'
 
 export enum TransferIntentStatus {
   CREATED = 'CREATED',
@@ -14,6 +14,7 @@ export enum TransferIntentStatus {
 export interface TransferIntentData {
   readonly intentId: UUID | Id
   readonly intentType: IntentType
+  readonly exchangeType: ExchangeType
   readonly estimatedRawFee: RawNumeric
   readonly feeCurrency: IntegrationCurrency
   readonly fromRawAmount: RawNumeric

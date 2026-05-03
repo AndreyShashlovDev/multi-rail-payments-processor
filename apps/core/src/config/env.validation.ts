@@ -10,6 +10,8 @@ import {
   Max,
   IsInt,
   IsPositive,
+  IsJSON,
+  IsNotEmpty,
 } from 'class-validator'
 
 export enum Environment {
@@ -18,98 +20,102 @@ export enum Environment {
   test = 'test',
 }
 
-export class EnvironmentVariables {
+class EnvironmentVariables {
   @IsEnum(Environment)
   @IsOptional()
-  NODE_ENV: Environment = Environment.development
+  readonly NODE_ENV: Environment = Environment.development
 
   @IsString()
   @IsOptional()
-  SERVICE_NAME: string = 'core'
+  readonly SERVICE_NAME: string = 'core'
+
+  @IsJSON()
+  @IsNotEmpty()
+  readonly SECURE_SIGNATURE_SECRETS: Record<string, string>
 
   @IsNumber()
   @Min(1)
   @Max(65535)
   @IsOptional()
-  HTTP_PORT: number = 3003
+  readonly HTTP_PORT: number = 3003
 
   // Database
   @IsString()
   @IsOptional()
-  DB_HOST: string = 'localhost'
+  readonly DB_HOST: string = 'localhost'
 
   @IsNumber()
   @Min(1)
   @Max(65535)
   @IsOptional()
-  DB_PORT: number = 5432
+  readonly DB_PORT: number = 5432
 
   @IsString()
   @IsOptional()
-  DB_USERNAME: string = 'postgres'
+  readonly DB_USERNAME: string = 'postgres'
 
   @IsString()
   @IsOptional()
-  DB_PASSWORD: string = 'postgres'
+  readonly DB_PASSWORD: string = 'postgres'
 
   @IsString()
   @IsOptional()
-  DB_DATABASE: string = 'eventsourcing'
+  readonly DB_DATABASE: string = 'eventsourcing'
 
   @IsString()
   @IsOptional()
-  DB_SCHEMA: string = 'core'
+  readonly DB_SCHEMA: string = 'core'
 
   @IsBoolean()
   @IsOptional()
-  DB_SSL: boolean = false
+  readonly DB_SSL: boolean = false
 
   @IsBoolean()
   @IsOptional()
-  DB_LOGGING: boolean = false
+  readonly DB_LOGGING: boolean = false
 
   // NATS
   @IsString()
-  NATS_URL: string
+  readonly NATS_URL: string
 
   @IsString()
-  NATS_CLIENT_NAME: string
+  readonly NATS_CLIENT_NAME: string
 
   // gRPC
   @IsString()
   @IsOptional()
-  GRPC_HOST: string = '0.0.0.0'
+  readonly GRPC_HOST: string = '0.0.0.0'
 
   @IsNumber()
   @Min(1)
   @Max(65535)
   @IsOptional()
-  GRPC_PORT: number = 50051
+  readonly GRPC_PORT: number = 50051
 
   @IsNumber()
   @IsOptional()
-  GRPC_MAX_RECEIVE_MESSAGE_LENGTH: number = 4 * 1024 * 1024
+  readonly GRPC_MAX_RECEIVE_MESSAGE_LENGTH: number = 4 * 1024 * 1024
 
   @IsNumber()
   @IsOptional()
-  GRPC_MAX_SEND_MESSAGE_LENGTH: number = 4 * 1024 * 1024
+  readonly GRPC_MAX_SEND_MESSAGE_LENGTH: number = 4 * 1024 * 1024
 
   @IsString()
   @IsOptional()
-  LOG_LEVEL: string = 'info'
+  readonly LOG_LEVEL: string = 'info'
 
   @IsString()
-  LEDGER_GRPC_URL: string
+  readonly LEDGER_GRPC_URL: string
 
   @IsInt()
   @IsPositive()
-  LEDGER_GRPC_TIMEOUT: number
+  readonly LEDGER_GRPC_TIMEOUT: number
 
   @IsInt()
-  LEDGER_GRPC_RETRIES: number
+  readonly LEDGER_GRPC_RETRIES: number
 
   @IsBoolean()
-  LEDGER_GRPC_USE_SSL: boolean
+  readonly LEDGER_GRPC_USE_SSL: boolean
 }
 
 export function validate(config: Record<string, unknown>) {

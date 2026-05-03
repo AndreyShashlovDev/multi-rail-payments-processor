@@ -1,9 +1,9 @@
 import { Numeric, UUID } from '@app/types'
-import { DestinationIntegrationAccount } from '../../../shared/model/composite-integration-account.model'
+import { ExternalIntegrationAccount } from '../../../shared/model/composite-integration-account.model'
 
 export interface MarkPreparedData {
   readonly id: UUID
-  readonly integrationFeePayer: DestinationIntegrationAccount
+  readonly integrationFeePayer: ExternalIntegrationAccount
   readonly integrationFee: Numeric | null
 }
 

@@ -17,7 +17,7 @@ import { OutboxEntity } from './entities/outbox.entity'
 export const APP_SCHEMA = 'ledger'
 
 export class LedgerPostgresConfig extends BaseDatabaseConfig {
-  public static readonly DATASOURCE_NAME = 'ledger'
+  static readonly DATASOURCE_NAME = 'ledger'
 
   static getTypeOrmConfig(configService?: PostgresConfig): TypeOrmModuleOptions {
     const dbConfig = configService ? configService : this.getEnvConfig()

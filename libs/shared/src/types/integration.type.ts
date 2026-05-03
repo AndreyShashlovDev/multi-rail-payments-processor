@@ -1,19 +1,19 @@
 export enum IntegrationEntityType {
-  INTERNAL = 1,
+  PLATFORM = 1,
   ETHEREUM = 2,
   POLYGON = 3,
 }
 
 export enum IntegrationType {
-  INTERNAL = 'INTERNAL',
+  PLATFORM = 'PLATFORM',
   ETHEREUM = 'ETHEREUM',
   POLYGON = 'POLYGON',
 }
 
 export function integrationTypeToDomain(integration: IntegrationEntityType): IntegrationType {
   switch (integration) {
-    case IntegrationEntityType.INTERNAL:
-      return IntegrationType.INTERNAL
+    case IntegrationEntityType.PLATFORM:
+      return IntegrationType.PLATFORM
     case IntegrationEntityType.ETHEREUM:
       return IntegrationType.ETHEREUM
     case IntegrationEntityType.POLYGON:
@@ -28,8 +28,8 @@ export function integrationTypeToDomain(integration: IntegrationEntityType): Int
 
 export function integrationTypeFromDomain(integration: IntegrationType): IntegrationEntityType {
   switch (integration) {
-    case IntegrationType.INTERNAL:
-      return IntegrationEntityType.INTERNAL
+    case IntegrationType.PLATFORM:
+      return IntegrationEntityType.PLATFORM
     case IntegrationType.ETHEREUM:
       return IntegrationEntityType.ETHEREUM
     case IntegrationType.POLYGON:

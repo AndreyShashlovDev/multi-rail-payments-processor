@@ -3,7 +3,7 @@ import { PayoutOperationType } from '../../module/payout-intent/model/payout-int
 import { BalanceChangeOperationType } from '@app/shared/types/balance-change'
 
 export class OperationTypeMapper {
-  public static toBalanceChange(operation: PaymentOperationType | PayoutOperationType): BalanceChangeOperationType {
+  static toBalanceChange(operation: PaymentOperationType | PayoutOperationType): BalanceChangeOperationType {
     switch (operation) {
       case PaymentOperationType.USER_REQUEST:
       case PayoutOperationType.USER_REQUEST:

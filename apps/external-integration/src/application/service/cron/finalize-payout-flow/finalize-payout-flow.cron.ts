@@ -15,10 +15,9 @@ export class FinalizePayoutFlowCron implements OnModuleDestroy {
   private static readonly task: Set<string> = new Set()
   private static gracefulShutdown: boolean = false
 
-  constructor(
-    private readonly logger: Logger,
-    private readonly finalizePayoutFlowInteractor: FinalizePayoutFlowInteractor,
-  ) {
+  private readonly logger: Logger = new Logger(FinalizePayoutFlowCron.name)
+
+  constructor(private readonly finalizePayoutFlowInteractor: FinalizePayoutFlowInteractor) {
     this.logger.fatal('Enabled FinalizePayoutFlowCron! Remove it!')
   }
 

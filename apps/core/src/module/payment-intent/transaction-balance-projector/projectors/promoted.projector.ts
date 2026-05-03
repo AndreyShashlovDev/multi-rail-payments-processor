@@ -1,9 +1,10 @@
 import { BalanceChange } from '@app/shared/types/balance-change'
 import { TransactionBalanceProjector } from '../../../../shared/projection/transaction-balance-projector'
+import { TransactionModel } from '../../../../shared/model/transaction.model'
+import { TxContext } from '@app/shared'
 
 export class PromotedProjector implements TransactionBalanceProjector {
-  async process(): Promise<ReadonlyArray<BalanceChange>> {
-    console.log('Promoted Projector')
+  async process(_data: TransactionModel, _ctx: TxContext): Promise<ReadonlyArray<BalanceChange>> {
     return []
   }
 }

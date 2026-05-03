@@ -2,27 +2,22 @@ import { Injectable } from '@nestjs/common'
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { InboxEntity } from '../../data-source/postgres/entities/inbox.entity'
 import { CreateInboxData } from './inbox-repository.types'
-import { InjectDataSource } from '@nestjs/typeorm'
-import { CorePostgresConfig } from '../../data-source/postgres/core-postgres.config'
-import { DataSource } from 'typeorm'
+import { QueryFailedError } from 'typeorm'
+import { DatabaseError } from 'pg'
 
 @Injectable()
 export class InboxRepository {
-  constructor(
-    @InjectDataSource(CorePostgresConfig.DATASOURCE_NAME)
-    private readonly datasource: DataSource,
-  ) {}
-
-  async create(data: CreateInboxData, ctx?: TxContext): Promise<boolean> {
-    const em = ctx?.em ?? this.datasource.manager
-
+  async create(data: CreateInboxData, ctx: TxContext): Promise<boolean> {
     try {
-      await em.insert(InboxEntity, em.create(InboxEntity, data))
+      await ctx.em.insert(InboxEntity, ctx.em.create(InboxEntity, data))
       return true
-    } catch {
-      // ignore error
-    }
+    } catch (e) {
+      // PostgreSQL unique violation code
+      if (e instanceof QueryFailedError && e.driverError instanceof DatabaseError && e.driverError.code === '23505') {
+        return false
+      }
 
-    return false
+      throw e
+    }
   }
 }

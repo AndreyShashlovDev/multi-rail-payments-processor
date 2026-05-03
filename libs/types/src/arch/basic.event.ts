@@ -1,4 +1,4 @@
-import { IsString, IsInt, IsOptional } from 'class-validator'
+import { IsString, IsInt } from 'class-validator'
 
 export class BasicEvent {
   @IsString()
@@ -7,16 +7,8 @@ export class BasicEvent {
   @IsInt()
   readonly ver: number
 
-  /**
-   * signature for check data of event with sign of service
-   */
-  @IsString()
-  @IsOptional()
-  readonly signature: string | null
-
-  constructor(uniqueKey: string, ver: number, signature: string | null) {
+  constructor(uniqueKey: string, ver: number) {
     this.uniqueKey = uniqueKey
     this.ver = ver
-    this.signature = signature
   }
 }

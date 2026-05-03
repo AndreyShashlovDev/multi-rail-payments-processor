@@ -2,17 +2,27 @@ import { AbstractInteractor } from '@app/types'
 import { Injectable, Logger } from '@nestjs/common'
 import { TransactionBalanceProjectorStrategy } from '../../../../shared/projection/transaction-balance-projector.strategy'
 import { OutboxTxContextRunner } from '@app/shared'
-import { BalanceChange } from '@app/shared/types/balance-change'
+import { BalanceChange, PayoutBalanceChangeMetadata } from '@app/shared/types/balance-change'
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { PayoutInboxTransferRepository } from '../../../../data/repository/payout-inbox-transfer/payout-inbox-transfer.repository'
 import { PayoutInboxTransferModel } from '../../model/payout-inbox-transfer.model'
-import { randomUUID } from 'node:crypto'
+import { createHash } from 'node:crypto'
 import { PayoutTransactionHandlerStrategy } from '../../transaction-handler/transaction-handler.module'
 import { LedgerPublisher } from '../../../../data/publisher/ledger/ledger.publisher'
 
 interface TransferAppyResult {
   readonly success: boolean
-  readonly balanceChanges: ReadonlyArray<BalanceChange>
+  readonly balanceChanges: ReadonlyArray<BalanceChange<PayoutBalanceChangeMetadata>>
+}
+
+interface ProcessResult {
+  readonly source: PayoutInboxTransferModel
+  readonly balanceChanges: ReadonlyArray<BalanceChange<PayoutBalanceChangeMetadata>>
+}
+
+interface GroupedResult {
+  readonly idempotencyKey: string
+  readonly balanceChanges: ReadonlyArray<BalanceChange<PayoutBalanceChangeMetadata>>
 }
 
 @Injectable()
@@ -33,7 +43,7 @@ export class ProcessPayoutTransactionInteractor extends AbstractInteractor<never
 
   async execute(): Promise<void> {
     if (ProcessPayoutTransactionInteractor.RUNNING_PROCESS) {
-      this.logger.log(`Skip! ${ProcessPayoutTransactionInteractor.name} Already running!`)
+      this.logger.warn(`Skip! ${ProcessPayoutTransactionInteractor.name} Already running!`)
       return
     }
 
@@ -42,7 +52,6 @@ export class ProcessPayoutTransactionInteractor extends AbstractInteractor<never
       await this.txRunner
         .create()
         .pipeline(async (ctx) => {
-          // todo use inbox before!
           const availableKeys = await this.payoutInboxTransferRepository.findAndLockAvailableKeys(
             { integration: null },
             ctx,
@@ -52,17 +61,22 @@ export class ProcessPayoutTransactionInteractor extends AbstractInteractor<never
             return
           }
 
-          const changes: BalanceChange[] = []
+          const processResults: ProcessResult[] = []
 
           const blocked = await this.payoutInboxTransferRepository.findBlocked(availableKeys, ctx)
-          changes.push(...(await this.process(blocked, ctx)))
+          processResults.push(...(await this.process(blocked, ctx)))
 
           const created = await this.payoutInboxTransferRepository.findNextCreated(availableKeys, ctx)
-          changes.push(...(await this.process(created, ctx)))
+          processResults.push(...(await this.process(created, ctx)))
 
-          if (changes.length > 0) {
-            // fixme write to outbox and fix idempotencyKey
-            await this.ledgerPublisher.enqueue({ idempotencyKey: randomUUID(), changes }, ctx)
+          if (processResults.length > 0) {
+            const groups = this.groupForPublish(processResults)
+
+            for (const { idempotencyKey, balanceChanges } of groups) {
+              if (balanceChanges.length === 0) continue
+
+              await this.ledgerPublisher.enqueue({ idempotencyKey, changes: balanceChanges }, ctx)
+            }
           }
         })
         .execute()
@@ -71,12 +85,63 @@ export class ProcessPayoutTransactionInteractor extends AbstractInteractor<never
     }
   }
 
+  private groupForPublish(results: ReadonlyArray<ProcessResult>): ReadonlyArray<GroupedResult> {
+    const groupMap = new Map<
+      string,
+      {
+        readonly idempotencyKey: string
+        readonly balanceChanges: BalanceChange<PayoutBalanceChangeMetadata>[]
+      }
+    >()
+    const groupOrder: string[] = []
+
+    for (const { source, balanceChanges } of results) {
+      for (const change of balanceChanges) {
+        const groupKey = change.intentId
+          ? `intent:${change.intentId}:${change.metadata.txStatus}`
+          : `tx:${source.txId}:${source.transferId}:${change.metadata.txStatus}`
+
+        if (!groupMap.has(groupKey)) {
+          groupMap.set(groupKey, {
+            idempotencyKey: '',
+            balanceChanges: [],
+          })
+          groupOrder.push(groupKey)
+        }
+
+        groupMap.get(groupKey)!.balanceChanges.push(change)
+      }
+    }
+
+    return groupOrder.map((key) => {
+      const group = groupMap.get(key)!
+      return {
+        ...group,
+        idempotencyKey: this.buildIdempotencyKey(group.balanceChanges),
+      }
+    })
+  }
+
+  private buildIdempotencyKey(changes: ReadonlyArray<BalanceChange<PayoutBalanceChangeMetadata>>): string {
+    const unique = new Set(
+      changes.flatMap((change) =>
+        change.metadata.transferIds.map(
+          (id) => `${id}:${change.intentType}:${change.intentId}:${change.metadata.txId}:${change.metadata.txStatus}`,
+        ),
+      ),
+    )
+
+    return createHash('sha256')
+      .update([...unique].sort().join(':'))
+      .digest('hex')
+  }
+
   private async process(
     transfers: ReadonlyArray<PayoutInboxTransferModel>,
     ctx: TxContext,
-  ): Promise<ReadonlyArray<BalanceChange>> {
+  ): Promise<ReadonlyArray<ProcessResult>> {
     const byKey = Map.groupBy(transfers, (transfer) => transfer.key)
-    const changes: BalanceChange[] = []
+    const results: ProcessResult[] = []
 
     for (const transfers of byKey.values()) {
       for (const transfer of transfers) {
@@ -86,11 +151,14 @@ export class ProcessPayoutTransactionInteractor extends AbstractInteractor<never
           break
         }
 
-        changes.push(...result.balanceChanges)
+        results.push({
+          source: transfer,
+          balanceChanges: result.balanceChanges,
+        })
       }
     }
 
-    return changes
+    return results
   }
 
   private async applyTransfer(transfer: PayoutInboxTransferModel, ctx: TxContext): Promise<TransferAppyResult> {
@@ -100,7 +168,7 @@ export class ProcessPayoutTransactionInteractor extends AbstractInteractor<never
 
       await this.payoutInboxTransferRepository.delete({ id: transfer.id }, ctx)
 
-      return { success: true, balanceChanges: result }
+      return { success: true, balanceChanges: result as BalanceChange<PayoutBalanceChangeMetadata>[] }
     } catch (err) {
       this.logger.error(err)
 

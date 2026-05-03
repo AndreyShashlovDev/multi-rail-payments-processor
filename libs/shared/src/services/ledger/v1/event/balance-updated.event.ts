@@ -15,7 +15,7 @@ import { Type } from 'class-transformer'
 import type { BalanceChangeDataMetadata } from '@app/shared/services/ledger/v1/event/balance-change-metadata.type'
 import { BalanceChangeOperationType } from '@app/shared/types/balance-change'
 
-export class BalanceUpdatedData {
+export class BalanceUpdatedDataEvent {
   @IsEnum(BalanceChangeType)
   readonly type: BalanceChangeType
 
@@ -82,12 +82,12 @@ export class BalanceUpdatedEvent extends BasicEvent {
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => BalanceUpdatedData)
-  readonly changes: ReadonlyArray<BalanceUpdatedData>
+  @Type(() => BalanceUpdatedDataEvent)
+  readonly changes: ReadonlyArray<BalanceUpdatedDataEvent>
 
-  constructor(uniqueKey: string, changes: ReadonlyArray<BalanceUpdatedData>) {
+  constructor(uniqueKey: string, changes: ReadonlyArray<BalanceUpdatedDataEvent>) {
     // todo signature!
-    super(uniqueKey, 1, null)
+    super(uniqueKey, 1)
     this.changes = changes
   }
 }

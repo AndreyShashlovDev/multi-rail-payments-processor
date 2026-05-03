@@ -10,27 +10,36 @@ import { TransferModel, TransferData, OperationType } from '../../../module/tran
 export class TransactionRepositoryMapper {
   static toDomainRaw(entity: TransactionEntity, raw: TransactionRawEntity | null = null): TransactionModel {
     return {
-      ...entity, // fixme remove it. need clear mapping
       id: Id.create(entity.id),
       integration: integrationTypeToDomain(entity.integration),
-      transfers: entity.transfers?.map((item) => TransactionRepositoryMapper.toDomainTransfer(item)) ?? [],
-      metadata: entity.metadata,
+      sourceTxId: entity.sourceTxId,
+      blockId: entity.blockId,
+      blockTime: entity.blockTime,
       status: TransactionRepositoryMapper.toDomainStatus(entity.status),
+      metadata: entity.metadata,
+      transfers: entity.transfers?.map((item) => TransactionRepositoryMapper.toDomainTransfer(item)) ?? [],
+      fee: entity.fee,
+      feeCurrency: entity.feeCurrency,
       raw: raw?.data ?? null,
     }
   }
 
   static fromDomain(model: TransactionData, manager: EntityManager): TransactionEntity {
     return manager.create(TransactionEntity, {
-      ...model,
-      transfers: model.transfers.map((item) => TransactionRepositoryMapper.fromDomainTransfer(item, manager)),
       integration: integrationTypeFromDomain(model.integration),
+      sourceTxId: model.sourceTxId,
+      blockId: model.blockId,
+      blockTime: model.blockTime,
       status: TransactionRepositoryMapper.fromDomainStatus(model.status),
+      metadata: model.metadata,
+      fee: model.fee,
+      feeCurrency: model.feeCurrency,
       raw: undefined,
+      transfers: model.transfers.map((item) => TransactionRepositoryMapper.fromDomainTransfer(item, manager)),
     })
   }
 
-  public static createRawTransaction(
+  static createRawTransaction(
     transaction: TransactionEntity,
     raw: string,
     manager: EntityManager,
@@ -90,21 +99,40 @@ export class TransactionRepositoryMapper {
     }
   }
 
-  public static toDomainTransfer(transfer: TransferEntity): TransferModel {
+  static toDomainTransfer(entity: TransferEntity): TransferModel {
     return {
-      ...transfer,
-      integration: integrationTypeToDomain(transfer.integration),
-      operation: TransactionRepositoryMapper.toDomainTransferOperation(transfer.operation),
-      fromOwner: transfer.fromOwner ?? transfer.from,
-      toOwner: transfer.toOwner ?? transfer.to,
+      id: entity.id,
+      transactionId: entity.transactionId,
+      integration: integrationTypeToDomain(entity.integration),
+      operation: TransactionRepositoryMapper.toDomainTransferOperation(entity.operation),
+      index: entity.index,
+      initiator: entity.initiator,
+      from: entity.from,
+      to: entity.to,
+      fromOwner: entity.fromOwner ?? entity.from,
+      toOwner: entity.toOwner ?? entity.to,
+      amountRaw: entity.amountRaw,
+      currency: entity.currency,
+      transferIntentId: entity.transferIntentId,
+      metadata: entity.metadata,
+      createdAt: entity.createdAt,
     }
   }
 
-  public static fromDomainTransfer(transfer: TransferData, manager: EntityManager): TransferEntity {
+  static fromDomainTransfer(transfer: TransferData, manager: EntityManager): TransferEntity {
     return manager.create(TransferEntity, {
-      ...transfer,
       integration: integrationTypeFromDomain(transfer.integration),
       operation: TransactionRepositoryMapper.fromDomainTransferOperation(transfer.operation),
+      index: transfer.index,
+      initiator: transfer.initiator,
+      from: transfer.from,
+      to: transfer.to,
+      fromOwner: transfer.fromOwner,
+      toOwner: transfer.toOwner,
+      amountRaw: transfer.amountRaw,
+      currency: transfer.currency,
+      transferIntentId: transfer.transferIntentId,
+      metadata: transfer.metadata,
     })
   }
 

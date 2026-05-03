@@ -7,6 +7,7 @@ import { IntegrationAccountLinkRepositoryModule } from '../../../../data/reposit
 import { OutboxTxContextModule } from '../../../../shared/tx-context/outbox-tx-context.module'
 import { ExternalIntegrationPublisherModule } from '../../../../data/publisher/external-integration/external-integration-publisher.module'
 import { CurrencyRepositoryModule } from '../../../../data/repository/currency/currency-repository.module'
+import { InboxRepositoryModule } from '../../../../data/repository/inbox/inbox-repository.module'
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { CurrencyRepositoryModule } from '../../../../data/repository/currency/c
     LedgerRepositoryModule,
     IntegrationAccountLinkRepositoryModule,
     CurrencyRepositoryModule,
+    InboxRepositoryModule,
   ],
   providers: [CreatePayoutIntentInteractor],
   exports: [CreatePayoutIntentInteractor],

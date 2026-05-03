@@ -2,11 +2,12 @@ import { Injectable } from '@nestjs/common'
 import {
   CoreJetstreamHandler,
   CoreJetstreamDataSource,
+  TransferIntentIncomingEventType,
 } from '../../data-source/nats-jetstream/core-jetstream.data-source'
-import { TransferIntentCreateEvent } from '@app/shared/services/external-integration/v1'
 import { toError } from '@app/utils'
 import { TransferIntentConsumerMapper } from './transfer-intent-consumer.mapper'
 import { TransferIntentEventModel, TransferIntentEventKeyType } from './transfer-intent-consumer.types'
+import { JsonObject } from '@app/types'
 
 export interface TransferIntentEventSubscription<T extends TransferIntentEventKeyType = TransferIntentEventKeyType> {
   readonly filter?: { type: T }
@@ -15,7 +16,7 @@ export interface TransferIntentEventSubscription<T extends TransferIntentEventKe
 
 @Injectable()
 export class TransferIntentConsumer implements CoreJetstreamHandler {
-  private readonly subscriptions: TransferIntentEventSubscription<any>[] = []
+  private readonly subscriptions: TransferIntentEventSubscription[] = []
 
   constructor(private readonly coreJetstreamDataSource: CoreJetstreamDataSource) {
     this.coreJetstreamDataSource.setupHandler(this)
@@ -23,7 +24,7 @@ export class TransferIntentConsumer implements CoreJetstreamHandler {
 
   async transferIntentEventHandler<T extends TransferIntentEventKeyType>(
     type: T,
-    event: TransferIntentCreateEvent,
+    event: JsonObject<TransferIntentIncomingEventType>,
   ): Promise<void> {
     const model = await TransferIntentConsumerMapper.validateTransferIntentEvent<T>(type, event)
 

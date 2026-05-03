@@ -1,5 +1,16 @@
 import { plainToClass } from 'class-transformer'
-import { IsEnum, IsNumber, IsString, IsBoolean, IsOptional, validateSync, Min, Max } from 'class-validator'
+import {
+  IsEnum,
+  IsNumber,
+  IsString,
+  IsBoolean,
+  IsOptional,
+  validateSync,
+  Min,
+  Max,
+  IsJSON,
+  IsNotEmpty,
+} from 'class-validator'
 
 export enum Environment {
   development = 'development',
@@ -7,89 +18,93 @@ export enum Environment {
   test = 'test',
 }
 
-export class EnvironmentVariables {
+class EnvironmentVariables {
   // App
   @IsEnum(Environment)
   @IsOptional()
-  NODE_ENV: Environment = Environment.development
+  readonly NODE_ENV: Environment = Environment.development
+
+  @IsJSON()
+  @IsNotEmpty()
+  readonly SECURE_SIGNATURE_SECRETS: Record<string, string>
 
   @IsString()
   @IsOptional()
-  SERVICE_NAME: string = 'ledger'
+  readonly SERVICE_NAME: string = 'ledger'
 
   @IsNumber()
   @Min(1)
   @Max(65535)
   @IsOptional()
-  HTTP_PORT: number = 3003
+  readonly HTTP_PORT: number = 3003
 
   // Database
   @IsString()
   @IsOptional()
-  DB_HOST: string = 'localhost'
+  readonly DB_HOST: string = 'localhost'
 
   @IsNumber()
   @Min(1)
   @Max(65535)
   @IsOptional()
-  DB_PORT: number = 5432
+  readonly DB_PORT: number = 5432
 
   @IsString()
   @IsOptional()
-  DB_USERNAME: string = 'postgres'
+  readonly DB_USERNAME: string = 'postgres'
 
   @IsString()
   @IsOptional()
-  DB_PASSWORD: string = 'postgres'
+  readonly DB_PASSWORD: string = 'postgres'
 
   @IsString()
   @IsOptional()
-  DB_DATABASE: string = 'eventsourcing'
+  readonly DB_DATABASE: string = 'eventsourcing'
 
   @IsString()
   @IsOptional()
-  DB_SCHEMA: string = 'ledger'
+  readonly DB_SCHEMA: string = 'ledger'
 
   @IsBoolean()
   @IsOptional()
-  DB_SSL: boolean = false
+  readonly DB_SSL: boolean = false
 
   @IsBoolean()
   @IsOptional()
-  DB_LOGGING: boolean = false
+  readonly DB_LOGGING: boolean = false
 
   // NATS
   @IsString()
   @IsOptional()
-  NATS_URL: string = 'nats://localhost:4222'
+  readonly NATS_URL: string = 'nats://localhost:4222'
 
   @IsString()
   @IsOptional()
-  NATS_CLIENT_NAME: string = 'ledger-service'
+  readonly NATS_CLIENT_NAME: string = 'ledger-service'
 
   // gRPC
   @IsString()
   @IsOptional()
-  GRPC_HOST: string = '0.0.0.0'
+  readonly GRPC_HOST: string = '0.0.0.0'
 
   @IsNumber()
   @Min(1)
   @Max(65535)
   @IsOptional()
-  GRPC_PORT: number = 50051
+  readonly GRPC_PORT: number = 50051
 
   @IsNumber()
   @IsOptional()
-  GRPC_MAX_RECEIVE_MESSAGE_LENGTH: number = 4 * 1024 * 1024
+  readonly GRPC_MAX_RECEIVE_MESSAGE_LENGTH: number = 4 * 1024 * 1024
 
   @IsNumber()
   @IsOptional()
-  GRPC_MAX_SEND_MESSAGE_LENGTH: number = 4 * 1024 * 1024
+  readonly GRPC_MAX_SEND_MESSAGE_LENGTH: number = 4 * 1024 * 1024
 
   // Logging
   @IsString()
   @IsOptional()
-  LOG_LEVEL: string = 'info'
+  readonly LOG_LEVEL: string = 'info'
 }
 
 export function validate(config: Record<string, unknown>) {

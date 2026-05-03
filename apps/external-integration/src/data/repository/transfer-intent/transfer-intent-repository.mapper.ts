@@ -12,26 +12,50 @@ import {
   integrationTypeToDomain,
   integrationTypeFromDomain,
   intentTypeFromDomain,
+  exchangeTypeFromDomain,
+  exchangeTypeToDomain,
 } from '@app/shared'
 import { EntityManager } from 'typeorm'
 
 export class TransferIntentRepositoryMapper {
   static toDomain(entity: TransferIntentEntity): TransferIntentModel {
     return {
-      ...entity, // fixme remove it. need clear mapping
-      fromIntegration: integrationTypeToDomain(entity.fromIntegration),
-      toIntegration: integrationTypeToDomain(entity.toIntegration),
+      id: entity.id,
+      intentId: entity.intentId,
       intentType: intentTypeToDomain(entity.intentType),
+      exchangeType: exchangeTypeToDomain(entity.exchangeType),
+      estimatedRawFee: entity.estimatedRawFee,
+      feeCurrency: entity.feeCurrency,
+      fromRawAmount: entity.fromRawAmount,
+      fromIntegration: integrationTypeToDomain(entity.fromIntegration),
+      fromCurrency: entity.fromCurrency,
+      fromAccount: entity.fromAccount,
+      toRawAmount: entity.toRawAmount,
+      toIntegration: integrationTypeToDomain(entity.toIntegration),
+      toCurrency: entity.toCurrency,
+      toAccount: entity.toAccount,
       status: TransferIntentRepositoryMapper.toDomainStatus(entity.status),
+      transactionIntentId: entity.transactionIntentId,
+      createdAt: entity.createdAt,
+      updatedAt: entity.updatedAt,
     }
   }
 
   static fromDomain(model: TransferIntentData, manager: EntityManager): TransferIntentEntity {
     return manager.create(TransferIntentEntity, {
-      ...model,
-      fromIntegration: integrationTypeFromDomain(model.fromIntegration),
-      toIntegration: integrationTypeFromDomain(model.toIntegration),
+      intentId: model.intentId,
       intentType: intentTypeFromDomain(model.intentType),
+      exchangeType: exchangeTypeFromDomain(model.exchangeType),
+      estimatedRawFee: model.estimatedRawFee,
+      feeCurrency: model.feeCurrency,
+      fromRawAmount: model.fromRawAmount,
+      fromIntegration: integrationTypeFromDomain(model.fromIntegration),
+      fromCurrency: model.fromCurrency,
+      fromAccount: model.fromAccount,
+      toRawAmount: model.toRawAmount,
+      toIntegration: integrationTypeFromDomain(model.toIntegration),
+      toCurrency: model.toCurrency,
+      toAccount: model.toAccount,
       status: TransferIntentRepositoryMapper.fromDomainStatus(model.status),
       transactionIntent: undefined,
     })

@@ -47,10 +47,10 @@ export class TransferEventData {
   @IsString()
   readonly initiator: IntegrationAccount
 
-  @IsString() // some smart validator
+  @IsString() // todo some smart validator
   readonly from: IntegrationAccount
 
-  @IsString() // some smart validator
+  @IsString() // todo some smart validator
   readonly to: IntegrationAccount
 
   @IsNumberString()
@@ -88,12 +88,12 @@ export class TransferEventData {
 
 export class TransactionEvent extends BasicEvent {
   static readonly EVENT_VER: number = 1
-  static readonly EVENT_NAME = 'TransactionEvent'
+  static readonly EVENT_NAME = 'integrations:transaction'
 
   @IsNumberString({ no_symbols: true })
   readonly id: Id
 
-  @IsString() // special validator need
+  @IsString() // todo special validator need
   readonly sourceTxId: SourceTransactionId
 
   @IsEnum(IntegrationType)
@@ -116,7 +116,7 @@ export class TransactionEvent extends BasicEvent {
 
   @IsISO8601()
   @IsOptional()
-  readonly executedDate: Date | null
+  readonly executedDate: string | null
 
   constructor(
     id: Id,
@@ -126,10 +126,9 @@ export class TransactionEvent extends BasicEvent {
     transfers: TransferEventData[],
     fee: string | null,
     feeCurrency: IntegrationCurrency,
-    executedDate: Date | null,
+    executedDate: string | null,
   ) {
-    // todo signature!
-    super(TransactionEvent.createUniqueKey(integration, sourceTxId, status), TransactionEvent.EVENT_VER, null)
+    super(TransactionEvent.createUniqueKey(integration, sourceTxId, status), TransactionEvent.EVENT_VER)
 
     this.id = id
     this.sourceTxId = sourceTxId
