@@ -6,7 +6,7 @@ import {
   PaymentBalanceChangeMetadata,
 } from '@app/shared/types/balance-change'
 import { Id, AbstractInteractor, UUID, IntegrationAccount, Numeric, IntegrationCurrency } from '@app/types'
-import { IntentType, IntegrationType, BalanceChangeType } from '@app/shared'
+import { IntentType, IntegrationType, BalanceChangeType, ExecutionType } from '@app/shared'
 import { PaymentIntentModel } from '../../../model/payment-intent.model'
 import { OperationTypeMapper } from '../../../../../shared/projection/operation-type.mapper'
 import { TransactionModel } from '../../../../../shared/model/transaction.model'
@@ -18,7 +18,7 @@ export interface HoldInOperationParams {
   readonly amount: Numeric
   readonly currency: IntegrationCurrency
 
-  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executedAt'>
+  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executionType' | 'executedAt'>
   readonly transferIds: ReadonlySet<Id>
   readonly operationType: BalanceChangeOperationType | null
   readonly paymentId?: UUID | null
@@ -36,14 +36,14 @@ export class HoldInPaymentOperation extends AbstractInteractor<
   static createParamsByPayment(data: {
     readonly payment: PaymentIntentModel
     readonly amount: Numeric
-    readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executedAt'>
+    readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executionType' | 'executedAt'>
     readonly transferIds: ReadonlySet<Id>
     readonly payoutId?: UUID | Id
     readonly action: 'hold' | 'release'
     readonly reason: BalanceChangeReason
     readonly txStatus: BalanceChangeTxStatus.TX_ACCEPTED | BalanceChangeTxStatus.TX_CONFIRMED
   }): HoldInOperationParams {
-    const isInternalTransfer = data.payment.to.account === data.payment.member.accountId
+    const isInternalTransfer = data.tx.executionType === ExecutionType.INTERNAL
 
     const integrationAccount = isInternalTransfer ? null : data.payment.to.account
 
@@ -101,6 +101,7 @@ export class HoldInPaymentOperation extends AbstractInteractor<
           relatedIntentId: payoutId,
           reason,
           txStatus,
+          executionType: tx.executionType,
         },
       },
     ]

@@ -12,8 +12,8 @@ import {
   integrationTypeToDomain,
   integrationTypeFromDomain,
   intentTypeFromDomain,
-  exchangeTypeFromDomain,
-  exchangeTypeToDomain,
+  executionTypeFromDomain,
+  executionTypeToDomain,
 } from '@app/shared'
 import { EntityManager } from 'typeorm'
 
@@ -23,7 +23,7 @@ export class TransferIntentRepositoryMapper {
       id: entity.id,
       intentId: entity.intentId,
       intentType: intentTypeToDomain(entity.intentType),
-      exchangeType: exchangeTypeToDomain(entity.exchangeType),
+      executionType: executionTypeToDomain(entity.executionType),
       estimatedRawFee: entity.estimatedRawFee,
       feeCurrency: entity.feeCurrency,
       fromRawAmount: entity.fromRawAmount,
@@ -45,7 +45,7 @@ export class TransferIntentRepositoryMapper {
     return manager.create(TransferIntentEntity, {
       intentId: model.intentId,
       intentType: intentTypeFromDomain(model.intentType),
-      exchangeType: exchangeTypeFromDomain(model.exchangeType),
+      executionType: executionTypeFromDomain(model.executionType),
       estimatedRawFee: model.estimatedRawFee,
       feeCurrency: model.feeCurrency,
       fromRawAmount: model.fromRawAmount,
@@ -56,7 +56,6 @@ export class TransferIntentRepositoryMapper {
       toIntegration: integrationTypeFromDomain(model.toIntegration),
       toCurrency: model.toCurrency,
       toAccount: model.toAccount,
-      status: TransferIntentRepositoryMapper.fromDomainStatus(model.status),
       transactionIntent: undefined,
     })
   }

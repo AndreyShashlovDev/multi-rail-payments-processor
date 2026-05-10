@@ -6,7 +6,7 @@ import { TransferEntity } from './transfer.entity'
 import type { SourceTransactionId } from '@app/types/source-transaction-id.type'
 import { APP_SCHEMA } from '../integration-postgres.config'
 import { TransactionRawEntity } from './transaction-raw.entity'
-import { IntegrationEntityType } from '@app/shared'
+import { IntegrationEntityType, ExecutionEntityType } from '@app/shared'
 
 export enum TransactionEntityStatus {
   PREPARED = 1,
@@ -28,6 +28,9 @@ export class TransactionEntity extends BasicEntity {
 
   @PrimaryGeneratedColumn({ type: 'bigint' })
   readonly id: Id
+
+  @Column({ type: 'smallint' })
+  readonly executionType: ExecutionEntityType
 
   @Column({ type: 'smallint' })
   readonly integration: IntegrationEntityType

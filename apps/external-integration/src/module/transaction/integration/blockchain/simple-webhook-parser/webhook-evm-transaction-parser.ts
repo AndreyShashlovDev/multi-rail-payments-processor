@@ -9,7 +9,7 @@ import {
   type SourceTransactionId,
   IntegrationAccount,
 } from '@app/types'
-import { IntegrationType, TransactionStatus } from '@app/shared'
+import { IntegrationType, TransactionStatus, ExecutionType } from '@app/shared'
 
 export interface EvmTransactionWebhook {
   readonly chain: EvmBlockchain
@@ -37,6 +37,7 @@ export class WebhookEvmTransactionParser implements TransactionParser<EvmTransac
     return {
       transaction: {
         raw: JSON.stringify(rawTransaction),
+        executionType: ExecutionType.NATIVE,
         integration,
         sourceTxId: rawTransaction.hash,
         blockId: rawTransaction.blockNumber,

@@ -34,14 +34,14 @@ export interface EvmSingleTransferResult {
   readonly rawTransaction: EvmTransaction
 }
 
-export class EvmSingleTransferBuilder extends AbstractInteractor<
+export class InternalEvmSingleTransferBuilder extends AbstractInteractor<
   EvmSingleTransferParams,
   Promise<EvmSingleTransferResult>
 > {
   async execute(params: EvmSingleTransferParams): Promise<EvmSingleTransferResult> {
     const hash: SourceTransactionId = `0x${randomBytes(20).toString('hex')}`
     // estimate tx fee
-    const fee = Numeric.create('0.1').mul(Numeric.create(10).pow(18)).toString()
+    const fee = Numeric.ZERO.toString()
 
     return {
       id: hash,

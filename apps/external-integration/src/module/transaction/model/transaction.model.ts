@@ -1,7 +1,13 @@
 import { EvmHashType, Id, IntegrationCurrency, RawNumeric } from '@app/types'
 import { SourceTransactionId } from '@app/types/source-transaction-id.type'
 import { TransferModel, TransferData } from './transfer.model'
-import { IntegrationType, integrationTypeFromDomain, IntegrationEntityType, TransactionStatus } from '@app/shared'
+import {
+  IntegrationType,
+  integrationTypeFromDomain,
+  IntegrationEntityType,
+  TransactionStatus,
+  ExecutionType,
+} from '@app/shared'
 
 export interface EthereumMetadata {
   readonly blockHash: EvmHashType
@@ -24,6 +30,7 @@ export type TransactionMetadata = EthereumMetadata | PolygonMetadata
 export type TransactionBlockId = string
 
 export interface TransactionData {
+  readonly executionType: ExecutionType
   readonly integration: IntegrationType
   readonly sourceTxId: SourceTransactionId
   readonly blockId: TransactionBlockId | null

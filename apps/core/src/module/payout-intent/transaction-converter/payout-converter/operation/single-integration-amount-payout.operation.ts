@@ -5,14 +5,14 @@ import {
   PayoutBalanceChangeMetadata,
 } from '@app/shared/types/balance-change'
 import { Id, AbstractInteractor } from '@app/types'
-import { IntentType, BalanceChangeType } from '@app/shared'
+import { IntentType, BalanceChangeType, ExecutionType } from '@app/shared'
 import { PayoutIntentModel } from '../../../model/payout-intent.model'
 import { OperationTypeMapper } from '../../../../../shared/projection/operation-type.mapper'
 import { TransactionModel } from '../../../../../shared/model/transaction.model'
 
 export interface PayoutOperationParams {
   readonly payout: PayoutIntentModel
-  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executedAt'>
+  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executionType' | 'executedAt'>
   readonly transferIds: ReadonlySet<Id>
 }
 
@@ -23,7 +23,8 @@ export class SingleIntegrationAmountPayoutOperation extends AbstractInteractor<
   execute(params: PayoutOperationParams): ReadonlyArray<BalanceChange> {
     const { payout, transferIds, tx } = params
 
-    const integrationAccount = payout.member.accountId === payout.from.account ? null : payout.from.account
+    const isInternalTransfer = tx.executionType === ExecutionType.INTERNAL
+    const integrationAccount = isInternalTransfer ? null : payout.from.account
 
     const basicData: Pick<BalanceChange, 'intentType' | 'intentId' | 'operationType'> = {
       intentType: IntentType.PAYOUT,
@@ -37,6 +38,7 @@ export class SingleIntegrationAmountPayoutOperation extends AbstractInteractor<
       executedAt: tx.executedAt,
       transferIds: Array.from(transferIds),
       txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
+      executionType: tx.executionType,
     }
 
     return [

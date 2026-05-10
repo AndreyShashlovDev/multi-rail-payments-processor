@@ -1,9 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import {
-  TransferIntentData,
-  TransferIntentModel,
-  TransferIntentStatus,
-} from '../../../module/transfer-intent/model/transfer-intent.model'
+import { TransferIntentData, TransferIntentModel } from '../../../module/transfer-intent/model/transfer-intent.model'
 import { TransferIntentRepositoryMapper } from './transfer-intent-repository.mapper'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { IntegrationPostgresConfig } from '../../data-source/postgres/integration-postgres.config'
@@ -16,6 +12,7 @@ import { TxContext } from '@app/shared/types/tx-context.type'
 import { Id } from '@app/types'
 import { MarkAsPreparedParams, MarkAsProcessingParams } from './transfer-intent-repository.types'
 import { intentTypeFromDomain } from '@app/shared'
+import { FindOptionsWhere } from 'typeorm/find-options/FindOptionsWhere'
 
 @Injectable()
 export class TransferIntentRepository {
@@ -24,16 +21,13 @@ export class TransferIntentRepository {
     private readonly datasource: DataSource,
   ) {}
 
-  async create(
-    data: Omit<TransferIntentData, 'status' | 'transactionIntentId'>,
-    ctx: TxContext,
-  ): Promise<TransferIntentModel> {
-    const entity = TransferIntentRepositoryMapper.fromDomain(
-      { ...data, status: TransferIntentStatus.CREATED, transactionIntentId: null },
-      this.datasource.manager,
-    )
+  async create(data: TransferIntentData, ctx: TxContext): Promise<TransferIntentModel> {
+    const entity = TransferIntentRepositoryMapper.fromDomain(data, this.datasource.manager)
 
-    const result = await ctx.em.save(TransferIntentEntity, entity)
+    const result = await ctx.em.save(TransferIntentEntity, {
+      ...entity,
+      status: TransferIntentEntityStatus.CREATED,
+    })
 
     return TransferIntentRepositoryMapper.toDomain(result)
   }
@@ -89,25 +83,24 @@ export class TransferIntentRepository {
   }
 
   async markAsPrepared(params: MarkAsPreparedParams, ctx: TxContext): Promise<boolean> {
-    const result = await ctx.em.update(
-      TransferIntentEntity,
-      {
-        status: TransferIntentEntityStatus.ACCEPTED,
-        intentType: intentTypeFromDomain(params.intentType),
-        intentId: In(Array.from(params.intentIds)),
-      },
-      { status: TransferIntentEntityStatus.PREPARED },
-    )
+    const where: FindOptionsWhere<TransferIntentEntity> = {
+      status: TransferIntentEntityStatus.ACCEPTED,
+      intentType: intentTypeFromDomain(params.intentType),
+      intentId: In(Array.from(params.intentIds)),
+    }
+
+    const result = await ctx.em.update(TransferIntentEntity, where, { status: TransferIntentEntityStatus.PREPARED })
 
     return result.affected === params.intentIds.size
   }
 
   async markAsProcessing(params: MarkAsProcessingParams, ctx: TxContext): Promise<boolean> {
-    const result = await ctx.em.update(
-      TransferIntentEntity,
-      { transactionIntentId: params.transactionIntentId, status: TransferIntentEntityStatus.PREPARED },
-      { status: TransferIntentEntityStatus.PROCESSING },
-    )
+    const where: FindOptionsWhere<TransferIntentEntity> = {
+      transactionIntentId: params.transactionIntentId,
+      status: TransferIntentEntityStatus.PREPARED,
+    }
+
+    const result = await ctx.em.update(TransferIntentEntity, where, { status: TransferIntentEntityStatus.PROCESSING })
 
     return (result.affected ?? 0) > 0
   }

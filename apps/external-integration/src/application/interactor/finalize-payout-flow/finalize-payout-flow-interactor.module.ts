@@ -6,6 +6,7 @@ import { PromoteTransactionInteractorModule } from '../../../module/transaction/
 import { SignTransactionInteractorModule } from '../../../module/transaction/interactor/sign-transaction/sign-transaction-interactor.module'
 import { ConfirmTransactionInteractorModule } from '../../../module/transaction/interactor/confirm-transaction/confirm-transaction-interactor.module'
 import { OutboxTxContextModule } from '../../../shared/tx-context/outbox-tx-context.module'
+import { InternalBlockRepositoryModule } from '../../../data/repository/internal-block/internal-block-repository.module'
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { OutboxTxContextModule } from '../../../shared/tx-context/outbox-tx-cont
     PromoteTransactionInteractorModule,
     WebhookAcceptTransactionInteractorModule,
     ConfirmTransactionInteractorModule,
+    InternalBlockRepositoryModule,
   ],
   providers: [FinalizePayoutFlowInteractor],
   exports: [FinalizePayoutFlowInteractor],

@@ -61,7 +61,7 @@ export class SingleIntegrationPayoutConverter implements PayoutTransactionConver
   }
 
   private getBalanceChanges(
-    tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executedAt'>,
+    tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executionType' | 'executedAt'>,
     matchedPayout: ReadonlyArray<{ payout: PayoutIntentModel; transfer: TransferModel }>,
   ): ReadonlyArray<BalanceChange> {
     return matchedPayout.flatMap(({ payout, transfer }) => {

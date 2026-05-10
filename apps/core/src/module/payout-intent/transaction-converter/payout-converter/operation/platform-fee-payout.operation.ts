@@ -5,14 +5,14 @@ import {
   PayoutBalanceChangeMetadata,
 } from '@app/shared/types/balance-change'
 import { Id, AbstractInteractor } from '@app/types'
-import { IntentType, BalanceChangeType } from '@app/shared'
+import { IntentType, BalanceChangeType, ExecutionType } from '@app/shared'
 import { PayoutIntentModel } from '../../../model/payout-intent.model'
 import { OperationTypeMapper } from '../../../../../shared/projection/operation-type.mapper'
 import { TransactionModel } from '../../../../../shared/model/transaction.model'
 
 export interface PlatformFeePayoutOperationParams {
   readonly payout: PayoutIntentModel
-  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executedAt'>
+  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executionType' | 'executedAt'>
   readonly transferIds: ReadonlySet<Id>
 }
 
@@ -27,7 +27,7 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
       return []
     }
 
-    const isInternalTransfer = payout.member.accountId === payout.from.account
+    const isInternalTransfer = tx.executionType === ExecutionType.INTERNAL
 
     const basicData: Pick<BalanceChange, 'intentType' | 'intentId' | 'operationType'> = {
       intentType: IntentType.PAYOUT,
@@ -41,6 +41,7 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
       executedAt: tx.executedAt,
       transferIds: Array.from(transferIds),
       txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
+      executionType: tx.executionType,
     }
 
     if (!isInternalTransfer) {
@@ -105,9 +106,22 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
         },
       },
       {
-        type: BalanceChangeType.PLATFORM_FEE_ACCRUED,
+        type: BalanceChangeType.DEBIT,
         ...basicData,
         platformAccountId: payout.member.accountId,
+        integrationAccount: null,
+        currency: payout.fromCurrency,
+        integration: payout.fromIntegration,
+        amount: payout.platformFee,
+        metadata: {
+          ...basicMetadata,
+          reason: BalanceChangeReason.FEE,
+        },
+      },
+      {
+        type: BalanceChangeType.CREDIT,
+        ...basicData,
+        platformAccountId: payout.platformFeeAccount.platformAccountId ?? payout.member.accountId,
         integrationAccount: null,
         currency: payout.fromCurrency,
         integration: payout.fromIntegration,

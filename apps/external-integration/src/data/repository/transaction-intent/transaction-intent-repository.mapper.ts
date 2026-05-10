@@ -12,7 +12,12 @@ import { TransferIntentEntity } from '../../data-source/postgres/entities/transf
 import { TransferIntentRepositoryMapper } from '../transfer-intent/transfer-intent-repository.mapper'
 import { EntityManager } from 'typeorm'
 import { TransferIntentModel } from '../../../module/transfer-intent/model/transfer-intent.model'
-import { integrationTypeToDomain, integrationTypeFromDomain } from '@app/shared'
+import {
+  integrationTypeToDomain,
+  integrationTypeFromDomain,
+  executionTypeToDomain,
+  executionTypeFromDomain,
+} from '@app/shared'
 
 export class TransactionIntentRepositoryMapper {
   static toDomain(
@@ -21,6 +26,7 @@ export class TransactionIntentRepositoryMapper {
   ): TransactionIntentModel {
     return {
       id: entity.id,
+      executionType: executionTypeToDomain(entity.executionType),
       txId: entity.txId,
       integration: integrationTypeToDomain(entity.integration),
       status: TransactionIntentRepositoryMapper.toDomainStatus(entity.status),
@@ -39,6 +45,7 @@ export class TransactionIntentRepositoryMapper {
   ): TransactionIntentModel {
     return {
       id: entity.id,
+      executionType: executionTypeToDomain(entity.executionType),
       txId: entity.txId,
       integration: integrationTypeToDomain(entity.integration),
       status: TransactionIntentRepositoryMapper.toDomainStatus(entity.status),
@@ -53,12 +60,11 @@ export class TransactionIntentRepositoryMapper {
 
   static fromDomain(model: TransactionIntentData, manager: EntityManager): TransactionIntentEntity {
     return manager.create(TransactionIntentEntity, {
+      executionType: executionTypeFromDomain(model.executionType),
       txId: model.txId,
       integration: integrationTypeFromDomain(model.integration),
-      status: TransactionIntentRepositoryMapper.fromDomainStatus(model.status),
       nonce: model.nonce,
       rawData: model.rawData as unknown as Record<string, unknown>,
-      signedData: model.signedData,
       transfers: model.transfers.map((transfer) => TransferIntentRepositoryMapper.fromDomain(transfer, manager)),
     })
   }

@@ -2,7 +2,7 @@ import { IntegrationAccount } from '@app/types/integration-account'
 import { Numeric } from '@app/types/numeric.type'
 import { Id } from '@app/types/id.type'
 import { UUID, IntegrationCurrency, SourceTransactionId } from '@app/types'
-import { IntegrationType, IntentType, BalanceChangeType } from '@app/shared/index'
+import { IntegrationType, IntentType, BalanceChangeType, ExecutionType } from '@app/shared'
 
 export enum BalanceChangeTxStatus {
   TX_PREPARED = 'TX_PREPARED',
@@ -46,6 +46,7 @@ export interface BasicBalanceChangeMetadata {
 }
 
 export interface TransactionBalanceChangeMetadata extends BasicBalanceChangeMetadata {
+  readonly executionType: ExecutionType
   readonly txId: Id
   readonly transferIds: ReadonlyArray<Id>
   readonly txStatus: BalanceChangeTxStatus

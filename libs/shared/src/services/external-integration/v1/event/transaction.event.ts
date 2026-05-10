@@ -18,7 +18,7 @@ import {
 } from 'class-validator'
 import crypto from 'crypto'
 import { Type } from 'class-transformer'
-import { IntegrationType, TransactionStatus, IntentType } from '@app/shared/types'
+import { IntegrationType, TransactionStatus, IntentType, ExecutionType } from '@app/shared/types'
 
 export class TransferEventIntentData {
   @IsNumberString({ no_symbols: true })
@@ -93,6 +93,9 @@ export class TransactionEvent extends BasicEvent {
   @IsNumberString({ no_symbols: true })
   readonly id: Id
 
+  @IsEnum(ExecutionType)
+  readonly executionType: ExecutionType
+
   @IsString() // todo special validator need
   readonly sourceTxId: SourceTransactionId
 
@@ -120,6 +123,7 @@ export class TransactionEvent extends BasicEvent {
 
   constructor(
     id: Id,
+    executionType: ExecutionType,
     sourceTxId: SourceTransactionId,
     integration: IntegrationType,
     status: TransactionStatus,
@@ -131,6 +135,7 @@ export class TransactionEvent extends BasicEvent {
     super(TransactionEvent.createUniqueKey(integration, sourceTxId, status), TransactionEvent.EVENT_VER)
 
     this.id = id
+    this.executionType = executionType
     this.sourceTxId = sourceTxId
     this.integration = integration
     this.status = status

@@ -9,6 +9,7 @@ export class TransactionEventPublisherMapper {
   static transactionToEvent(model: TransactionEventData): TransactionEvent {
     return new TransactionEvent(
       model.id,
+      model.executionType,
       model.sourceTxId,
       model.integration,
       model.status,

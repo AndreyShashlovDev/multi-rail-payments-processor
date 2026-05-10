@@ -6,13 +6,13 @@ import {
 } from '@app/shared/types/balance-change'
 import { PaymentIntentModel } from '../../../model/payment-intent.model'
 import { Numeric, Id, AbstractInteractor } from '@app/types'
-import { IntentType, BalanceChangeType } from '@app/shared'
+import { IntentType, BalanceChangeType, ExecutionType } from '@app/shared'
 import { OperationTypeMapper } from '../../../../../shared/projection/operation-type.mapper'
 import { TransactionModel } from '../../../../../shared/model/transaction.model'
 
 export interface OverpayPaymentOperationParams {
   readonly payment: PaymentIntentModel
-  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executedAt'>
+  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executionType' | 'executedAt'>
   readonly transferIds: ReadonlySet<Id>
   readonly transferAmount: Numeric
   readonly expectedAmount: Numeric
@@ -26,7 +26,7 @@ export class OverpayPaymentOperation extends AbstractInteractor<
   execute(params: OverpayPaymentOperationParams): ReadonlyArray<BalanceChange<PaymentBalanceChangeMetadata>> {
     const { payment, overpay, transferAmount, transferIds, tx, expectedAmount } = params
 
-    const isInternalTransfer = payment.to.account === payment.member.accountId
+    const isInternalTransfer = tx.executionType === ExecutionType.INTERNAL
 
     const integrationAccount = isInternalTransfer ? null : payment.to.account
 
@@ -50,6 +50,7 @@ export class OverpayPaymentOperation extends AbstractInteractor<
           overpay,
           expectedAmount,
           txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
+          executionType: tx.executionType,
         },
       },
       {
@@ -71,6 +72,7 @@ export class OverpayPaymentOperation extends AbstractInteractor<
           overpay,
           expectedAmount,
           txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
+          executionType: tx.executionType,
         },
       },
     ]

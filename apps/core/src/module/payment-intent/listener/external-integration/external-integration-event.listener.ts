@@ -20,7 +20,7 @@ export class ExternalIntegrationEventListener {
   }
 
   private async handleTransaction(transaction: TransactionModel): Promise<void> {
-    const intentTransfers: PaymentInboxTransferData[] = transaction.transfers.map((transfer) => ({
+    const intentTransfers: ReadonlyArray<PaymentInboxTransferData> = transaction.transfers.map((transfer) => ({
       txId: transaction.id,
       transferId: transfer.id,
       integration: transaction.integration,

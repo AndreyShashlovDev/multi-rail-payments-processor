@@ -13,7 +13,7 @@ export interface MispayPaymentOperationParams {
   readonly accountId: UUID | null
   readonly integration: IntegrationType
   readonly integrationAccount: IntegrationAccount | null
-  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executedAt'>
+  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executionType' | 'executedAt'>
   readonly transfer: TransferModel
 }
 
@@ -30,6 +30,7 @@ export class MispayPaymentOperation extends AbstractInteractor<
       executedAt: tx.executedAt,
       transferIds: [transfer.id],
       txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
+      executionType: tx.executionType,
     }
 
     return [

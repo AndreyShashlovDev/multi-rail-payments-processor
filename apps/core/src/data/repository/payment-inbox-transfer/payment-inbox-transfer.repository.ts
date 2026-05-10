@@ -49,7 +49,7 @@ export class PaymentInboxTransferRepository {
    */
   async insertTransfers(transfers: ReadonlyArray<PaymentInboxTransferData>): Promise<void> {
     const byKey = Map.groupBy(transfers, (transfer) =>
-      PaymentInboxTransferKey.create(transfer.integration, transfer.to, transfer.currency),
+      PaymentInboxTransferKey.create(transfer.data.executionType, transfer.integration, transfer.to, transfer.currency),
     )
 
     for (const [key, group] of byKey) {
@@ -183,13 +183,6 @@ export class PaymentInboxTransferRepository {
    *
    * Only keys acquired via `findAndLockAvailableKeys` should be passed here.
    *
-   * @limitation
-   * One transfer per key is processed per processor iteration by design.
-   * This guarantees ordering but may become a bottleneck under high load
-   * when many transfers accumulate for the same key.
-   * If this becomes an issue, consider processing multiple transfers per key
-   * within a single iteration using a loop after successful apply.
-   *
    * @example
    * // Inbox state:
    * //   key=EVM:0xAAA:USDT → tx_id=1 BLOCKED, tx_id=2 CREATED, tx_id=3 CREATED
@@ -217,7 +210,6 @@ export class PaymentInboxTransferRepository {
         )`,
         { keys: [...keys], blockedState: PaymentInboxTransferEntityState.BLOCKED },
       )
-      .distinctOn(['it.key'])
       .orderBy('it.key', 'ASC')
       .addOrderBy('it.created_at', 'ASC')
       .addOrderBy('it.tx_id', 'ASC')

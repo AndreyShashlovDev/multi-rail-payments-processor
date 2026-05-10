@@ -1,5 +1,5 @@
 import { Id, UUID } from '@app/types'
-import { TransactionStatus, IntegrationType } from '@app/shared'
+import { TransactionStatus, IntegrationType, ExecutionType } from '@app/shared'
 import type { TransactionModel } from '../../../shared/model/transaction.model'
 import { PostgresAdvisoryLock } from '@app/database'
 
@@ -12,8 +12,8 @@ const TRANSFER_ID_BRAND = Symbol('TransferId')
 export type PayoutInboxTransferKey = `${string}${string}:${string}` & { readonly [TRANSFER_ID_BRAND]: true }
 
 export const PayoutInboxTransferKey = {
-  create(integration: IntegrationType, intentId: UUID): PayoutInboxTransferKey {
-    return `${PostgresAdvisoryLock.CORE_PAYOUT_INBOX.name}${integration}:${intentId}` as PayoutInboxTransferKey
+  create(executionType: ExecutionType, integration: IntegrationType, intentId: UUID): PayoutInboxTransferKey {
+    return `${PostgresAdvisoryLock.CORE_PAYOUT_INBOX.name}${executionType}:${integration}:${intentId}` as PayoutInboxTransferKey
   },
 }
 

@@ -5,14 +5,14 @@ import {
   PayoutBalanceChangeMetadata,
 } from '@app/shared/types/balance-change'
 import { Id, AbstractInteractor, Numeric } from '@app/types'
-import { IntentType, BalanceChangeType } from '@app/shared'
+import { IntentType, BalanceChangeType, ExecutionType } from '@app/shared'
 import { PayoutIntentModel } from '../../../model/payout-intent.model'
 import { OperationTypeMapper } from '../../../../../shared/projection/operation-type.mapper'
 import { TransactionModel } from '../../../../../shared/model/transaction.model'
 
 export interface PlatformFeePayoutOperationParams {
   readonly payout: PayoutIntentModel
-  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executedAt'>
+  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executionType' | 'executedAt'>
   readonly transferIds: ReadonlySet<Id>
 }
 
@@ -30,7 +30,7 @@ export class IntegrationFeePayoutOperation extends AbstractInteractor<
     const convertedIntegrationFee = payout.integrationFee.mul(payout.integrationFeeRate)
     const diff = payout.estimatedFee.minus(convertedIntegrationFee).div(payout.integrationFeeRate)
     const userIntegrationFee = Numeric.min(convertedIntegrationFee, payout.estimatedFee)
-    const isInternalTransfer = payout.member.accountId === payout.from.account
+    const isInternalTransfer = tx.executionType === ExecutionType.INTERNAL
     const isUserPaysIntegrationFee = payout.integrationFeePayer.platformAccountId === payout.member.accountId
 
     const metadata: PayoutBalanceChangeMetadata = {
@@ -41,6 +41,7 @@ export class IntegrationFeePayoutOperation extends AbstractInteractor<
       reason: BalanceChangeReason.INTEGRATION_FEE,
       txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
       integrationFeeDiff: diff,
+      executionType: tx.executionType,
     }
 
     const basicData: Pick<BalanceChange, 'intentType' | 'intentId' | 'operationType'> = {

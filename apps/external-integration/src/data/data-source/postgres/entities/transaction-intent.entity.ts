@@ -3,7 +3,7 @@ import { APP_SCHEMA } from '../integration-postgres.config'
 import { TransferIntentEntity } from './transfer-intent.entity'
 import { BasicEntity } from '@app/database'
 import type { SourceTransactionId, Id } from '@app/types'
-import { IntegrationEntityType } from '@app/shared'
+import { IntegrationEntityType, ExecutionEntityType } from '@app/shared'
 
 export type TransactionIntentMetadata = Record<string, unknown>
 
@@ -27,6 +27,9 @@ export class TransactionIntentEntity extends BasicEntity {
 
   @PrimaryGeneratedColumn({ type: 'bigint' })
   readonly id: Id
+
+  @Column({ type: 'smallint' })
+  readonly executionType: ExecutionEntityType
 
   @Column('text')
   readonly txId: SourceTransactionId // some hash or another id by integration

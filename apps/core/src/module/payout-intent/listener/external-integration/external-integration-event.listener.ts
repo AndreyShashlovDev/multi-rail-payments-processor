@@ -22,7 +22,7 @@ export class ExternalIntegrationEventListener {
   }
 
   private async handleTransaction(transaction: TransactionModel): Promise<void> {
-    const intentTransfers: PayoutInboxTransferData[] = transaction.transfers
+    const intentTransfers: ReadonlyArray<PayoutInboxTransferData> = transaction.transfers
       .filter((item) => item.intent?.intentType === IntentType.PAYOUT)
       .map((transfer) => ({
         txId: transaction.id,

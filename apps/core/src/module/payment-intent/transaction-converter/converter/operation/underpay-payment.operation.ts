@@ -1,13 +1,13 @@
 import { BalanceChange, BalanceChangeReason, BalanceChangeTxStatus } from '@app/shared/types/balance-change'
 import { PaymentIntentModel } from '../../../model/payment-intent.model'
 import { Numeric, Id, AbstractInteractor, UUID } from '@app/types'
-import { IntentType, BalanceChangeType } from '@app/shared'
+import { IntentType, BalanceChangeType, ExecutionType } from '@app/shared'
 import { OperationTypeMapper } from '../../../../../shared/projection/operation-type.mapper'
 import { TransactionModel } from '../../../../../shared/model/transaction.model'
 
 export interface UnderpayPaymentOperationParams {
   readonly payment: PaymentIntentModel
-  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executedAt'>
+  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executionType' | 'executedAt'>
   readonly transferIds: ReadonlySet<Id>
   readonly amount: Numeric
   readonly expectedAmount: Numeric
@@ -21,7 +21,7 @@ export class UnderpayPaymentOperation extends AbstractInteractor<
   execute(params: UnderpayPaymentOperationParams): ReadonlyArray<BalanceChange> {
     const { payment, amount, expectedAmount, transferIds, tx, payoutId } = params
 
-    const isInternalTransfer = payment.to.account === payment.member.accountId
+    const isInternalTransfer = tx.executionType === ExecutionType.INTERNAL
     const integrationAccount = isInternalTransfer ? null : payment.to.account
 
     return [
@@ -45,6 +45,7 @@ export class UnderpayPaymentOperation extends AbstractInteractor<
           reason: BalanceChangeReason.UNDERPAY,
           txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
           expectedAmount,
+          executionType: tx.executionType,
         },
       },
     ]

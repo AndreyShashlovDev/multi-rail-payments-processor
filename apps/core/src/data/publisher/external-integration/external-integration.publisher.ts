@@ -50,7 +50,7 @@ export class ExternalIntegrationPublisher {
       transfer.intentId,
       transfer.intentId,
       transfer.intentType,
-      transfer.exchangeType,
+      transfer.executionType,
       estimatedFee,
       transfer.feeCurrency,
       fromAmount,

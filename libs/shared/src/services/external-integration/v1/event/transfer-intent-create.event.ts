@@ -1,4 +1,4 @@
-import { IntentType, IntegrationType, ExchangeType } from '@app/shared/types'
+import { IntentType, IntegrationType, ExecutionType } from '@app/shared/types'
 import { type UUID, type IntegrationCurrency, type IntegrationAccount, BasicEvent } from '@app/types'
 import { IsUUID, IsEnum, IsNumberString, IsString } from 'class-validator'
 
@@ -11,8 +11,8 @@ export class TransferIntentCreateEvent extends BasicEvent {
   @IsEnum(IntentType)
   readonly intentType: IntentType
 
-  @IsEnum(ExchangeType)
-  readonly exchangeType: ExchangeType
+  @IsEnum(ExecutionType)
+  readonly executionType: ExecutionType
 
   @IsNumberString()
   readonly estimatedRawFee: string
@@ -48,7 +48,7 @@ export class TransferIntentCreateEvent extends BasicEvent {
     uniqueKey: string,
     intentId: UUID,
     intentType: IntentType,
-    exchangeType: ExchangeType,
+    executionType: ExecutionType,
     estimatedRawFee: string,
     feeCurrency: IntegrationCurrency,
     fromAmount: string,
@@ -64,7 +64,7 @@ export class TransferIntentCreateEvent extends BasicEvent {
 
     this.intentId = intentId
     this.intentType = intentType
-    this.exchangeType = exchangeType
+    this.executionType = executionType
     this.estimatedRawFee = estimatedRawFee
     this.feeCurrency = feeCurrency
     this.fromAmount = fromAmount

@@ -6,7 +6,7 @@ import {
 } from '@app/shared/types/balance-change'
 import { PaymentIntentModel, PaymentPlatformFeePayerType } from '../../../model/payment-intent.model'
 import { Numeric, Id, AbstractInteractor } from '@app/types'
-import { IntentType, BalanceChangeType } from '@app/shared'
+import { IntentType, BalanceChangeType, ExecutionType } from '@app/shared'
 import { OperationTypeMapper } from '../../../../../shared/projection/operation-type.mapper'
 import { TransactionModel } from '../../../../../shared/model/transaction.model'
 import { PaymentFeeCalculate } from '../payment-fee-calculate'
@@ -14,7 +14,7 @@ import { IntegrationCurrencyModel } from '../../../../../shared/model/integratio
 
 export interface FeePaymentOperationParams {
   readonly payment: PaymentIntentModel
-  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executedAt'>
+  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executionType' | 'executedAt'>
   readonly transferIds: ReadonlySet<Id>
   readonly transferAmount: Numeric
   readonly accumulatedAmount: Numeric
@@ -47,7 +47,7 @@ export class FeePaymentOperation extends AbstractInteractor<FeePaymentOperationP
     const payerFeeAmount = isPayerFeePayed ? payment.platformFee : Numeric.ZERO
     const clientFeeAmount = isPayerFeePayed ? Numeric.ZERO : payment.platformFee
 
-    const isInternalTransfer = payment.to.account === payment.member.accountId
+    const isInternalTransfer = tx.executionType === ExecutionType.INTERNAL
 
     const basicData: Pick<BalanceChange, 'intentType' | 'intentId' | 'operationType'> = {
       intentType: IntentType.PAYMENT,
@@ -61,6 +61,7 @@ export class FeePaymentOperation extends AbstractInteractor<FeePaymentOperationP
       executedAt: tx.executedAt,
       transferIds: Array.from(transferIds),
       txStatus: BalanceChangeTxStatus.TX_CONFIRMED,
+      executionType: tx.executionType,
     }
 
     const changes: BalanceChange[] = []

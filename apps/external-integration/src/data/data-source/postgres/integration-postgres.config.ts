@@ -14,6 +14,7 @@ import { TransactionRawEntity } from './entities/transaction-raw.entity'
 import { TransactionIntentEntity } from './entities/transaction-intent.entity'
 import { InboxEntity } from './entities/inbox.entity'
 import { OutboxEntity } from './entities/outbox.entity'
+import { InternalBlockEntity } from './entities/internal-block.entity'
 
 export const APP_SCHEMA = 'external_integration'
 
@@ -40,6 +41,7 @@ export class IntegrationPostgresConfig extends BaseDatabaseConfig {
         TransactionRawEntity,
         TransferEntity,
         TransactionIntentEntity,
+        InternalBlockEntity,
         InboxEntity,
         OutboxEntity,
       ],

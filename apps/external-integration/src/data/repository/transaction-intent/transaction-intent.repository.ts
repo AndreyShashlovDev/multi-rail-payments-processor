@@ -5,7 +5,6 @@ import { DataSource } from 'typeorm'
 import {
   TransactionIntentData,
   TransactionIntentModel,
-  TransactionIntentStatus,
 } from '../../../module/transaction-intent/model/transaction-intent.model'
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { TransactionIntentRepositoryMapper } from './transaction-intent-repository.mapper'
@@ -24,16 +23,14 @@ import { Id } from '@app/types'
 export class TransactionIntentRepository {
   constructor(@InjectDataSource(IntegrationPostgresConfig.DATASOURCE_NAME) private readonly datasource: DataSource) {}
 
-  async create(
-    data: Omit<TransactionIntentData, 'status' | 'signedData'>,
-    ctx: TxContext,
-  ): Promise<TransactionIntentModel> {
-    const entity = TransactionIntentRepositoryMapper.fromDomain(
-      { ...data, status: TransactionIntentStatus.HOLD_PENDING, signedData: null },
-      ctx.em,
-    )
+  async create(data: TransactionIntentData, ctx: TxContext): Promise<TransactionIntentModel> {
+    const entity = TransactionIntentRepositoryMapper.fromDomain(data, ctx.em)
 
-    const result = await ctx.em.save(TransactionIntentEntity, entity)
+    const result = await ctx.em.save(TransactionIntentEntity, {
+      ...entity,
+      status: TransactionIntentEntityStatus.HOLD_PENDING,
+      signedData: null,
+    })
 
     return TransactionIntentRepositoryMapper.toDomain(result, data.transfers)
   }

@@ -5,7 +5,7 @@ import { TransferIntentRepository } from '../../../../data/repository/transfer-i
 import { InboxRepository } from '../../../../data/repository/inbox/inbox.repository'
 import { TxContextRunner } from '@app/shared'
 
-export interface TransferIntentCreateParams extends Omit<TransferIntentData, 'status' | 'transactionIntentId'> {}
+export interface TransferIntentCreateParams extends TransferIntentData {}
 
 @Injectable()
 export class TransferIntentCreateInteractor extends AbstractInteractor<TransferIntentCreateParams, Promise<void>> {

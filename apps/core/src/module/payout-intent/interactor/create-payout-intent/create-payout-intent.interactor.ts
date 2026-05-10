@@ -3,7 +3,7 @@ import { PayoutIntentModel, PayoutOperationType } from '../../model/payout-inten
 import { PayoutIntentRepository } from '../../../../data/repository/payout-intent/payout-intent.repository'
 import { LedgerRepository } from '../../../../data/repository/ledger/ledger.repository'
 import { Injectable } from '@nestjs/common'
-import { IntegrationType, IntentType, Balance, OutboxTxContextRunner, ExchangeType } from '@app/shared'
+import { IntegrationType, IntentType, Balance, OutboxTxContextRunner, ExecutionType } from '@app/shared'
 import { IntegrationAccountLinkRepository } from '../../../../data/repository/integration-account-link/integration-account-link.repository'
 import { PayoutAccountNotFoundException } from '../../exception/payout-account-not-found.exception'
 import { IntegrationAccountLinkModel } from '../../../../shared/model/integration-account-link.model'
@@ -26,6 +26,7 @@ import { PlatformFeeResult } from '../../../../data/repository/fee/fee-repositor
 
 export interface CreatePayoutIntentParams {
   readonly idempotencyKey: string
+  readonly executionType: ExecutionType
   readonly operationType: PayoutOperationType
 
   readonly platformMember: PlatformMemberModel
@@ -118,7 +119,7 @@ export class CreatePayoutIntentInteractor extends AbstractInteractor<
             transfer: {
               intentId: payout.id,
               intentType: IntentType.PAYOUT,
-              exchangeType: ExchangeType.NATIVE,
+              executionType: params.executionType,
               estimatedFee: convertIntegrationFee.from.amount,
               feeCurrency: convertIntegrationFee.from.currency,
               fromAmount: payout.fromAmount,
@@ -148,9 +149,10 @@ export class CreatePayoutIntentInteractor extends AbstractInteractor<
     readonly platformFee: PlatformFeeResult
     readonly userBalance: Balance
   }> {
-    const integrationTransferFee = await this.externalIntegrationRepository.getEstimatedTransferFee(
-      params.estimatedTransferFeeId,
-    )
+    const integrationTransferFee =
+      params.executionType === ExecutionType.INTERNAL
+        ? { amount: Numeric.ZERO, currency: IntegrationCurrency.create('native'), integration: params.fromIntegration }
+        : await this.externalIntegrationRepository.getEstimatedTransferFee(params.estimatedTransferFeeId)
 
     if (!integrationTransferFee || integrationTransferFee.integration !== params.fromIntegration) {
       throw new EstimatedTransferFeeNotFoundException(params.estimatedTransferFeeId)

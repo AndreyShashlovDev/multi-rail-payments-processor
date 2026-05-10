@@ -3,10 +3,10 @@ import { Injectable } from '@nestjs/common'
 import { TransferIntentRepository } from '../../../../data/repository/transfer-intent/transfer-intent.repository'
 import { TransactionStatus, OutboxTxContextRunner } from '@app/shared'
 import { TransactionIntentRepository } from '../../../../data/repository/transaction-intent/transaction-intent.repository'
-import { EvmSingleTransferBuilder } from '../../../transaction/integration/blockchain/transaction-builder/evm-single-transfer.builder'
 import { OperationType } from '../../../transaction/model/transfer.model'
 import { TransactionEventPublisher } from '../../../../data/publisher/transaction-event/transaction-event.publisher'
 import { TransactionSaverStrategy } from '../../../transaction/service/transaction-saver/transaction-saver.strategy'
+import { TransactionBuilderStrategy } from '../../../transaction/integration/transaction-builder.strategy'
 
 @Injectable()
 export class CreateTransactionIntentInteractor extends AbstractInteractor<never, Promise<void>> {
@@ -14,7 +14,7 @@ export class CreateTransactionIntentInteractor extends AbstractInteractor<never,
     private readonly contextRunner: OutboxTxContextRunner,
     private readonly transferIntentRepository: TransferIntentRepository,
     private readonly transactionIntentRepository: TransactionIntentRepository,
-    private readonly transactionBuilderStrategy: EvmSingleTransferBuilder,
+    private readonly transactionBuilderStrategy: TransactionBuilderStrategy,
     private readonly transactionSaverStrategy: TransactionSaverStrategy,
     private readonly transactionEventPublisher: TransactionEventPublisher,
   ) {
@@ -34,12 +34,14 @@ export class CreateTransactionIntentInteractor extends AbstractInteractor<never,
 
         const tx = await this.transactionBuilderStrategy.execute({
           ...transferIntent,
+          integration: transferIntent.fromIntegration,
           fromAmount: transferIntent.fromRawAmount,
           toAmount: transferIntent.toRawAmount,
         })
 
         const transactionIntent = await this.transactionIntentRepository.create(
           {
+            executionType: transferIntent.executionType,
             txId: tx.id,
             nonce: tx.rawTransaction.nonce,
             integration: transferIntent.toIntegration,
@@ -52,6 +54,7 @@ export class CreateTransactionIntentInteractor extends AbstractInteractor<never,
         const transaction = await this.transactionSaverStrategy.save(
           {
             transaction: {
+              executionType: transactionIntent.executionType,
               integration: transactionIntent.integration,
               sourceTxId: transactionIntent.txId,
               blockId: null,

@@ -2,7 +2,13 @@ import { TransactionEntity, TransactionEntityStatus } from '../../data-source/po
 import { TransactionModel, TransactionData } from '../../../module/transaction/model/transaction.model'
 import { EntityManager } from 'typeorm'
 import { Id } from '@app/types'
-import { integrationTypeToDomain, integrationTypeFromDomain, TransactionStatus } from '@app/shared'
+import {
+  integrationTypeToDomain,
+  integrationTypeFromDomain,
+  TransactionStatus,
+  executionTypeToDomain,
+  executionTypeFromDomain,
+} from '@app/shared'
 import { TransactionRawEntity } from '../../data-source/postgres/entities/transaction-raw.entity'
 import { TransferEntity, OperationEntityType } from '../../data-source/postgres/entities/transfer.entity'
 import { TransferModel, TransferData, OperationType } from '../../../module/transaction/model/transfer.model'
@@ -11,6 +17,7 @@ export class TransactionRepositoryMapper {
   static toDomainRaw(entity: TransactionEntity, raw: TransactionRawEntity | null = null): TransactionModel {
     return {
       id: Id.create(entity.id),
+      executionType: executionTypeToDomain(entity.executionType),
       integration: integrationTypeToDomain(entity.integration),
       sourceTxId: entity.sourceTxId,
       blockId: entity.blockId,
@@ -26,6 +33,7 @@ export class TransactionRepositoryMapper {
 
   static fromDomain(model: TransactionData, manager: EntityManager): TransactionEntity {
     return manager.create(TransactionEntity, {
+      executionType: executionTypeFromDomain(model.executionType),
       integration: integrationTypeFromDomain(model.integration),
       sourceTxId: model.sourceTxId,
       blockId: model.blockId,
