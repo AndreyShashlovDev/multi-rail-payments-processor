@@ -1,6 +1,6 @@
-import { AbstractInteractor, Numeric, IntegrationCurrency } from '@app/types'
+import { Numeric, IntegrationCurrency } from '@app/types'
 
-export interface CurrencyConverterParams {
+export interface GetConversionRateParams {
   readonly from: {
     readonly amount: Numeric
     readonly currency: IntegrationCurrency
@@ -10,7 +10,7 @@ export interface CurrencyConverterParams {
   }
 }
 
-export interface CurrencyConverterResult {
+export interface ConversionRateResult {
   readonly from: {
     readonly amount: Numeric
     readonly currency: IntegrationCurrency
@@ -21,8 +21,3 @@ export interface CurrencyConverterResult {
     readonly currency: IntegrationCurrency
   }
 }
-
-export abstract class CurrencyConverterProvider extends AbstractInteractor<
-  CurrencyConverterParams,
-  Promise<CurrencyConverterResult>
-> {}

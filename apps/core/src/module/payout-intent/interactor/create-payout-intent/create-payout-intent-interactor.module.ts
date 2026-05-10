@@ -8,6 +8,8 @@ import { OutboxTxContextModule } from '../../../../shared/tx-context/outbox-tx-c
 import { ExternalIntegrationPublisherModule } from '../../../../data/publisher/external-integration/external-integration-publisher.module'
 import { CurrencyRepositoryModule } from '../../../../data/repository/currency/currency-repository.module'
 import { InboxRepositoryModule } from '../../../../data/repository/inbox/inbox-repository.module'
+import { FeeRepositoryModule } from '../../../../data/repository/fee/fee-repository.module'
+import { RateRepositoryModule } from '../../../../data/repository/rate/rate-repository.module'
 
 @Module({
   imports: [
@@ -19,6 +21,8 @@ import { InboxRepositoryModule } from '../../../../data/repository/inbox/inbox-r
     IntegrationAccountLinkRepositoryModule,
     CurrencyRepositoryModule,
     InboxRepositoryModule,
+    FeeRepositoryModule,
+    RateRepositoryModule,
   ],
   providers: [CreatePayoutIntentInteractor],
   exports: [CreatePayoutIntentInteractor],

@@ -4,11 +4,6 @@ import { PayoutIntentRepository } from '../../../../data/repository/payout-inten
 import { LedgerRepository } from '../../../../data/repository/ledger/ledger.repository'
 import { Injectable } from '@nestjs/common'
 import { IntegrationType, IntentType, Balance, OutboxTxContextRunner, ExchangeType } from '@app/shared'
-import { PlatformFeeProvider, PlatformFeeProviderResult } from '../../../../shared/platform-fee/platform-fee.provider'
-import {
-  CurrencyConverterProvider,
-  CurrencyConverterResult,
-} from '../../../../shared/currency/currency-converter.provider'
 import { IntegrationAccountLinkRepository } from '../../../../data/repository/integration-account-link/integration-account-link.repository'
 import { PayoutAccountNotFoundException } from '../../exception/payout-account-not-found.exception'
 import { IntegrationAccountLinkModel } from '../../../../shared/model/integration-account-link.model'
@@ -24,6 +19,10 @@ import { ExternalIntegrationRepository } from '../../../../data/repository/exter
 import { CurrencyRepository } from '../../../../data/repository/currency/currency.repository'
 import { InboxRepository } from '../../../../data/repository/inbox/inbox.repository'
 import { DuplicateRequestException } from '../../../../shared/exception/duplicate-request.exception'
+import { RateRepository } from '../../../../data/repository/rate/rate.repository'
+import { ConversionRateResult } from '../../../../data/repository/rate/rate-repository.types'
+import { FeeRepository } from '../../../../data/repository/fee/fee.repository'
+import { PlatformFeeResult } from '../../../../data/repository/fee/fee-repository.types'
 
 export interface CreatePayoutIntentParams {
   readonly idempotencyKey: string
@@ -49,8 +48,8 @@ export class CreatePayoutIntentInteractor extends AbstractInteractor<
     private readonly externalIntegrationPublisher: ExternalIntegrationPublisher,
     private readonly externalIntegrationRepository: ExternalIntegrationRepository,
     private readonly ledgerRepository: LedgerRepository,
-    private readonly platformFeeProvider: PlatformFeeProvider,
-    private readonly currencyConverterProvider: CurrencyConverterProvider,
+    private readonly feeRepository: FeeRepository,
+    private readonly rateRepository: RateRepository,
     private readonly integrationAccountLinkRepository: IntegrationAccountLinkRepository,
     private readonly currencyRepository: CurrencyRepository,
     private readonly inboxRepository: InboxRepository,
@@ -145,8 +144,8 @@ export class CreatePayoutIntentInteractor extends AbstractInteractor<
     readonly from: SourceIntegrationAccount
     readonly to: DestinationIntegrationAccount
     readonly platformFeeAccount: SourceIntegrationAccount | null
-    readonly convertIntegrationFee: CurrencyConverterResult
-    readonly platformFee: PlatformFeeProviderResult
+    readonly convertIntegrationFee: ConversionRateResult
+    readonly platformFee: PlatformFeeResult
     readonly userBalance: Balance
   }> {
     const integrationTransferFee = await this.externalIntegrationRepository.getEstimatedTransferFee(
@@ -157,12 +156,12 @@ export class CreatePayoutIntentInteractor extends AbstractInteractor<
       throw new EstimatedTransferFeeNotFoundException(params.estimatedTransferFeeId)
     }
 
-    const platformFee = await this.platformFeeProvider.execute({
+    const platformFee = await this.feeRepository.getPlatformFee({
       integration: params.fromIntegration,
       currency: params.fromCurrency,
     })
 
-    const convertResult = await this.currencyConverterProvider.execute({
+    const convertResult = await this.rateRepository.getConversionRate({
       from: {
         amount: integrationTransferFee.amount,
         currency: integrationTransferFee.currency,

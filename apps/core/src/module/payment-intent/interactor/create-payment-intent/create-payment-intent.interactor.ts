@@ -7,10 +7,10 @@ import { IntegrationType, TxContextRunner } from '@app/shared'
 import { IntegrationAccountRepository } from '../../../../data/repository/integration-account/integration-account.repository'
 import { IntegrationAccountLinkModel } from '../../../../shared/model/integration-account-link.model'
 import { TxContext } from '@app/shared/types/tx-context.type'
-import { PlatformFeeProvider } from '../../../../shared/platform-fee/platform-fee.provider'
 import { NotFoundAvailableLinkAccountException } from '../../exception/not-found-available-link-account.exception'
 import { InboxRepository } from '../../../../data/repository/inbox/inbox.repository'
 import { DuplicateRequestException } from '../../../../shared/exception/duplicate-request.exception'
+import { FeeRepository } from '../../../../data/repository/fee/fee.repository'
 
 export interface CreatePaymentParams {
   readonly idempotencyKey: string
@@ -34,14 +34,14 @@ export class CreatePaymentIntentInteractor extends AbstractInteractor<
     private readonly paymentRepository: PaymentIntentRepository,
     private readonly integrationAccountRepository: IntegrationAccountRepository,
     private readonly integrationAccountLinkRepository: IntegrationAccountLinkRepository,
-    private readonly platformFeeProvider: PlatformFeeProvider,
+    private readonly feeRepository: FeeRepository,
     private readonly inboxRepository: InboxRepository,
   ) {
     super()
   }
 
   async execute(params: CreatePaymentParams): Promise<PaymentIntentModel> {
-    const { platformFee, platformFeeAccount } = await this.platformFeeProvider.execute({
+    const { platformFee, platformFeeAccount } = await this.feeRepository.getPlatformFee({
       integration: params.integration,
       currency: params.currency,
     })

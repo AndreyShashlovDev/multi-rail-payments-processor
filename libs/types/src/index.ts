@@ -1,4 +1,5 @@
 export * from './arch'
+export * from './cqrs'
 export * from './type-orm'
 export * from './blockchain.type'
 export * from './hash.type'
