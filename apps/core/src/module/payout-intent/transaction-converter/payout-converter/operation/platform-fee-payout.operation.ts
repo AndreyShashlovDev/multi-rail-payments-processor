@@ -4,7 +4,7 @@ import {
   BalanceChangeTxStatus,
   PayoutBalanceChangeMetadata,
 } from '@app/shared/types/balance-change'
-import { Id, AbstractInteractor } from '@app/types'
+import { Id, AbstractInteractor, IntegrationAccount } from '@app/types'
 import { IntentType, BalanceChangeType, ExecutionType } from '@app/shared'
 import { PayoutIntentModel } from '../../../model/payout-intent.model'
 import { OperationTypeMapper } from '../../../../../shared/projection/operation-type.mapper'
@@ -13,6 +13,7 @@ import { TransactionModel } from '../../../../../shared/model/transaction.model'
 export interface PlatformFeePayoutOperationParams {
   readonly payout: PayoutIntentModel
   readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executionType' | 'executedAt'>
+  readonly from: IntegrationAccount
   readonly transferIds: ReadonlySet<Id>
 }
 
@@ -21,7 +22,7 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
   ReadonlyArray<BalanceChange>
 > {
   execute(params: PlatformFeePayoutOperationParams): ReadonlyArray<BalanceChange> {
-    const { payout, transferIds, tx } = params
+    const { payout, tx, from, transferIds } = params
 
     if (!payout.platformFee || !payout.platformFeeAccount) {
       return []
@@ -45,7 +46,7 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
     }
 
     if (!isInternalTransfer) {
-      const integrationAccount = payout.from.account
+      const integrationAccount = from
 
       return [
         {

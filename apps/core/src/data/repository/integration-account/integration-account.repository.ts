@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
-import { DataSource, In, IsNull } from 'typeorm'
+import { DataSource, In, IsNull, Not } from 'typeorm'
 import { CorePostgresConfig } from '../../data-source/postgres/core-postgres.config'
 import {
   HasAccountsData,
@@ -17,6 +17,9 @@ import { IntegrationAccountRepositoryMapper } from './integration-account-reposi
 import { IntegrationAccountModel } from '../../../shared/model/integration-account.model'
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { PaymentIntentData } from '../../../module/payment-intent/model/payment-intent.model'
+import { isUUID } from 'class-validator'
+import { IntegrationAccount } from '@app/types'
+import { AccountEntity } from '../../data-source/postgres/entities/account.entity'
 
 @Injectable()
 export class IntegrationAccountRepository {
@@ -25,9 +28,42 @@ export class IntegrationAccountRepository {
     private readonly datasource: DataSource,
   ) {}
 
-  // todo write code!
+  // todo cache it
   async hasAccounts(data: HasAccountsData, _ctx?: TxContext): Promise<HasAccountsResult> {
-    return { existing: data.addresses }
+    if (data.accounts.size === 0) {
+      return { existing: new Set() }
+    }
+
+    const accounts = Array.from(data.accounts)
+    const uuidAccounts = accounts.filter((a) => isUUID(a))
+    const existing = new Set<IntegrationAccount>()
+
+    if (uuidAccounts.length > 0) {
+      const results = await this.datasource.manager.query<{ account: string }[]>(
+        `
+        SELECT account FROM ${IntegrationAccountEntity.PATH}
+        WHERE account = ANY($1)
+        AND status NOT IN (${IntegrationAccountEntityStatus.FROZEN}, ${IntegrationAccountEntityStatus.RETIRED})
+        UNION
+        SELECT id::text FROM ${AccountEntity.PATH}
+        WHERE id = ANY($2::uuid[])
+      `,
+        [accounts, uuidAccounts],
+      )
+
+      results.forEach((acc) => existing.add(acc.account as IntegrationAccount))
+    } else {
+      const integrationResults = await this.datasource.manager.find(IntegrationAccountEntity, {
+        select: ['account'],
+        where: {
+          account: In(accounts),
+          status: Not(In([IntegrationAccountEntityStatus.FROZEN, IntegrationAccountEntityStatus.RETIRED])),
+        },
+      })
+      integrationResults.forEach((acc) => existing.add(acc.account))
+    }
+
+    return { existing }
   }
 
   async get(data: GetAccountsData, ctx?: TxContext): Promise<ReadonlyArray<IntegrationAccountModel>> {

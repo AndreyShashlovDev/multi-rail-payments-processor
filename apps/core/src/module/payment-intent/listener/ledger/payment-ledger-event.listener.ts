@@ -6,8 +6,8 @@ import { PaymentBalanceChangeMetadata } from '@app/shared/types/balance-change'
 import { IntentType, BalanceChangeType } from '@app/shared'
 
 @Injectable()
-export class LedgerEventListener {
-  private readonly logger = new Logger(LedgerEventListener.name)
+export class PaymentLedgerEventListener {
+  private readonly logger = new Logger(PaymentLedgerEventListener.name)
 
   constructor(
     readonly ledgerConsumer: LedgerConsumer,

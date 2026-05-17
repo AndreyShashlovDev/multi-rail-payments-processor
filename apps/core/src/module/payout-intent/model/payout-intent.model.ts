@@ -28,7 +28,6 @@ export interface PayoutIntentData {
 
   readonly member: PlatformMemberModel
 
-  readonly from: SourceIntegrationAccount
   readonly fromAmount: Numeric
   readonly fromCurrency: IntegrationCurrency
   readonly fromIntegration: IntegrationType

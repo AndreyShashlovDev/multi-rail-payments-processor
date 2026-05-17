@@ -5,9 +5,16 @@ import { BALANCE_CHANGE_STREAM } from '@app/shared/nat-stream/balance-change-str
 import { BALANCE_UPDATED_CONSUMER, BALANCE_UPDATED_STREAM } from '@app/shared/nat-stream/balance-updated-stream.types'
 import { BalanceUpdatedEvent } from '@app/shared/services/ledger/v1'
 import { JsonObject, SignedEnvelopeEvent } from '@app/types'
+import { BalanceProjectionUpdatedEvent } from '@app/shared/services/ledger/v1/event/balance-projection-updated.event'
+import {
+  BALANCE_PROJECTION_UPDATE_CONSUMER,
+  BALANCE_PROJECTION_UPDATE_STREAM,
+} from '@app/shared/nat-stream/balance-projection-update-stream.types'
 
 export interface LedgerJetstreamHandler {
   balanceUpdatedEventHandler(event: JsonObject<BalanceUpdatedEvent>): Promise<void>
+
+  balanceProjectionUpdatedEventHandler(event: JsonObject<BalanceProjectionUpdatedEvent>): Promise<void>
 }
 
 @Injectable()
@@ -24,8 +31,10 @@ export class LedgerJetstreamDataSource extends BaseNatsService {
   protected async setupStreams(): Promise<void> {
     await this.ensureStream(BALANCE_CHANGE_STREAM)
     await this.ensureStream(BALANCE_UPDATED_STREAM)
+    await this.ensureStream(BALANCE_PROJECTION_UPDATE_STREAM)
 
     await this.ensureConsumer(BALANCE_UPDATED_CONSUMER)
+    await this.ensureConsumer(BALANCE_PROJECTION_UPDATE_CONSUMER)
   }
 
   setupHandler(handler: LedgerJetstreamHandler | null): void {
@@ -34,6 +43,17 @@ export class LedgerJetstreamDataSource extends BaseNatsService {
 
   async onModuleInit(): Promise<void> {
     await super.onModuleInit()
+
+    await this.startConsuming<JsonObject<SignedEnvelopeEvent<BalanceProjectionUpdatedEvent>>>(
+      BALANCE_PROJECTION_UPDATE_CONSUMER,
+      async (data) => {
+        if (this.handler) {
+          this.signatureService.verifyEnvelop(data)
+
+          await this.handler.balanceProjectionUpdatedEventHandler(data.meta.payload)
+        }
+      },
+    )
 
     await this.startConsuming<JsonObject<SignedEnvelopeEvent<BalanceUpdatedEvent>>>(
       BALANCE_UPDATED_CONSUMER,

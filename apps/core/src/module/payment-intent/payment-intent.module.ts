@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common'
 import { ExternalIntegrationEventModule } from './listener/external-integration/external-integration-event.module'
-import { LedgerEventListenerModule } from './listener/ledger/ledger-event-listener.module'
+import { PaymentLedgerEventListenerModule } from './listener/ledger/payment-ledger-event-listener.module'
 
 @Module({
-  imports: [ExternalIntegrationEventModule, LedgerEventListenerModule],
+  imports: [ExternalIntegrationEventModule, PaymentLedgerEventListenerModule],
 })
 export class PaymentIntentModule {}

@@ -42,8 +42,9 @@ export class SingleIntegrationPayoutHoldConverter implements PayoutTransactionCo
     const changes = matchedPayout.flatMap(({ payout, transfer }) =>
       this.holdsOperation.execute({
         payout,
-        transferIds: new Set([transfer.id]),
         tx: params.transaction,
+        from: transfer.from,
+        transferIds: new Set([transfer.id]),
       }),
     )
 

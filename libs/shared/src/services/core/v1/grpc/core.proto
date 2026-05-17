@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package core;
+
+import "relayer.proto";
+import "integration-account.proto";
+
+service Relayer {
+  rpc getRelayerAccount (GetRelayerQuery) returns (RelayerResponse);
+}
+
+service IntegrationAccount {
+  rpc hasAccount (HasAccountQuery) returns (HasAccountResponse);
+}

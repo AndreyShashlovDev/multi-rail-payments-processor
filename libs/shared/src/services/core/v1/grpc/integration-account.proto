@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package core;
+
+message HasAccountQuery {
+  repeated string account = 1;
+}
+
+message HasAccountResponse {
+  repeated string existing = 1;
+}

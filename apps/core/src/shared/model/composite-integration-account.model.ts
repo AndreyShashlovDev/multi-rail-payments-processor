@@ -4,7 +4,7 @@ export type ExternalIntegrationAccount =
   | SourceIntegrationAccount
   | { account: IntegrationAccount; platformAccountId?: undefined; accountLinkId?: undefined }
 
-export type DestinationIntegrationAccount = SourceIntegrationAccount
+export type DestinationIntegrationAccount = ExternalIntegrationAccount
 
 export type SourceIntegrationAccount =
   | { account: IntegrationAccount; platformAccountId: UUID; accountLinkId?: never }

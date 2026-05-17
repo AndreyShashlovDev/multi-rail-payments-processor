@@ -1,5 +1,6 @@
 export const APP_SCHEMA = 'core'
 
+import { IntegrationAccountBalanceEntity } from './entities/integration-account-balance.entity'
 import { PaymentAmountAccumulatorEntity } from './entities/payment-amount-accumulator.entity'
 import 'reflect-metadata'
 import { DataSource } from 'typeorm'
@@ -45,6 +46,7 @@ export class CorePostgresConfig extends BaseDatabaseConfig {
         IntegrationAccountEntity,
         IntegrationAccountLinkEntity,
         IntegrationCurrencyEntity,
+        IntegrationAccountBalanceEntity,
         PaymentIntentEntity,
         PaymentInboxTransferEntity,
         PaymentAmountAccumulatorEntity,

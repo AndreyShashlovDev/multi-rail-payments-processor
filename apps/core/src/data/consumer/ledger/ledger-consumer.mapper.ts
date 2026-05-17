@@ -1,10 +1,11 @@
-import { BalanceUpdatedResult } from './ledger-consumer.types'
+import { BalanceUpdatedResult, BalanceProjectionUpdatedResult } from './ledger-consumer.types'
 import { BalanceChangeMetadata } from '@app/shared/types/balance-change'
 import { BalanceUpdatedEvent } from '@app/shared/services/ledger/v1'
-import { Numeric } from '@app/types'
+import { Numeric, JsonObject } from '@app/types'
 import { plainToInstance } from 'class-transformer'
 import { validateSync } from 'class-validator'
 import { BalanceChangeDataMetadata } from '@app/shared/services/ledger/v1/event/balance-change-metadata.type'
+import { BalanceProjectionUpdatedEvent } from '@app/shared/services/ledger/v1/event/balance-projection-updated.event'
 
 export class LedgerConsumerMapper {
   static balanceUpdatedEventValidate<T extends BalanceUpdatedEvent>(event: T): BalanceUpdatedEvent {
@@ -32,7 +33,6 @@ export class LedgerConsumerMapper {
       ver: data.ver,
       changes: data.changes.map((item) => ({
         ...item,
-        integration: item.integration,
         amount: Numeric.create(item.amount),
         metadata: LedgerConsumerMapper.mapMetadata(item.metadata),
       })),
@@ -45,6 +45,41 @@ export class LedgerConsumerMapper {
       overpay: metadata.overpay ? Numeric.create(metadata.overpay) : undefined,
       expectedAmount: metadata.expectedAmount ? Numeric.create(metadata.expectedAmount) : undefined,
       integrationFeeDiff: metadata.integrationFeeDiff ? Numeric.create(metadata.integrationFeeDiff) : undefined,
+    }
+  }
+
+  static balanceProjectionEventValidate(
+    event: JsonObject<BalanceProjectionUpdatedEvent>,
+  ): BalanceProjectionUpdatedEvent {
+    // check by txEvent.ver
+    const instance = plainToInstance(BalanceProjectionUpdatedEvent, event, {
+      exposeDefaultValues: true,
+    })
+
+    const errors = validateSync(instance, {
+      whitelist: true,
+      forbidNonWhitelisted: false,
+    })
+
+    if (errors.length > 0) {
+      throw new Error(
+        `Validation failed: ${errors.map((e) => Object.values(e.constraints || {}).join(', ')).join('; ')}`,
+      )
+    }
+    return instance
+  }
+
+  static eventToBalanceProjectionUpdatedResult(data: BalanceProjectionUpdatedEvent): BalanceProjectionUpdatedResult {
+    return {
+      idempotencyKey: data.uniqueKey,
+      ver: data.ver,
+      date: new Date(data.date),
+      projections: data.projections.map((item) => ({
+        account: item.account,
+        integration: item.integration,
+        currency: item.currency,
+        available: Numeric.create(item.amount),
+      })),
     }
   }
 }

@@ -2,7 +2,7 @@ import { AbstractInteractor, UUID, IntegrationCurrency, Numeric } from '@app/typ
 import { IntegrationAccountLinkRepository } from '../../../data/repository/integration-account-link/integration-account-link.repository'
 import { LedgerRepository } from '../../../data/repository/ledger/ledger.repository'
 import { Injectable, Logger } from '@nestjs/common'
-import { IntegrationType, BalanceChangeType, OutboxTxContextRunner, ExecutionType } from '@app/shared'
+import { IntegrationType, BalanceChangeType, OutboxTxContextRunner } from '@app/shared'
 import { WrongCreditFundsAmountException } from '../../exception/wrong-credit-funds-amount.exception'
 import { PlatformDepositAccountNotFoundException } from '../../exception/platform-deposit-account-not-found.exception'
 import { randomUUID } from 'node:crypto'
@@ -141,7 +141,6 @@ export class DemoFullFlowInteractor extends AbstractInteractor<never, Promise<vo
     this.logger.debug(`Payment id ${payment.id}`)
 
     const payout = await this.createPayoutIntentInteractor.execute({
-      executionType: ExecutionType.NATIVE,
       idempotencyKey: randomUUID(),
       operationType: PayoutOperationType.USER_REQUEST,
       platformMember: {

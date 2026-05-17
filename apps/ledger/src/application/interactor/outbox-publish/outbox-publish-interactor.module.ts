@@ -3,9 +3,15 @@ import { OutboxPublishInteractor } from './outbox-publish.interactor'
 import { OutboxRepositoryModule } from '../../../data/repository/outbox/outbox-repository.module'
 import { TxContextModule } from '../../../shared/tx-context/tx-context.module'
 import { BalanceEventPublisherModule } from '../../../data/publisher/balance-event/balance-event-publisher.module'
+import { BalanceProjectionEventPublisherModule } from '../../../data/publisher/balance-projection-event/balance-projection-event-publisher.module'
 
 @Module({
-  imports: [TxContextModule, OutboxRepositoryModule, BalanceEventPublisherModule],
+  imports: [
+    TxContextModule,
+    OutboxRepositoryModule,
+    BalanceEventPublisherModule,
+    BalanceProjectionEventPublisherModule,
+  ],
   providers: [OutboxPublishInteractor],
   exports: [OutboxPublishInteractor],
 })

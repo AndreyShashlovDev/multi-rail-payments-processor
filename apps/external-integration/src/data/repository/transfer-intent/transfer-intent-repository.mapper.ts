@@ -12,8 +12,7 @@ import {
   integrationTypeToDomain,
   integrationTypeFromDomain,
   intentTypeFromDomain,
-  executionTypeFromDomain,
-  executionTypeToDomain,
+  ExecutionEntityType,
 } from '@app/shared'
 import { EntityManager } from 'typeorm'
 
@@ -23,7 +22,6 @@ export class TransferIntentRepositoryMapper {
       id: entity.id,
       intentId: entity.intentId,
       intentType: intentTypeToDomain(entity.intentType),
-      executionType: executionTypeToDomain(entity.executionType),
       estimatedRawFee: entity.estimatedRawFee,
       feeCurrency: entity.feeCurrency,
       fromRawAmount: entity.fromRawAmount,
@@ -45,7 +43,7 @@ export class TransferIntentRepositoryMapper {
     return manager.create(TransferIntentEntity, {
       intentId: model.intentId,
       intentType: intentTypeFromDomain(model.intentType),
-      executionType: executionTypeFromDomain(model.executionType),
+      executionType: ExecutionEntityType.INTERNAL,
       estimatedRawFee: model.estimatedRawFee,
       feeCurrency: model.feeCurrency,
       fromRawAmount: model.fromRawAmount,

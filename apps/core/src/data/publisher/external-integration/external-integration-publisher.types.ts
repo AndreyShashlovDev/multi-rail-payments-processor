@@ -1,4 +1,4 @@
-import { IntentType, IntegrationType, ExecutionType } from '@app/shared'
+import { IntentType, IntegrationType } from '@app/shared'
 import { UUID, IntegrationCurrency, Numeric, type IntegrationAccount } from '@app/types'
 
 export interface TransferIntentHeldData {
@@ -14,7 +14,6 @@ export interface EnqueueTransferCreateData {
 export interface TransferIntentData {
   readonly intentId: UUID
   readonly intentType: IntentType
-  readonly executionType: ExecutionType
   readonly estimatedFee: Numeric
   readonly feeCurrency: IntegrationCurrency
   readonly fromAmount: Numeric

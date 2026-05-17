@@ -1,12 +1,14 @@
-import { AbstractInteractor } from '@app/types'
+import { AbstractInteractor, IntegrationAccount } from '@app/types'
 import { Injectable } from '@nestjs/common'
 import { TransferIntentRepository } from '../../../../data/repository/transfer-intent/transfer-intent.repository'
-import { TransactionStatus, OutboxTxContextRunner } from '@app/shared'
+import { TransactionStatus, OutboxTxContextRunner, ExecutionType } from '@app/shared'
 import { TransactionIntentRepository } from '../../../../data/repository/transaction-intent/transaction-intent.repository'
 import { OperationType } from '../../../transaction/model/transfer.model'
 import { TransactionEventPublisher } from '../../../../data/publisher/transaction-event/transaction-event.publisher'
 import { TransactionSaverStrategy } from '../../../transaction/service/transaction-saver/transaction-saver.strategy'
 import { TransactionBuilderStrategy } from '../../../transaction/integration/transaction-builder.strategy'
+import { IntegrationAccountRepository } from '../../../../data/repository/integration-account/integration-account.repository'
+import { RelayerStrategy } from '../../relayer/relayer.strategy'
 
 @Injectable()
 export class CreateTransactionIntentInteractor extends AbstractInteractor<never, Promise<void>> {
@@ -17,6 +19,8 @@ export class CreateTransactionIntentInteractor extends AbstractInteractor<never,
     private readonly transactionBuilderStrategy: TransactionBuilderStrategy,
     private readonly transactionSaverStrategy: TransactionSaverStrategy,
     private readonly transactionEventPublisher: TransactionEventPublisher,
+    private readonly integrationAccountRepository: IntegrationAccountRepository,
+    private readonly relayerStrategy: RelayerStrategy,
   ) {
     super()
   }
@@ -31,9 +35,41 @@ export class CreateTransactionIntentInteractor extends AbstractInteractor<never,
         if (!transferIntent) {
           return
         }
+        const platformAccounts = (
+          await this.integrationAccountRepository.hasAccounts({
+            accounts: new Set([transferIntent.fromAccount, transferIntent.toAccount]),
+          })
+        ).existing
+
+        const executionType =
+          platformAccounts.has(transferIntent.fromAccount) && platformAccounts.has(transferIntent.toAccount)
+            ? ExecutionType.INTERNAL
+            : ExecutionType.NATIVE
+
+        let fromAccount: IntegrationAccount | null = transferIntent.fromAccount
+
+        if (executionType === ExecutionType.NATIVE) {
+          fromAccount = await this.relayerStrategy.getAccount({
+            from: transferIntent.fromAccount,
+            to: transferIntent.toAccount,
+            fromIntegration: transferIntent.fromIntegration,
+            toIntegration: transferIntent.toIntegration,
+            fromCurrency: transferIntent.fromCurrency,
+            toCurrency: transferIntent.toCurrency,
+            fromAmount: transferIntent.fromRawAmount,
+            toAmount: transferIntent.toRawAmount,
+            platformAccounts,
+          })
+        }
+
+        if (!fromAccount) {
+          throw new Error('fromAccount is undefined!')
+        }
 
         const tx = await this.transactionBuilderStrategy.execute({
           ...transferIntent,
+          executionType,
+          fromAccount,
           integration: transferIntent.fromIntegration,
           fromAmount: transferIntent.fromRawAmount,
           toAmount: transferIntent.toRawAmount,
@@ -41,7 +77,7 @@ export class CreateTransactionIntentInteractor extends AbstractInteractor<never,
 
         const transactionIntent = await this.transactionIntentRepository.create(
           {
-            executionType: transferIntent.executionType,
+            executionType,
             txId: tx.id,
             nonce: tx.rawTransaction.nonce,
             integration: transferIntent.toIntegration,
@@ -73,7 +109,7 @@ export class CreateTransactionIntentInteractor extends AbstractInteractor<never,
                       : OperationType.TOKEN_TRANSFER,
                   index: 0,
                   initiator: tx.executor,
-                  from: transferIntent.fromAccount,
+                  from: fromAccount,
                   to: transferIntent.toAccount,
                   fromOwner: transferIntent.fromAccount,
                   toOwner: transferIntent.toAccount,

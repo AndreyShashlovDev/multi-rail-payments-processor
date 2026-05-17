@@ -1,3 +1,4 @@
 export * from './event/balance-change-request.event'
+export * from './event/balance-projection-updated.event'
 export * from './event/balance-updated.event'
 export * from './event/balance-failed.event'

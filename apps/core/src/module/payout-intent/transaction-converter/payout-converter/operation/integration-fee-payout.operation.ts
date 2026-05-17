@@ -4,7 +4,7 @@ import {
   BalanceChangeTxStatus,
   PayoutBalanceChangeMetadata,
 } from '@app/shared/types/balance-change'
-import { Id, AbstractInteractor, Numeric } from '@app/types'
+import { Id, AbstractInteractor, Numeric, IntegrationAccount, UUID } from '@app/types'
 import { IntentType, BalanceChangeType, ExecutionType } from '@app/shared'
 import { PayoutIntentModel } from '../../../model/payout-intent.model'
 import { OperationTypeMapper } from '../../../../../shared/projection/operation-type.mapper'
@@ -13,6 +13,7 @@ import { TransactionModel } from '../../../../../shared/model/transaction.model'
 export interface PlatformFeePayoutOperationParams {
   readonly payout: PayoutIntentModel
   readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executionType' | 'executedAt'>
+  readonly from: IntegrationAccount
   readonly transferIds: ReadonlySet<Id>
 }
 
@@ -21,7 +22,7 @@ export class IntegrationFeePayoutOperation extends AbstractInteractor<
   ReadonlyArray<BalanceChange>
 > {
   execute(params: PlatformFeePayoutOperationParams): ReadonlyArray<BalanceChange> {
-    const { payout, transferIds, tx } = params
+    const { payout, tx, from, transferIds } = params
 
     if (!payout.integrationFee || payout.integrationFee.lte(0) || !payout.integrationFeePayer) {
       return []
@@ -55,7 +56,7 @@ export class IntegrationFeePayoutOperation extends AbstractInteractor<
         {
           type: BalanceChangeType.RELEASE_HOLD,
           ...basicData,
-          platformAccountId: payout.from.platformAccountId,
+          platformAccountId: from as UUID,
           integrationAccount: null,
           currency: payout.estimatedFeeCurrency,
           integration: payout.fromIntegration,
@@ -65,7 +66,7 @@ export class IntegrationFeePayoutOperation extends AbstractInteractor<
         {
           type: BalanceChangeType.PLATFORM_FEE_ACCRUED,
           ...basicData,
-          platformAccountId: payout.from.platformAccountId,
+          platformAccountId: from as UUID,
           integrationAccount: null,
           currency: payout.integrationFeeCurrency,
           integration: payout.fromIntegration,

@@ -7,6 +7,8 @@ import { IntentGroup, BalanceApplyError } from '../../../../data/repository/bala
 import { randomUUID } from 'node:crypto'
 import { OutboxTxContextRunner } from '@app/shared'
 import { BalanceEventPublisher } from '../../../../data/publisher/balance-event/balance-event.publisher'
+import { BalanceProjectionEventPublisher } from '../../../../data/publisher/balance-projection-event/balance-projection-event.publisher'
+import { ProjectionEventData } from '../../../../data/publisher/balance-projection-event/balance-projection-event-publisher.types'
 
 export interface ProcessApplyBalanceParams {
   readonly uniqueKey: string
@@ -22,6 +24,7 @@ export class ProcessApplyBalanceInteractor extends AbstractInteractor<ProcessApp
     private readonly balanceEventInboxRepository: BalanceEventInboxRepository,
     private readonly balanceRepository: BalanceRepository,
     private readonly balanceEventPublisher: BalanceEventPublisher,
+    private readonly balanceProjectionEventPublisher: BalanceProjectionEventPublisher,
   ) {
     super()
   }
@@ -44,9 +47,10 @@ export class ProcessApplyBalanceInteractor extends AbstractInteractor<ProcessApp
 
         const results = await this.balanceRepository.applyFromGroups(groups, ctx)
 
-        const { success, failed } = results.reduce(
+        const { success, failed, projections } = results.reduce(
           (acc, result) => {
             if (result.status === 'success') {
+              acc.projections.push(...result.updates)
               acc.success.push(...result.changes)
             } else {
               acc.failed.changes.push(...result.changes)
@@ -55,6 +59,7 @@ export class ProcessApplyBalanceInteractor extends AbstractInteractor<ProcessApp
             return acc
           },
           {
+            projections: [] as ProjectionEventData[],
             success: [] as BalanceChangeData[],
             failed: { changes: [] as BalanceChangeData[], errors: [] as BalanceApplyError[] },
           },
@@ -62,6 +67,7 @@ export class ProcessApplyBalanceInteractor extends AbstractInteractor<ProcessApp
 
         await this.balanceEventPublisher.enqueueSuccess({ uniqueKey: `${uniqueKey}:success`, changes: success }, ctx)
         await this.balanceEventPublisher.enqueueFailed({ uniqueKey: `${uniqueKey}:failed`, ...failed }, ctx)
+        await this.balanceProjectionEventPublisher.enqueue({ date: new Date(), projections }, ctx)
       })
       .execute()
   }

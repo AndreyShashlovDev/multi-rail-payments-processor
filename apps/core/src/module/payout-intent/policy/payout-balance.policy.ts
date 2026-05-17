@@ -1,22 +1,16 @@
 import { Balance } from '@app/shared'
 import { Numeric } from '@app/types'
 import { InsufficientUserBalanceException } from '../exception/insufficient-user-balance.exception'
-import { InsufficientFromIntegrationBalanceException } from '../exception/insufficient-from-integration-balance.exception'
 
 export class PayoutBalancePolicy {
   static validate(params: {
     userBalance: Balance | undefined
-    hotIntegrationBalance: Balance | undefined
     totalAmount: Numeric
-  }): asserts params is { userBalance: Balance; hotIntegrationBalance: Balance; totalAmount: Numeric } {
-    const { userBalance, hotIntegrationBalance, totalAmount } = params
+  }): asserts params is { userBalance: Balance; relayerBalance: Balance; totalAmount: Numeric } {
+    const { userBalance, totalAmount } = params
 
     if (!userBalance || userBalance.available.lt(totalAmount)) {
       throw new InsufficientUserBalanceException(totalAmount, userBalance?.available)
-    }
-
-    if (!hotIntegrationBalance || hotIntegrationBalance.available.lt(totalAmount)) {
-      throw new InsufficientFromIntegrationBalanceException(totalAmount, hotIntegrationBalance?.available)
     }
   }
 

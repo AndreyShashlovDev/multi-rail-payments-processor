@@ -7,15 +7,14 @@ export interface CreateAccountData {
 }
 
 export interface HasAccountsData {
-  readonly integration: IntegrationType
-  readonly addresses: Set<IntegrationAccount>
+  readonly accounts: ReadonlySet<IntegrationAccount>
 }
 
 export interface HasAccountsResult {
-  readonly existing: Set<IntegrationAccount>
+  readonly existing: ReadonlySet<IntegrationAccount>
 }
 
 export interface GetAccountsData {
   readonly integration: IntegrationType
-  readonly addresses: Set<IntegrationAccount>
+  readonly addresses: ReadonlySet<IntegrationAccount>
 }

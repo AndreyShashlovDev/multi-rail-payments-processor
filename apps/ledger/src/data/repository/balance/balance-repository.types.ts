@@ -24,21 +24,37 @@ export interface IntentGroup {
   readonly changes: ReadonlyArray<BalanceChangeData>
 }
 
+export class ProjectionUpdateData {
+  readonly account: IntegrationAccount
+  readonly integration: IntegrationType
+  readonly currency: IntegrationCurrency
+  readonly available: Numeric
+}
+
 export type IntentApplyResult =
-  | { status: 'success'; intentId: UUID | Id | null; changes: ReadonlyArray<BalanceChangeData> }
   | {
-      status: 'failed'
-      intentId: UUID | Id | null
-      changes: ReadonlyArray<BalanceChangeData>
-      error: BalanceApplyError
+      readonly status: 'success'
+      readonly intentId: UUID | Id | null
+      readonly changes: ReadonlyArray<BalanceChangeData>
+      readonly updates: ReadonlyArray<ProjectionUpdateData>
+    }
+  | {
+      readonly status: 'failed'
+      readonly intentId: UUID | Id | null
+      readonly changes: ReadonlyArray<BalanceChangeData>
+      readonly error: BalanceApplyError
     }
 
 export type BalanceApplyError =
   | {
-      code: 'INSUFFICIENT_FUNDS'
-      integrationAccount: IntegrationAccount | null
-      platformAccountId: UUID | null
-      available: Numeric
-      required: Numeric
+      readonly code: 'INSUFFICIENT_FUNDS'
+      readonly integrationAccount: IntegrationAccount | null
+      readonly platformAccountId: UUID | null
+      readonly available: Numeric
+      readonly required: Numeric
     }
-  | { code: 'PROJECTION_NOT_FOUND'; integrationAccount: IntegrationAccount | null; platformAccountId: UUID | null }
+  | {
+      readonly code: 'PROJECTION_NOT_FOUND'
+      readonly integrationAccount: IntegrationAccount | null
+      readonly platformAccountId: UUID | null
+    }

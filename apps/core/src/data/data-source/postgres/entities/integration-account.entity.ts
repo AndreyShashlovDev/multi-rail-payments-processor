@@ -18,6 +18,7 @@ export enum IntegrationAccountEntityStatus {
 @Unique('idx_unique_integration_account_custody_account_id', [...IntegrationAccountEntity.UNIQUE])
 export class IntegrationAccountEntity extends BasicEntity {
   static readonly NAME = 'integration_account'
+  static readonly PATH = `"${APP_SCHEMA}".${IntegrationAccountEntity.NAME}`
   static readonly UNIQUE: ReadonlyArray<keyof IntegrationAccountEntity> = ['custodyAccountId']
 
   @PrimaryGeneratedColumn({ type: 'bigint' })

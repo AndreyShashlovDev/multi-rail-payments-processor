@@ -21,11 +21,6 @@ export class PayoutIntentRepositoryMapper {
         accountId: entity.initiatorAccountId,
         userId: entity.initiatorUserId,
       },
-      from: {
-        account: entity.fromIntegrationAccount,
-        platformAccountId: entity.fromPlatformAccount,
-        accountLinkId: entity.fromId ?? undefined,
-      },
       fromAmount: entity.fromAmount,
       fromCurrency: entity.fromCurrency,
       fromIntegration: integrationTypeToDomain(entity.fromIntegration),
@@ -73,12 +68,6 @@ export class PayoutIntentRepositoryMapper {
       // member
       initiatorAccountId: model.member.accountId,
       initiatorUserId: model.member.userId,
-
-      // from
-      fromPlatformAccount: model.from.platformAccountId,
-      fromIntegrationAccount: model.from.account,
-      fromId: model.from.accountLinkId,
-      from: undefined,
 
       fromAmount: model.fromAmount,
       fromCurrency: model.fromCurrency,

@@ -1,26 +1,19 @@
 import { LedgerConsumerMapper } from './ledger-consumer.mapper'
-import { BalanceUpdatedResult } from './ledger-consumer.types'
+import { BalanceUpdatedSubscription, BalanceProjectionUpdatedSubscription } from './ledger-consumer.types'
 import { Injectable } from '@nestjs/common'
 import {
   LedgerJetstreamDataSource,
   LedgerJetstreamHandler,
 } from '../../data-source/nats-jetstream/ledger/ledger-jetstream.data-source'
-import { BalanceChangeType, IntentType } from '@app/shared'
 import { BalanceUpdatedEvent } from '@app/shared/services/ledger/v1'
 import { toError } from '@app/utils'
 import { JsonObject } from '@app/types'
-
-export interface BalanceUpdatedSubscription {
-  readonly handler: (item: BalanceUpdatedResult) => Promise<void>
-  readonly filter?: {
-    readonly intentType?: IntentType
-    readonly status?: ReadonlySet<BalanceChangeType>
-  }
-}
+import { BalanceProjectionUpdatedEvent } from '@app/shared/services/ledger/v1/event/balance-projection-updated.event'
 
 @Injectable()
 export class LedgerConsumer implements LedgerJetstreamHandler {
-  private readonly subscriptions: BalanceUpdatedSubscription[] = []
+  private readonly balanceUpdatedSubscriptions: BalanceUpdatedSubscription[] = []
+  private readonly balanceProjectionUpdatedSubscriptions: BalanceProjectionUpdatedSubscription[] = []
 
   constructor(ledgerJetstreamDataSource: LedgerJetstreamDataSource) {
     ledgerJetstreamDataSource.setupHandler(this)
@@ -31,7 +24,7 @@ export class LedgerConsumer implements LedgerJetstreamHandler {
     const data = LedgerConsumerMapper.eventToBalanceUpdatedResult(validated)
 
     const result = await Promise.allSettled(
-      this.subscriptions.map(async (subscription) => {
+      this.balanceUpdatedSubscriptions.map(async (subscription) => {
         const { handler, filter } = subscription
 
         const filteredResult = {
@@ -65,7 +58,33 @@ export class LedgerConsumer implements LedgerJetstreamHandler {
     }
   }
 
+  async balanceProjectionUpdatedEventHandler(event: JsonObject<BalanceProjectionUpdatedEvent>): Promise<void> {
+    const validated = LedgerConsumerMapper.balanceProjectionEventValidate(event)
+    const data = LedgerConsumerMapper.eventToBalanceProjectionUpdatedResult(validated)
+
+    const result = await Promise.allSettled(
+      this.balanceProjectionUpdatedSubscriptions.map(async (subscription) => {
+        const { handler } = subscription
+
+        if (data.projections.length > 0) {
+          await handler(data)
+        }
+      }),
+    )
+
+    const failed = result.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+
+    if (failed.length > 0) {
+      const reasons = failed.map((r) => toError(r.reason).message).join(', ')
+      throw new Error(`${failed.length} handler(s) failed: ${reasons}`)
+    }
+  }
+
   subscribeToChangeBalance(subscription: BalanceUpdatedSubscription): void {
-    this.subscriptions.push(subscription)
+    this.balanceUpdatedSubscriptions.push(subscription)
+  }
+
+  subscribeToChangeProjectionBalance(subscription: BalanceProjectionUpdatedSubscription): void {
+    this.balanceProjectionUpdatedSubscriptions.push(subscription)
   }
 }

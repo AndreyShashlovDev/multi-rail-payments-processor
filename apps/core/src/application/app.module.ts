@@ -1,12 +1,6 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
-import appConfig from '../config/app.config'
-import natsConfig from '../config/nats.config'
-import loggingConfig from '../config/logging.config'
 import { validate } from '../config'
-import postgresConfig from '../config/postgres.config'
-import ledgerGrpcConfig from '../config/ledger.grpc.config'
-import grpcConfig from '../config/grpc.config'
 import { CorePostgresModule } from '../data/data-source/postgres/core-postgres.module'
 import { IntegrationAccountControllerModule } from '../api/controller/integration-account/integration-account-controller.module'
 import { PaymentControllerModule } from '../api/controller/payment/payment-controller.module'
@@ -23,6 +17,9 @@ import { OutboxPublisherCronModule } from './service/cron/outbox-publisher/outbo
 import { FeeModule } from '../module/fee/fee.module'
 import { RateModule } from '../module/rate/rate.module'
 import { CqrsModule } from '@nestjs/cqrs'
+import { IntegrationAccountModule } from '../module/integration-account/integration-account.module'
+import { RelayerControllerModule } from '../api/controller/relayer/relayer-controller.module'
+import { AppConfigs } from '../config/app-root-config'
 
 const CRON_MODULES = [InboxTransferCronModule, OutboxPublisherCronModule]
 
@@ -30,7 +27,7 @@ const CRON_MODULES = [InboxTransferCronModule, OutboxPublisherCronModule]
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, postgresConfig, natsConfig, loggingConfig, ledgerGrpcConfig, grpcConfig],
+      load: AppConfigs,
       validate,
       cache: true,
       expandVariables: true,
@@ -44,6 +41,7 @@ const CRON_MODULES = [InboxTransferCronModule, OutboxPublisherCronModule]
     IntegrationAccountControllerModule,
     PaymentControllerModule,
     PayoutControllerModule,
+    RelayerControllerModule,
     DemoControllerModule,
     OutboxPublishListenerModule,
     EscrowModule,
@@ -51,6 +49,7 @@ const CRON_MODULES = [InboxTransferCronModule, OutboxPublisherCronModule]
     PayoutIntentModule,
     FeeModule,
     RateModule,
+    IntegrationAccountModule,
   ],
 })
 export class AppModule {}

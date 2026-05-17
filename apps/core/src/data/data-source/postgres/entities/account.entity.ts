@@ -12,6 +12,7 @@ export enum AccountEntityRole {
 @Entity({ schema: APP_SCHEMA, name: AccountEntity.NAME })
 export class AccountEntity extends BasicEntity {
   static readonly NAME = 'account'
+  static readonly PATH = `"${APP_SCHEMA}".${AccountEntity.NAME}`
 
   @PrimaryGeneratedColumn('uuid')
   readonly id: UUID

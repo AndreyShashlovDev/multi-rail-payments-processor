@@ -5,6 +5,8 @@ import { OutboxRepository } from '../../../data/repository/outbox/outbox.reposit
 import { OutboxModel, OutboxUniqueKey } from '../../../data/repository/outbox/outbox-repository.types'
 import { BalanceEventPublisher } from '../../../data/publisher/balance-event/balance-event.publisher'
 import { BalanceUpdatedEvent, BalanceFailedEvent } from '@app/shared/services/ledger/v1'
+import { BalanceProjectionEventPublisher } from '../../../data/publisher/balance-projection-event/balance-projection-event.publisher'
+import { BalanceProjectionUpdatedEvent } from '@app/shared/services/ledger/v1/event/balance-projection-updated.event'
 
 @Injectable()
 export class OutboxPublishInteractor extends AbstractInteractor<never, Promise<void>> {
@@ -17,6 +19,7 @@ export class OutboxPublishInteractor extends AbstractInteractor<never, Promise<v
     private readonly txRunner: TxContextRunner,
     private readonly outboxRepository: OutboxRepository,
     private readonly balanceEventPublisher: BalanceEventPublisher,
+    private readonly balanceProjectionEventPublisher: BalanceProjectionEventPublisher,
   ) {
     super()
   }
@@ -67,6 +70,10 @@ export class OutboxPublishInteractor extends AbstractInteractor<never, Promise<v
       return await this.balanceEventPublisher.publishSuccess(JSON.parse(entry.payload) as BalanceUpdatedEvent)
     } else if (this.balanceEventPublisher.isFailedEvent(entry.event)) {
       return await this.balanceEventPublisher.publishFailed(JSON.parse(entry.payload) as BalanceFailedEvent)
+    } else if (this.balanceProjectionEventPublisher.isSupportedEvent(entry.event)) {
+      return await this.balanceProjectionEventPublisher.publish(
+        JSON.parse(entry.payload) as BalanceProjectionUpdatedEvent,
+      )
     }
 
     throw new Error(`Unsupported event type: ${entry.event}`)

@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package core;
+
+message GetRelayerQuery {
+  string integration = 1;
+  string currency = 2;
+  string amount = 3;
+}
+
+message RelayerResponse {
+  string relayerAccount = 1;
+}

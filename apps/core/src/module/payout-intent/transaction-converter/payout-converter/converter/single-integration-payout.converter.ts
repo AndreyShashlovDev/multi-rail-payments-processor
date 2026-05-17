@@ -68,18 +68,21 @@ export class SingleIntegrationPayoutConverter implements PayoutTransactionConver
       const bodyTransfer = this.amountOperation.execute({
         payout,
         tx,
+        from: transfer.from,
         transferIds: new Set([transfer.id]),
       })
 
       const platformFee = this.platformFeeOperation.execute({
         payout,
         tx,
+        from: transfer.from,
         transferIds: new Set([transfer.id]),
       })
 
       const integrationFee = this.integrationFeeOperation.execute({
         payout,
         tx,
+        from: transfer.from,
         transferIds: new Set([transfer.id]),
       })
 

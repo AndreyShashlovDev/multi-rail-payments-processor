@@ -11,15 +11,15 @@ export abstract class BasicProjector implements TransactionBalanceProjector {
   abstract process(transaction: TransactionModel, ctx: TxContext): Promise<ReadonlyArray<BalanceChange>>
 
   protected async filterSupportedTransfers(
-    data: Pick<TransactionModel, 'integration' | 'transfers'>,
+    data: Pick<TransactionModel, 'transfers'>,
     ctx: TxContext,
   ): Promise<ReadonlyArray<TransferModel>> {
-    const { integration, transfers } = data
+    const { transfers } = data
 
     if (transfers.length === 0) return []
 
     const addresses = new Set(transfers.flatMap((transfer) => [transfer.from, transfer.to]))
-    const { existing } = await this.integrationAccountRepository.hasAccounts({ integration, addresses }, ctx)
+    const { existing } = await this.integrationAccountRepository.hasAccounts({ accounts: addresses }, ctx)
 
     return transfers.filter((transfer) => existing.has(transfer.from) || existing.has(transfer.to))
   }

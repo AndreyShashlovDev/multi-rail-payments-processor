@@ -1,9 +1,12 @@
 import { MigrationInterface, QueryRunner } from 'typeorm'
 
-export class Migration1777195275555 implements MigrationInterface {
-  name = 'Migration1777195275555'
+export class Migration1779017521862 implements MigrationInterface {
+  name = 'Migration1779017521862'
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `CREATE TABLE "core"."integration_account_balance" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" BIGSERIAL NOT NULL, "integration" smallint NOT NULL, "account" text NOT NULL, "currency" text NOT NULL, "available" numeric(60,30) NOT NULL, CONSTRAINT "idx_unique_integration_account_currency" UNIQUE ("integration", "account", "currency"), CONSTRAINT "PK_b7405dd7c442dd3dec91c65ba66" PRIMARY KEY ("id"))`,
+    )
     await queryRunner.query(
       `CREATE TABLE "core"."integration_account" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" BIGSERIAL NOT NULL, "integration" smallint NOT NULL, "account" text NOT NULL, "currency" text, "custody_account_id" bigint NOT NULL, "status" smallint NOT NULL DEFAULT '1', CONSTRAINT "idx_unique_integration_account_custody_account_id" UNIQUE ("custody_account_id"), CONSTRAINT "PK_29708a53e178d1c04d542a81800" PRIMARY KEY ("id"))`,
     )
@@ -32,7 +35,7 @@ export class Migration1777195275555 implements MigrationInterface {
       `CREATE TABLE "core"."payment_amount_accumulator" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" BIGSERIAL NOT NULL, "payment_id" uuid NOT NULL, "integration" smallint NOT NULL, "tx_id" bigint NOT NULL, "transfer_id" bigint NOT NULL, "amount" numeric(60,30) NOT NULL, "from" text NOT NULL, CONSTRAINT "idx_uniqie_integration_txid_transferid" UNIQUE ("integration", "tx_id", "transfer_id"), CONSTRAINT "PK_a317ae345f2df0c5d6974ddf808" PRIMARY KEY ("id"))`,
     )
     await queryRunner.query(
-      `CREATE TABLE "core"."payout_intent" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" uuid NOT NULL DEFAULT uuid_generate_v4(), "operation_type" smallint NOT NULL, "initiator_account_id" uuid NOT NULL, "initiator_user_id" uuid NOT NULL, "from_integration_account" text NOT NULL, "from_platform_account" uuid NOT NULL, "from_id" bigint, "from_amount" numeric(60,30) NOT NULL, "from_currency" text NOT NULL, "from_integration" smallint NOT NULL, "estimated_fee" numeric(60,30) NOT NULL, "estimated_fee_currency" text NOT NULL, "platform_fee" numeric(60,30), "platform_fee_integration_account" text, "platform_fee_platform_account" uuid, "platform_fee_account_id" bigint, "integration_fee_payer_integration_account" text, "integration_fee_payer_platform_account" uuid, "integration_fee_payer_id" bigint, "integration_fee" numeric(60,30), "integration_fee_currency" text NOT NULL, "integration_fee_rate" numeric(60,30) NOT NULL, "exchange_rate" numeric(60,30), "to_integration_account" text NOT NULL, "to_platform_account" uuid, "to_id" bigint, "to_amount" numeric(60,30) NOT NULL, "to_currency" text NOT NULL, "to_integration" smallint NOT NULL, "status" smallint NOT NULL DEFAULT '1', "metadata" jsonb, CONSTRAINT "PK_a4dd54c9a374c6744f8391112e7" PRIMARY KEY ("id"))`,
+      `CREATE TABLE "core"."payout_intent" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" uuid NOT NULL DEFAULT uuid_generate_v4(), "operation_type" smallint NOT NULL, "initiator_account_id" uuid NOT NULL, "initiator_user_id" uuid NOT NULL, "from_amount" numeric(60,30) NOT NULL, "from_currency" text NOT NULL, "from_integration" smallint NOT NULL, "estimated_fee" numeric(60,30) NOT NULL, "estimated_fee_currency" text NOT NULL, "platform_fee" numeric(60,30), "platform_fee_integration_account" text, "platform_fee_platform_account" uuid, "platform_fee_account_id" bigint, "integration_fee_payer_integration_account" text, "integration_fee_payer_platform_account" uuid, "integration_fee_payer_id" bigint, "integration_fee" numeric(60,30), "integration_fee_currency" text NOT NULL, "integration_fee_rate" numeric(60,30) NOT NULL, "exchange_rate" numeric(60,30), "to_integration_account" text NOT NULL, "to_platform_account" uuid, "to_id" bigint, "to_amount" numeric(60,30) NOT NULL, "to_currency" text NOT NULL, "to_integration" smallint NOT NULL, "status" smallint NOT NULL DEFAULT '1', "metadata" jsonb, CONSTRAINT "PK_a4dd54c9a374c6744f8391112e7" PRIMARY KEY ("id"))`,
     )
     await queryRunner.query(`CREATE INDEX "idx_payout_intent_status" ON "core"."payout_intent" ("status") `)
     await queryRunner.query(
@@ -99,5 +102,6 @@ export class Migration1777195275555 implements MigrationInterface {
     await queryRunner.query(`DROP INDEX "core"."idx_integration_account_integration_account"`)
     await queryRunner.query(`DROP INDEX "core"."idx_integration_account_integration_currency_status"`)
     await queryRunner.query(`DROP TABLE "core"."integration_account"`)
+    await queryRunner.query(`DROP TABLE "core"."integration_account_balance"`)
   }
 }

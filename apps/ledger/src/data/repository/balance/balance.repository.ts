@@ -22,10 +22,14 @@ import {
   IntentGroup,
   BalanceApplyError,
   IntentApplyResult,
+  ProjectionUpdateData,
 } from './balance-repository.types'
 import { BalanceChangeData } from '../../../module/balance/model/balance-change.data'
 
 interface ProjectionSnapshot {
+  readonly account: IntegrationAccount
+  readonly integration: IntegrationType
+  readonly currency: IntegrationCurrency
   readonly available: Numeric
   readonly hold: Numeric
   readonly holdIn: Numeric
@@ -93,7 +97,12 @@ export class BalanceRepository {
       workingPlatform = new Map([...workingPlatform, ...result.platformUpdates])
 
       successChanges.push(...group.changes)
-      results.push({ status: 'success', intentId: group.intentId, changes: group.changes })
+
+      const updates: ProjectionUpdateData[] = Array.from(result.integrationUpdates.values()).concat(
+        Array.from(result.platformUpdates.values()),
+      )
+
+      results.push({ status: 'success', intentId: group.intentId, changes: group.changes, updates })
     }
 
     if (successChanges.length > 0) {
@@ -255,6 +264,9 @@ export class BalanceRepository {
 
         // Вычисляем состояние после текущего change
         const after: ProjectionSnapshot = {
+          account: change.integrationAccount,
+          integration: change.integration,
+          currency: change.currency,
           available: snapshot.available.add(delta.available),
           hold: snapshot.hold.add(delta.hold),
           holdIn: snapshot.holdIn.add(delta.holdIn),
@@ -283,6 +295,9 @@ export class BalanceRepository {
         const snapshot = platformCurrent.get(key)!
 
         const after: ProjectionSnapshot = {
+          account: change.platformAccountId as IntegrationAccount,
+          integration: change.integration,
+          currency: change.currency,
           available: snapshot.available.add(delta.available),
           hold: snapshot.hold.add(delta.hold),
           holdIn: snapshot.holdIn.add(delta.holdIn),
@@ -334,7 +349,10 @@ export class BalanceRepository {
           throw new Error(`Projection snapshot not found for integration account: ${change.integrationAccount}`)
         }
 
-        const next = {
+        const next: ProjectionSnapshot = {
+          account: change.integrationAccount,
+          integration: change.integration,
+          currency: change.currency,
           available: snapshot.available.add(delta.available),
           hold: snapshot.hold.add(delta.hold),
           holdIn: snapshot.holdIn.add(delta.holdIn),
@@ -364,7 +382,10 @@ export class BalanceRepository {
           throw new Error(`Projection snapshot not found for platform account: ${change.platformAccountId}`)
         }
 
-        const next = {
+        const next: ProjectionSnapshot = {
+          account: change.platformAccountId as IntegrationAccount,
+          integration: change.integration,
+          currency: change.currency,
           available: snapshot.available.add(delta.available),
           hold: snapshot.hold.add(delta.hold),
           holdIn: snapshot.holdIn.add(delta.holdIn),
@@ -418,6 +439,9 @@ export class BalanceRepository {
       result.map((row) => [
         `${row.account}|${row.integration}|${row.currency}`,
         {
+          account: row.account,
+          integration: row.integration,
+          currency: row.currency,
           available: Numeric.create(row.available),
           hold: Numeric.create(row.hold),
           holdIn: Numeric.create(row.holdIn),
@@ -454,6 +478,9 @@ export class BalanceRepository {
       result.map((row) => [
         `${row.accountId}|${row.integration}|${row.currency}`,
         {
+          account: row.accountId as IntegrationAccount,
+          integration: row.integration,
+          currency: row.currency,
           available: Numeric.create(row.available),
           hold: Numeric.create(row.hold),
           holdIn: Numeric.create(row.holdIn),

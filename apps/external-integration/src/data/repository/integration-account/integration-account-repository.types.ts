@@ -1,9 +1,7 @@
 import { IntegrationAccount } from '@app/types'
-import { IntegrationType } from '@app/shared'
 
 export interface HasIntegrationAccountParams {
-  readonly integration: IntegrationType
-  readonly addresses: ReadonlySet<IntegrationAccount>
+  readonly accounts: ReadonlySet<IntegrationAccount>
 }
 
 export interface HasIntegrationAccountResult {

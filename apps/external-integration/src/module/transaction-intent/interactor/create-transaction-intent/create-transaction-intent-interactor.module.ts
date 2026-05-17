@@ -6,6 +6,8 @@ import { TransactionEventPublisherModule } from '../../../../data/publisher/tran
 import { TransactionSaverStrategyModule } from '../../../transaction/service/transaction-saver/transaction-saver-strategy.module'
 import { OutboxTxContextModule } from '../../../../shared/tx-context/outbox-tx-context.module'
 import { TransactionBuilderStrategyModule } from '../../../transaction/integration/transaction-builder-strategy.module'
+import { RelayerStrategyModule } from '../../relayer/relayer-strategy.module'
+import { IntegrationAccountRepositoryModule } from '../../../../data/repository/integration-account/integration-account-repository.module'
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { TransactionBuilderStrategyModule } from '../../../transaction/integrati
     TransactionBuilderStrategyModule,
     TransactionSaverStrategyModule,
     TransactionEventPublisherModule,
+    IntegrationAccountRepositoryModule,
+    RelayerStrategyModule,
   ],
   providers: [CreateTransactionIntentInteractor],
   exports: [CreateTransactionIntentInteractor],

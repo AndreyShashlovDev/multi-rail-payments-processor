@@ -8,6 +8,7 @@ import { BALANCE_FAILED_STREAM } from '@app/shared/nat-stream/balance-failed-str
 import { SignedEnvelopeEvent, JsonObject } from '@app/types'
 import { plainToInstance } from 'class-transformer'
 import { validateSync } from 'class-validator'
+import { BALANCE_PROJECTION_UPDATE_STREAM } from '@app/shared/nat-stream/balance-projection-update-stream.types'
 
 export interface CoreJetstreamHandler {
   balanceChangeHandler(event: JsonObject<BalanceChangeRequestEvent>): Promise<void>
@@ -28,6 +29,7 @@ export class CoreJetstreamDataSource extends BaseNatsService {
     await this.ensureStream(BALANCE_CHANGE_STREAM)
     await this.ensureStream(BALANCE_UPDATED_STREAM)
     await this.ensureStream(BALANCE_FAILED_STREAM)
+    await this.ensureStream(BALANCE_PROJECTION_UPDATE_STREAM)
 
     for (const integration of Object.values(IntegrationType)) {
       await this.ensureConsumer(balanceChangeConsumer(integration))

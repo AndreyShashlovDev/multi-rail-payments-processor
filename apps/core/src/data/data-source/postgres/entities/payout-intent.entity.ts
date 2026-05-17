@@ -40,26 +40,6 @@ export class PayoutIntentEntity extends BasicEntity {
   @Column({ type: 'uuid' })
   readonly initiatorUserId: UUID
 
-  @Column({ type: 'text' })
-  readonly fromIntegrationAccount: IntegrationAccount
-
-  @Column({ type: 'uuid' })
-  readonly fromPlatformAccount: UUID
-
-  // We put our hot wallet here. Or, if the user has a permanent wallet linked, we put it here.
-  // Only a REGULAR wallet can be here.
-  @Column({ type: 'bigint', nullable: true })
-  readonly fromId: Id | null
-
-  @OneToOne(() => IntegrationAccountLinkEntity, {
-    createForeignKeyConstraints: false,
-    persistence: false,
-    eager: false,
-    nullable: true,
-  })
-  @JoinColumn()
-  readonly from?: IntegrationAccountLinkEntity | null
-
   @NumericColumn()
   readonly fromAmount: Numeric
 

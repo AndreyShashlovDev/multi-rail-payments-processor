@@ -3,7 +3,7 @@ import { APP_SCHEMA } from '../integration-postgres.config'
 import type { UUID, IntegrationAccount, Id, IntegrationCurrency, RawNumeric } from '@app/types'
 import { BasicEntity } from '@app/database'
 import { TransactionIntentEntity } from './transaction-intent.entity'
-import { IntegrationEntityType, IntentEntityType, ExecutionEntityType } from '@app/shared'
+import { IntegrationEntityType, IntentEntityType } from '@app/shared'
 
 export enum TransferIntentEntityStatus {
   CREATED = 1,
@@ -35,9 +35,6 @@ export class TransferIntentEntity extends BasicEntity {
 
   @Column({ type: 'text' })
   readonly intentId: UUID | Id
-
-  @Column({ type: 'smallint' })
-  readonly executionType: ExecutionEntityType
 
   @Column({ type: 'text' })
   readonly estimatedRawFee: RawNumeric

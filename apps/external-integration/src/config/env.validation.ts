@@ -10,6 +10,8 @@ import {
   Max,
   IsJSON,
   IsNotEmpty,
+  IsInt,
+  IsPositive,
 } from 'class-validator'
 
 export enum Environment {
@@ -86,6 +88,19 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   readonly LOG_LEVEL: string = 'info'
+
+  @IsString()
+  readonly CORE_GRPC_URL: string
+
+  @IsInt()
+  @IsPositive()
+  readonly CORE_GRPC_TIMEOUT: number
+
+  @IsInt()
+  readonly CORE_GRPC_RETRIES: number
+
+  @IsBoolean()
+  readonly CORE_GRPC_USE_SSL: boolean
 }
 
 export function validate(config: Record<string, unknown>): EnvironmentVariables {

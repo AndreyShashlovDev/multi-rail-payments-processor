@@ -1,7 +1,10 @@
-import { AppConfig } from './app.config'
-import { NatsConfig } from './nats.config'
-import { PostgresConfig } from './postgres.config'
-import { GrpcConfig } from './grpc.config'
+import appConfig, { AppConfig } from './app.config'
+import natsConfig, { NatsConfig } from './nats.config'
+import postgresConfig, { PostgresConfig } from './postgres.config'
+import grpcConfig, { GrpcConfig } from './grpc.config'
+import loggingConfig from './logging.config'
+
+export const AppConfigs = [appConfig, postgresConfig, natsConfig, loggingConfig, grpcConfig]
 
 export interface AppRootConfig {
   readonly app: AppConfig
