@@ -1,9 +1,9 @@
 import { IntentType, IntegrationType } from '@app/shared'
-import { UUID, IntegrationCurrency, Numeric, type IntegrationAccount } from '@app/types'
+import { UUID, IntegrationCurrency, Numeric, type IntegrationAccount, Id } from '@app/types'
 
 export interface TransferIntentHeldData {
   readonly intentType: IntentType
-  readonly intentIds: ReadonlyArray<UUID>
+  readonly intentData: ReadonlyArray<{ readonly intentId: UUID; readonly txId: Id }>
 }
 
 export interface EnqueueTransferCreateData {

@@ -33,8 +33,9 @@ export class TransferIntentConsumerMapper {
       await TransferIntentConsumerMapper.validate(instance)
 
       return {
+        uniqueKey: instance.uniqueKey,
         intentType: instance.intentType,
-        intentIds: new Set(instance.intentIds),
+        intentData: instance.intentData,
       } satisfies TransferIntentHeldEventModel as unknown as TransferIntentEventModel<T>
     }
 

@@ -7,11 +7,8 @@ import {
   TransactionIntentStatus,
   TransactionIntentData,
   TransactionIntentMetadata,
-} from '../../../module/transaction-intent/model/transaction-intent.model'
-import { TransferIntentEntity } from '../../data-source/postgres/entities/transfer-intent.entity'
-import { TransferIntentRepositoryMapper } from '../transfer-intent/transfer-intent-repository.mapper'
+} from '../../../module/transaction/model/transaction-intent.model'
 import { EntityManager } from 'typeorm'
-import { TransferIntentModel } from '../../../module/transfer-intent/model/transfer-intent.model'
 import {
   integrationTypeToDomain,
   integrationTypeFromDomain,
@@ -20,39 +17,18 @@ import {
 } from '@app/shared'
 
 export class TransactionIntentRepositoryMapper {
-  static toDomain(
-    entity: TransactionIntentEntity,
-    transfers: ReadonlyArray<TransferIntentModel>,
-  ): TransactionIntentModel {
+  static toDomain(entity: TransactionIntentEntity): TransactionIntentModel {
     return {
       id: entity.id,
       executionType: executionTypeToDomain(entity.executionType),
-      txId: entity.txId,
+      initiator: entity.initiator,
+      sourceTxId: entity.sourceTxId,
       integration: integrationTypeToDomain(entity.integration),
+      fee: entity.fee,
+      feeCurrency: entity.feeCurrency,
       status: TransactionIntentRepositoryMapper.toDomainStatus(entity.status),
-      nonce: entity.nonce,
       rawData: entity.rawData as unknown as TransactionIntentMetadata,
       signedData: entity.signedData,
-      transfers,
-      createdAt: entity.createdAt,
-      updatedAt: entity.updatedAt,
-    }
-  }
-
-  static toDomainRaw(
-    entity: TransactionIntentEntity,
-    transfers: ReadonlyArray<TransferIntentEntity>,
-  ): TransactionIntentModel {
-    return {
-      id: entity.id,
-      executionType: executionTypeToDomain(entity.executionType),
-      txId: entity.txId,
-      integration: integrationTypeToDomain(entity.integration),
-      status: TransactionIntentRepositoryMapper.toDomainStatus(entity.status),
-      nonce: entity.nonce,
-      rawData: entity.rawData as unknown as TransactionIntentMetadata,
-      signedData: entity.signedData,
-      transfers: transfers.map((transfer) => TransferIntentRepositoryMapper.toDomain(transfer)),
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     }
@@ -61,11 +37,12 @@ export class TransactionIntentRepositoryMapper {
   static fromDomain(model: TransactionIntentData, manager: EntityManager): TransactionIntentEntity {
     return manager.create(TransactionIntentEntity, {
       executionType: executionTypeFromDomain(model.executionType),
-      txId: model.txId,
+      initiator: model.initiator,
+      sourceTxId: model.sourceTxId,
       integration: integrationTypeFromDomain(model.integration),
-      nonce: model.nonce,
+      fee: model.fee,
+      feeCurrency: model.feeCurrency,
       rawData: model.rawData as unknown as Record<string, unknown>,
-      transfers: model.transfers.map((transfer) => TransferIntentRepositoryMapper.fromDomain(transfer, manager)),
     })
   }
 

@@ -14,7 +14,7 @@ export type Numeric = Decimal
 
 export const Numeric = {
   PRECISION: PRECISION,
-  EXPONENT: EXPONENT,
+  DECIMALS: EXPONENT,
 
   ZERO: Decimal(0),
 

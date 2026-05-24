@@ -49,7 +49,7 @@ export class WebhookAcceptTransactionInteractor extends BasicTransactionInteract
         )
 
         await this.transactionIntentRepository.markCompleted(
-          { txId: transaction.sourceTxId, integration: transaction.integration },
+          { sourceTxId: transaction.sourceTxId, integration: transaction.integration },
           ctx,
         )
 

@@ -1,7 +1,5 @@
-import { TransferIntentModel } from '../../transfer-intent/model/transfer-intent.model'
-import type { SourceTransactionId, Id } from '@app/types'
+import { SourceTransactionId, Id, RawNumeric, IntegrationCurrency, IntegrationAccount } from '@app/types'
 import { IntegrationType, ExecutionType } from '@app/shared'
-import { EvmTransaction } from '../../transaction/integration/blockchain/transaction-builder/evm-single-transfer.builder'
 
 export enum TransactionIntentStatus {
   HOLD_PENDING = 'HOLD_PENDING',
@@ -14,15 +12,24 @@ export enum TransactionIntentStatus {
   FAILED = 'FAILED',
 }
 
+export interface EvmTransaction {
+  readonly hash: SourceTransactionId
+  readonly nonce: number
+  readonly from: IntegrationAccount
+  readonly to: IntegrationAccount
+  readonly data: `0x${string}` | null
+}
+
 export type TransactionIntentMetadata = EvmTransaction
 
 export interface TransactionIntentData {
   readonly executionType: ExecutionType
-  readonly txId: SourceTransactionId
+  readonly initiator: IntegrationAccount
+  readonly sourceTxId: SourceTransactionId
   readonly integration: IntegrationType
-  readonly nonce: number
+  readonly fee: RawNumeric | null
+  readonly feeCurrency: IntegrationCurrency
   readonly rawData: TransactionIntentMetadata
-  readonly transfers: ReadonlyArray<TransferIntentModel>
 }
 
 export interface TransactionIntentModel extends TransactionIntentData {

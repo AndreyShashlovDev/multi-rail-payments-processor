@@ -1,6 +1,6 @@
 import { Column, Entity, PrimaryGeneratedColumn, Unique, OneToMany, OneToOne } from 'typeorm'
 import { BasicEntity } from '@app/database'
-import { Id, type IntegrationCurrency, RawNumeric } from '@app/types'
+import { Id, type IntegrationCurrency, RawNumeric, IntegrationAccount } from '@app/types'
 import type { TransactionBlockId, TransactionMetadata } from '../../../../module/transaction/model/transaction.model'
 import { TransferEntity } from './transfer.entity'
 import type { SourceTransactionId } from '@app/types/source-transaction-id.type'
@@ -19,7 +19,7 @@ export enum TransactionEntityStatus {
 }
 
 @Entity({ name: TransactionEntity.NAME, schema: APP_SCHEMA })
-@Unique('idx_unique_sourcetxid_integration', [...TransactionEntity.UNIQUE])
+@Unique('idx_unique_transaction_sourcetxid_integration', [...TransactionEntity.UNIQUE])
 // partition candidate: add CONCURRENTLY before partitioning by fromIntegration
 // @Index('idx_transaction_id_integration', ['id', 'integration'])
 export class TransactionEntity extends BasicEntity {
@@ -34,6 +34,9 @@ export class TransactionEntity extends BasicEntity {
 
   @Column({ type: 'smallint' })
   readonly integration: IntegrationEntityType
+
+  @Column({ type: 'text' })
+  readonly initiator: IntegrationAccount
 
   @Column({ type: 'text' })
   readonly sourceTxId: SourceTransactionId

@@ -1,4 +1,4 @@
-import { AbstractInteractor, UUID } from '@app/types'
+import { AbstractInteractor, UUID, Id } from '@app/types'
 import { Injectable, Logger } from '@nestjs/common'
 import { BalanceChangeType, IntentType, OutboxTxContextRunner } from '@app/shared'
 import { InboxRepository } from '../../../../data/repository/inbox/inbox.repository'
@@ -54,31 +54,34 @@ export class ChangePayoutStatusInteractor extends AbstractInteractor<ChangePayou
           return data
         }
 
-        const heldIntentIds: Set<UUID> = new Set<UUID>()
+        const heldIntentData: Map<string, { intentId: UUID; txId: Id }> = new Map()
 
         for (const [id, changes] of changeByPayout.entries()) {
           let wasChangedSuccess: boolean = false
 
           // we can check just by main amount hold
-          const heldEvent = changes.find(
+          const heldEvents = changes.filter(
             (item) =>
               item.type === BalanceChangeType.HOLD &&
               item.metadata.reason === BalanceChangeReason.AMOUNT &&
               item.metadata.txStatus === BalanceChangeTxStatus.TX_PREPARED,
           )
 
-          if (heldEvent) {
+          if (heldEvents.length) {
             wasChangedSuccess = await this.payoutIntentRepository.markAsHeld({ id }, ctx)
-            heldIntentIds.add(id)
+            heldEvents.forEach((item) => {
+              const key = `${id}:${item.metadata.txId}`
+              heldIntentData.set(key, { intentId: id, txId: item.metadata.txId })
+            })
           } else {
-            const payment = changes.find(
+            const payout = changes.find(
               (item) =>
                 item.type === BalanceChangeType.DEBIT &&
                 item.metadata.reason === BalanceChangeReason.AMOUNT &&
                 item.metadata.txStatus === BalanceChangeTxStatus.TX_CONFIRMED,
             )
 
-            if (payment) {
+            if (payout) {
               wasChangedSuccess = await this.payoutIntentRepository.markSuccess({ id }, ctx)
               this.logger.debug(`Payout ${id} success payed!`)
             }
@@ -89,11 +92,11 @@ export class ChangePayoutStatusInteractor extends AbstractInteractor<ChangePayou
           }
         }
 
-        if (heldIntentIds.size > 0) {
+        if (heldIntentData.size > 0) {
           await this.externalIntegrationPublisher.enqueueTransferHeld(
             {
               intentType: IntentType.PAYOUT,
-              intentIds: Array.from(heldIntentIds),
+              intentData: Array.from(heldIntentData.values()),
             },
             ctx,
           )

@@ -8,7 +8,8 @@ export class OperationTypeMapper {
       case PaymentOperationType.USER_REQUEST:
       case PayoutOperationType.USER_REQUEST:
         return BalanceChangeOperationType.USER_REQUEST
-
+      case PaymentOperationType.RELAYER:
+        return BalanceChangeOperationType.RELAYER
       case PaymentOperationType.CONSOLIDATION:
       case PayoutOperationType.CONSOLIDATION:
         return BalanceChangeOperationType.CONSOLIDATION

@@ -5,19 +5,19 @@ import { DataSource } from 'typeorm'
 import {
   TransactionIntentData,
   TransactionIntentModel,
-} from '../../../module/transaction-intent/model/transaction-intent.model'
+} from '../../../module/transaction/model/transaction-intent.model'
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { TransactionIntentRepositoryMapper } from './transaction-intent-repository.mapper'
 import {
   TransactionIntentEntity,
   TransactionIntentEntityStatus,
 } from '../../data-source/postgres/entities/transaction-intent.entity'
-import {
-  TransferIntentEntityStatus,
-  TransferIntentEntity,
-} from '../../data-source/postgres/entities/transfer-intent.entity'
 import { integrationTypeFromDomain } from '@app/shared'
 import { Id } from '@app/types'
+import {
+  TransferRouteEntity,
+  TransferRouteEntityStatus,
+} from '../../data-source/postgres/entities/transfer-route.entity'
 
 @Injectable()
 export class TransactionIntentRepository {
@@ -32,7 +32,7 @@ export class TransactionIntentRepository {
       signedData: null,
     })
 
-    return TransactionIntentRepositoryMapper.toDomain(result, data.transfers)
+    return TransactionIntentRepositoryMapper.toDomain(result)
   }
 
   async findReadyForSign(
@@ -40,37 +40,50 @@ export class TransactionIntentRepository {
     ctx: TxContext,
   ): Promise<ReadonlyArray<TransactionIntentModel>> {
     const result = await ctx.em
-      .createQueryBuilder(TransactionIntentEntity, 'transaction')
-      .leftJoinAndSelect('transaction.transfers', 'transfer')
-      .setLock('pessimistic_write', undefined, ['transaction'])
-      .where('transaction.status = :status', { status: TransactionIntentEntityStatus.HOLD_PENDING })
-      .andWhere('transaction.signedData IS NULL')
+      .createQueryBuilder(TransactionIntentEntity, 'ti')
+      .setLock('pessimistic_write', undefined, ['ti'])
+      .setOnLocked('skip_locked')
+      .where('ti.status = :status', { status: TransactionIntentEntityStatus.HOLD_PENDING })
+      .andWhere('ti.signedData IS NULL')
+      // нет незавершённых предшественников
       .andWhere((qb) => {
         const sub = qb
           .subQuery()
           .select('1')
-          .from(TransferIntentEntity, 'transfer')
-          .where('transfer.transaction_intent_id = transaction.id')
-          .andWhere('transfer.status != :preparedStatus', { preparedStatus: TransferIntentEntityStatus.PREPARED })
+          .from(TransferRouteEntity, 'predecessor')
+          .innerJoin(
+            TransferRouteEntity,
+            'current',
+            'current.transactionIntentId = ti.id AND current.transferIntentId = predecessor.transferIntentId',
+          )
+          .where('predecessor.txIndex < current.txIndex')
+          .andWhere('predecessor.status != :completed', {
+            completed: TransferRouteEntityStatus.COMPLETED,
+          })
           .getQuery()
         return `NOT EXISTS ${sub}`
       })
+      // нет другой транзакции от того же initiator уже в работе
       .andWhere((qb) => {
         const sub = qb
           .subQuery()
           .select('1')
-          .from(TransferIntentEntity, 'transfer')
-          .where('transfer.transaction_intent_id = transaction.id')
+          .from(TransactionIntentEntity, 'other')
+          .where('other.initiator = ti.initiator')
+          .andWhere('other.integration = ti.integration')
+          .andWhere('other.id != ti.id')
+          .andWhere('other.status = :inProgress', {
+            inProgress: TransactionIntentEntityStatus.SIGNING,
+          })
           .getQuery()
-        return `EXISTS ${sub}`
+        return `NOT EXISTS ${sub}`
       })
-      .orderBy('transaction.createdAt', 'ASC')
+      .orderBy('ti.createdAt', 'ASC')
       .take(params.take)
       .skip(params.skip)
-      .setOnLocked('skip_locked')
       .getMany()
 
-    return result.map((intent) => TransactionIntentRepositoryMapper.toDomainRaw(intent, intent.transfers))
+    return result.map((ti) => TransactionIntentRepositoryMapper.toDomain(ti))
   }
 
   async markReadyForSigning(params: Pick<TransactionIntentModel, 'id'>, ctx: TxContext): Promise<boolean> {
@@ -109,13 +122,16 @@ export class TransactionIntentRepository {
     return result.affected === 1
   }
 
-  async markCompleted(params: Pick<TransactionIntentModel, 'txId' | 'integration'>, ctx: TxContext): Promise<boolean> {
+  async markCompleted(
+    params: Pick<TransactionIntentModel, 'sourceTxId' | 'integration'>,
+    ctx: TxContext,
+  ): Promise<boolean> {
     const result = await ctx.em.update(
       TransactionIntentEntity,
       {
         status: TransactionIntentEntityStatus.PROMOTED,
         integration: integrationTypeFromDomain(params.integration),
-        txId: params.txId,
+        sourceTxId: params.sourceTxId,
       },
       { status: TransactionIntentEntityStatus.COMPLETED },
     )
@@ -124,7 +140,7 @@ export class TransactionIntentRepository {
   }
 
   async markPromoted(
-    params: Pick<TransactionIntentModel, 'txId' | 'integration'>,
+    params: Pick<TransactionIntentModel, 'sourceTxId' | 'integration'>,
     ctx?: TxContext,
   ): Promise<Id | null> {
     const em = ctx?.em ?? this.datasource.manager
@@ -134,7 +150,7 @@ export class TransactionIntentRepository {
       .update(TransactionIntentEntity)
       .set({ status: TransactionIntentEntityStatus.PROMOTED })
       .where({
-        txId: params.txId,
+        sourceTxId: params.sourceTxId,
         integration: integrationTypeFromDomain(params.integration),
         status: TransactionIntentEntityStatus.READY_TO_PROMOTE,
       })

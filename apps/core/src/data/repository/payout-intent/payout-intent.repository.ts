@@ -22,7 +22,7 @@ export class PayoutIntentRepository {
     private readonly datasource: DataSource,
   ) {}
 
-  async getByIds(data: Set<UUID>, ctx?: TxContext): Promise<PayoutIntentModel[]> {
+  async getByIds(data: ReadonlySet<UUID>, ctx?: TxContext): Promise<PayoutIntentModel[]> {
     const em = ctx?.em ?? this.datasource.manager
 
     const payouts = await em.find(PayoutIntentEntity, { where: { id: In(Array.from(data)) } })

@@ -33,7 +33,6 @@ export class TransferIntentRepositoryMapper {
       toCurrency: entity.toCurrency,
       toAccount: entity.toAccount,
       status: TransferIntentRepositoryMapper.toDomainStatus(entity.status),
-      transactionIntentId: entity.transactionIntentId,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     }

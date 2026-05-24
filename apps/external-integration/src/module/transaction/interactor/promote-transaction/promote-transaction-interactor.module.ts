@@ -5,6 +5,7 @@ import { TransactionEventPublisherModule } from '../../../../data/publisher/tran
 import { TransactionRepositoryModule } from '../../../../data/repository/transaction/transaction-repository.module'
 import { TransferIntentRepositoryModule } from '../../../../data/repository/transfer-intent/transfer-intent-repository.module'
 import { OutboxTxContextModule } from '../../../../shared/tx-context/outbox-tx-context.module'
+import { TransferRouteRepositoryModule } from '../../../../data/repository/transfer-route/transfer-route-repository.module'
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { OutboxTxContextModule } from '../../../../shared/tx-context/outbox-tx-c
     TransactionEventPublisherModule,
     TransactionRepositoryModule,
     TransferIntentRepositoryModule,
+    TransferRouteRepositoryModule,
   ],
   providers: [PromoteTransactionInteractor],
   exports: [PromoteTransactionInteractor],

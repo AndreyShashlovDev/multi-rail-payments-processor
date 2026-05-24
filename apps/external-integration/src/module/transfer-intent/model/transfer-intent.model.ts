@@ -29,7 +29,6 @@ export interface TransferIntentData {
 export interface TransferIntentModel extends TransferIntentData {
   readonly id: Id
   readonly status: TransferIntentStatus
-  readonly transactionIntentId: Id | null
   readonly createdAt: Date
   readonly updatedAt: Date
 }

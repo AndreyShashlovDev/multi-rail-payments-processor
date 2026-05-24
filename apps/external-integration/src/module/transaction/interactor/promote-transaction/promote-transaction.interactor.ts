@@ -11,6 +11,7 @@ import { TransactionIntentNotMarkAsPromotedException } from '../../exception/tra
 import { TransactionNotMarkAsPromotedException } from '../../exception/transaction-not-mark-as-promoted.exception'
 import { TransactionNotFoundException } from '../../exception/transaction-not-found.exception'
 import { TransferIntentsNotMarkedAsProcessingException } from '../../exception/transfer-intents-not-marked-as-processing.exception'
+import { TransferRouteRepository } from '../../../../data/repository/transfer-route/transfer-route.repository'
 
 export interface PromoteTransactionParams {
   readonly sourceTxId: SourceTransactionId
@@ -26,6 +27,7 @@ export class PromoteTransactionInteractor extends BasicTransactionInteractor<Pro
     private readonly transactionEventPublisher: TransactionEventPublisher,
     private readonly transactionRepository: TransactionRepository,
     transferIntentRepository: TransferIntentRepository,
+    private readonly transferRouteRepository: TransferRouteRepository,
   ) {
     super(transferIntentRepository)
   }
@@ -36,7 +38,7 @@ export class PromoteTransactionInteractor extends BasicTransactionInteractor<Pro
       .create(ctx)
       .pipeline(async (ctx) => {
         const updatedTransactionIntentId = await this.transactionIntentRepository.markPromoted(
-          { txId: sourceTxId, integration },
+          { sourceTxId, integration },
           ctx,
         )
 
@@ -50,8 +52,18 @@ export class PromoteTransactionInteractor extends BasicTransactionInteractor<Pro
           throw new TransactionNotMarkAsPromotedException(sourceTxId, integration)
         }
 
+        const transferRoutes = await this.transferRouteRepository.getByTransactionIntent(
+          new Set([updatedTransactionIntentId]),
+          ctx,
+        )
+
+        if (transferRoutes.length === 0) {
+          // todo
+          throw new Error('Routes not found')
+        }
+
         const updateTransferIntents = await this.transferIntentRepository.markAsProcessing(
-          { transactionIntentId: updatedTransactionIntentId },
+          { ids: new Set(transferRoutes.map((item) => item.transferIntentId)) },
           ctx,
         )
 

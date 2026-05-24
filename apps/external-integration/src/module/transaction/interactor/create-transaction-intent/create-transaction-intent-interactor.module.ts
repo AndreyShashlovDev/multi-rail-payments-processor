@@ -3,11 +3,10 @@ import { TransferIntentRepositoryModule } from '../../../../data/repository/tran
 import { TransactionIntentRepositoryModule } from '../../../../data/repository/transaction-intent/transaction-intent-repository.module'
 import { CreateTransactionIntentInteractor } from './create-transaction-intent.interactor'
 import { TransactionEventPublisherModule } from '../../../../data/publisher/transaction-event/transaction-event-publisher.module'
-import { TransactionSaverStrategyModule } from '../../../transaction/service/transaction-saver/transaction-saver-strategy.module'
+import { TransactionSaverStrategyModule } from '../../service/transaction-saver/transaction-saver-strategy.module'
 import { OutboxTxContextModule } from '../../../../shared/tx-context/outbox-tx-context.module'
-import { TransactionBuilderStrategyModule } from '../../../transaction/integration/transaction-builder-strategy.module'
-import { RelayerStrategyModule } from '../../relayer/relayer-strategy.module'
-import { IntegrationAccountRepositoryModule } from '../../../../data/repository/integration-account/integration-account-repository.module'
+import { TransactionBuilderStrategyModule } from '../../service/integration/transaction-builder-strategy.module'
+import { TransferRouteRepositoryModule } from '../../../../data/repository/transfer-route/transfer-route-repository.module'
 
 @Module({
   imports: [
@@ -17,8 +16,7 @@ import { IntegrationAccountRepositoryModule } from '../../../../data/repository/
     TransactionBuilderStrategyModule,
     TransactionSaverStrategyModule,
     TransactionEventPublisherModule,
-    IntegrationAccountRepositoryModule,
-    RelayerStrategyModule,
+    TransferRouteRepositoryModule,
   ],
   providers: [CreateTransactionIntentInteractor],
   exports: [CreateTransactionIntentInteractor],

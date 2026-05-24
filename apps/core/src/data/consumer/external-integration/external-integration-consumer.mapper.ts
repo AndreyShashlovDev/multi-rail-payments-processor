@@ -42,8 +42,9 @@ export class ExternalIntegrationConsumerMapper {
     return {
       id: event.id,
       executionType: event.executionType,
-      sourceTxId: event.sourceTxId,
       integration: event.integration,
+      initiator: event.initiator,
+      sourceTxId: event.sourceTxId,
       status: event.status,
       feeCurrency: event.feeCurrency,
       fee,

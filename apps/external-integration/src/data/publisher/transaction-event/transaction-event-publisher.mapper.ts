@@ -10,8 +10,9 @@ export class TransactionEventPublisherMapper {
     return new TransactionEvent(
       model.id,
       model.executionType,
-      model.sourceTxId,
       model.integration,
+      model.initiator,
+      model.sourceTxId,
       model.status,
       model.transfers.map((item) => TransactionEventPublisherMapper.transferToTransferData(item)),
       model.fee?.toString() ?? null,
@@ -24,7 +25,6 @@ export class TransactionEventPublisherMapper {
     return new TransferEventData(
       model.id,
       model.index,
-      model.initiator,
       model.from,
       model.to,
       model.amountRaw,

@@ -31,7 +31,7 @@ export class AcceptedHandler implements TransactionHandler {
   ): Promise<void> {
     const accountLinks = await this.integrationAccountLinkRepository.getActive({
       integration: transaction.integration,
-      accounts: new Set(payoutTransfers.map((transfer) => transfer.initiator)),
+      accounts: new Set([transaction.initiator]),
     })
 
     const accountLinkByAccount = new Map(accountLinks.map((link) => [link.integrationAccount.account, link]))
@@ -42,7 +42,7 @@ export class AcceptedHandler implements TransactionHandler {
 
     for (const transfer of payoutTransfers) {
       const payout = payoutById.get(transfer.intent?.intentId as UUID)
-      const link = accountLinkByAccount.get(transfer.initiator) ?? null
+      const link = accountLinkByAccount.get(transaction.initiator) ?? null
 
       if (!payout) {
         continue
@@ -57,7 +57,7 @@ export class AcceptedHandler implements TransactionHandler {
                 platformAccountId: link.platformAccountId,
                 accountLinkId: link.id,
               }
-            : { account: transfer.initiator },
+            : { account: transaction.initiator },
           // fee per transfer
           integrationFee: transaction.fee?.div(transaction.transfers.length) ?? null,
         },

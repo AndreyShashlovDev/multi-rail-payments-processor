@@ -1,4 +1,4 @@
-import { EvmHashType, Id, IntegrationCurrency, RawNumeric } from '@app/types'
+import { EvmHashType, Id, IntegrationCurrency, RawNumeric, IntegrationAccount } from '@app/types'
 import { SourceTransactionId } from '@app/types/source-transaction-id.type'
 import { TransferModel, TransferData } from './transfer.model'
 import {
@@ -32,6 +32,7 @@ export type TransactionBlockId = string
 export interface TransactionData {
   readonly executionType: ExecutionType
   readonly integration: IntegrationType
+  readonly initiator: IntegrationAccount
   readonly sourceTxId: SourceTransactionId
   readonly blockId: TransactionBlockId | null
   readonly blockTime: Date | null

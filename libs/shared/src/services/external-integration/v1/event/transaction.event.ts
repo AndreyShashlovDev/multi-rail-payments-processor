@@ -44,9 +44,6 @@ export class TransferEventData {
   @IsInt()
   readonly index: number
 
-  @IsString()
-  readonly initiator: IntegrationAccount
-
   @IsString() // todo some smart validator
   readonly from: IntegrationAccount
 
@@ -68,7 +65,6 @@ export class TransferEventData {
   constructor(
     id: Id,
     index: number,
-    initiator: IntegrationAccount,
     from: IntegrationAccount,
     to: IntegrationAccount,
     rawAmount: string,
@@ -77,7 +73,6 @@ export class TransferEventData {
   ) {
     this.id = id
     this.index = index
-    this.initiator = initiator
     this.from = from
     this.to = to
     this.rawAmount = rawAmount
@@ -96,11 +91,14 @@ export class TransactionEvent extends BasicEvent {
   @IsEnum(ExecutionType)
   readonly executionType: ExecutionType
 
-  @IsString() // todo special validator need
-  readonly sourceTxId: SourceTransactionId
-
   @IsEnum(IntegrationType)
   readonly integration: IntegrationType
+
+  @IsString()
+  readonly initiator: IntegrationAccount
+
+  @IsString() // todo special validator need
+  readonly sourceTxId: SourceTransactionId
 
   @IsEnum(TransactionStatus)
   readonly status: TransactionStatus
@@ -124,8 +122,9 @@ export class TransactionEvent extends BasicEvent {
   constructor(
     id: Id,
     executionType: ExecutionType,
-    sourceTxId: SourceTransactionId,
     integration: IntegrationType,
+    initiator: IntegrationAccount,
+    sourceTxId: SourceTransactionId,
     status: TransactionStatus,
     transfers: TransferEventData[],
     fee: string | null,
@@ -136,8 +135,9 @@ export class TransactionEvent extends BasicEvent {
 
     this.id = id
     this.executionType = executionType
-    this.sourceTxId = sourceTxId
     this.integration = integration
+    this.initiator = initiator
+    this.sourceTxId = sourceTxId
     this.status = status
     this.transfers = transfers
     this.fee = fee

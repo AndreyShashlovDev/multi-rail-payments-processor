@@ -1,5 +1,5 @@
 import { IntegrationType, TransactionStatus, ExecutionType } from '@app/shared'
-import { Numeric, Id } from '@app/types'
+import { Numeric, Id, IntegrationAccount } from '@app/types'
 import { TransactionModel } from '../../model/transaction.model'
 import { IntegrationCurrencyFactory } from './integration-currency.factory'
 
@@ -10,6 +10,7 @@ export class TransactionFactory {
     return {
       id,
       executionType: ExecutionType.NATIVE,
+      initiator: '0xdsdds' as IntegrationAccount,
       sourceTxId: `0xtx_${id}`,
       integration: IntegrationType.ETHEREUM,
       status: TransactionStatus.CONFIRMED,

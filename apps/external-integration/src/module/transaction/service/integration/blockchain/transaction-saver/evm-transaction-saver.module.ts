@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common'
-import { TransactionRepositoryModule } from '../../../../../data/repository/transaction/transaction-repository.module'
+import { TransactionRepositoryModule } from '../../../../../../data/repository/transaction/transaction-repository.module'
 import { EvmTransactionSaver } from './evm-transaction-saver'
 
 @Module({

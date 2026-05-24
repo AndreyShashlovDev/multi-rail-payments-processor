@@ -12,6 +12,7 @@ export enum BalanceChangeTxStatus {
 
 export enum BalanceChangeOperationType {
   USER_REQUEST = 'USER_REQUEST',
+  RELAYER = 'RELAYER',
   CONSOLIDATION = 'CONSOLIDATION',
 }
 

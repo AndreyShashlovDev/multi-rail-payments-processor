@@ -1,7 +1,7 @@
 import { Module, FactoryProvider } from '@nestjs/common'
-import { RelayerRepositoryModule } from '../../../data/repository/relayer/relayer-repository.module'
+import { RelayerRepositoryModule } from '../../../../data/repository/relayer/relayer-repository.module'
 import { RelayerStrategy } from './relayer.strategy'
-import { RelayerRepository } from '../../../data/repository/relayer/relayer.repository'
+import { RelayerRepository } from '../../../../data/repository/relayer/relayer.repository'
 import { PlatformRelayer } from './relayer/platform.relayer'
 
 const Provider: FactoryProvider = {

@@ -20,6 +20,7 @@ export enum PaymentPlatformFeePayerType {
 
 export enum PaymentOperationType {
   USER_REQUEST = 'USER_REQUEST',
+  RELAYER = 'RELAYER',
   CONSOLIDATION = 'CONSOLIDATION', // for example, top-up etc.
 }
 

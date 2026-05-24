@@ -1,7 +1,7 @@
-import { TransactionRepository } from '../../../../../data/repository/transaction/transaction.repository'
-import { TransactionSaver } from '../../../service/transaction-saver/transaction-saver'
-import { TransactionParseResult } from '../../../service/transaction-parser/transaction-parser'
-import { TransactionModel } from '../../../model/transaction.model'
+import { TransactionRepository } from '../../../../../../data/repository/transaction/transaction.repository'
+import { TransactionSaver } from '../../../transaction-saver/transaction-saver'
+import { TransactionParseResult } from '../../../transaction-parser/transaction-parser'
+import { TransactionModel } from '../../../../model/transaction.model'
 import { Injectable } from '@nestjs/common'
 import { TxContext } from '@app/shared/types/tx-context.type'
 

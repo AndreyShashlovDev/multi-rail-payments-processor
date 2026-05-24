@@ -1,6 +1,6 @@
 import { Relayer, RelayerGetAccountParams } from '../relayer'
 import { IntegrationAccount } from '@app/types'
-import { RelayerRepository } from '../../../../data/repository/relayer/relayer.repository'
+import { RelayerRepository } from '../../../../../data/repository/relayer/relayer.repository'
 import { Injectable } from '@nestjs/common'
 
 @Injectable()

@@ -11,7 +11,6 @@ import {
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { Id } from '@app/types'
 import { MarkAsPreparedParams, MarkAsProcessingParams } from './transfer-intent-repository.types'
-import { intentTypeFromDomain } from '@app/shared'
 import { FindOptionsWhere } from 'typeorm/find-options/FindOptionsWhere'
 
 @Injectable()
@@ -58,20 +57,6 @@ export class TransferIntentRepository {
     return TransferIntentRepositoryMapper.toDomain({ ...entity, status: TransferIntentEntityStatus.ACCEPTED })
   }
 
-  async updateTransactionId(
-    data: Pick<TransferIntentModel, 'id' | 'transactionIntentId'>,
-    ctx?: TxContext,
-  ): Promise<boolean> {
-    const em = ctx?.em ?? this.datasource.manager
-    const result = await em.update(
-      TransferIntentEntity,
-      { id: data.id },
-      { transactionIntentId: data.transactionIntentId },
-    )
-
-    return result.affected === 1
-  }
-
   async get(ids: ReadonlySet<Id>, ctx?: TxContext): Promise<ReadonlyArray<TransferIntentModel>> {
     const em = ctx?.em ?? this.datasource.manager
 
@@ -85,23 +70,22 @@ export class TransferIntentRepository {
   async markAsPrepared(params: MarkAsPreparedParams, ctx: TxContext): Promise<boolean> {
     const where: FindOptionsWhere<TransferIntentEntity> = {
       status: TransferIntentEntityStatus.ACCEPTED,
-      intentType: intentTypeFromDomain(params.intentType),
-      intentId: In(Array.from(params.intentIds)),
+      id: In(Array.from(params.ids)),
     }
 
     const result = await ctx.em.update(TransferIntentEntity, where, { status: TransferIntentEntityStatus.PREPARED })
 
-    return result.affected === params.intentIds.size
+    return result.affected === params.ids.size
   }
 
   async markAsProcessing(params: MarkAsProcessingParams, ctx: TxContext): Promise<boolean> {
     const where: FindOptionsWhere<TransferIntentEntity> = {
-      transactionIntentId: params.transactionIntentId,
+      id: In(Array.from(params.ids)),
       status: TransferIntentEntityStatus.PREPARED,
     }
 
     const result = await ctx.em.update(TransferIntentEntity, where, { status: TransferIntentEntityStatus.PROCESSING })
 
-    return (result.affected ?? 0) > 0
+    return result.affected === params.ids.size
   }
 }

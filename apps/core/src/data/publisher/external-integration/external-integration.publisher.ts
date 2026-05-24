@@ -77,9 +77,9 @@ export class ExternalIntegrationPublisher {
 
   async enqueueTransferHeld(data: TransferIntentHeldData, ctx: TxContext): Promise<void> {
     const payload = new TransferIntentHeldEvent(
-      `${data.intentType}-${data.intentIds.join(',')}`,
+      `${data.intentType}-${data.intentData.map((item) => `${item.intentId}:${item.txId}`).join(',')}`,
       data.intentType,
-      data.intentIds,
+      data.intentData,
     )
 
     await this.outboxRepository.create(

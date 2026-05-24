@@ -13,7 +13,6 @@ export interface TransferData {
   readonly integration: IntegrationType
   readonly operation: OperationType
   readonly index: number
-  readonly initiator: IntegrationAccount
   readonly from: IntegrationAccount
   readonly to: IntegrationAccount
   readonly fromOwner: IntegrationAccount

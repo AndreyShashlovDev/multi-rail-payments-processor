@@ -9,6 +9,9 @@ import {
 export enum PayoutIntentStatus {
   CREATED = 'CREATED',
   PREPARED = 'PREPARED',
+  /**
+   * @deprecated
+   */
   HELD = 'HELD',
   PROCESSING = 'PROCESSING',
   CONFIRMING = 'CONFIRMING',

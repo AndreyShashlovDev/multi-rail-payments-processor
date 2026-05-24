@@ -1,7 +1,13 @@
 import { IntentType } from '@app/shared'
-import type { UUID } from '@app/types'
+import { UUID, Id } from '@app/types'
+
+export interface TransferIntentHeldEventData {
+  readonly intentId: UUID
+  readonly txId: Id
+}
 
 export interface TransferIntentHeldEventModel {
+  readonly uniqueKey: string
   readonly intentType: IntentType
-  readonly intentIds: ReadonlySet<UUID>
+  readonly intentData: ReadonlyArray<TransferIntentHeldEventData>
 }

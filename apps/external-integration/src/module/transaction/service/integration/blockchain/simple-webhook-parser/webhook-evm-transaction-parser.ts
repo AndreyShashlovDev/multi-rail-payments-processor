@@ -1,6 +1,6 @@
-import { EvmBlockchain } from '../../../../../api/controller/webhook/request/evm-transaction-webhook.request'
-import { TransactionParser, TransactionParseResult } from '../../../service/transaction-parser/transaction-parser'
-import { OperationType } from '../../../model/transfer.model'
+import { EvmBlockchain } from '../../../../../../api/controller/webhook/request/evm-transaction-webhook.request'
+import { TransactionParser, TransactionParseResult } from '../../../transaction-parser/transaction-parser'
+import { OperationType } from '../../../../model/transfer.model'
 import {
   EvmAddress,
   EvmHashType,
@@ -39,6 +39,7 @@ export class WebhookEvmTransactionParser implements TransactionParser<EvmTransac
         raw: JSON.stringify(rawTransaction),
         executionType: ExecutionType.NATIVE,
         integration,
+        initiator: IntegrationAccount.create(integration, rawTransaction.from),
         sourceTxId: rawTransaction.hash,
         blockId: rawTransaction.blockNumber,
         blockTime: new Date(rawTransaction.timestamp * 1000),
@@ -57,7 +58,6 @@ export class WebhookEvmTransactionParser implements TransactionParser<EvmTransac
           {
             integration,
             operation: OperationType.NATIVE_TRANSFER,
-            initiator: IntegrationAccount.create(integration, rawTransaction.from),
             index: rawTransaction.index,
             from: IntegrationAccount.create(integration, rawTransaction.from),
             to: IntegrationAccount.create(integration, rawTransaction.to),

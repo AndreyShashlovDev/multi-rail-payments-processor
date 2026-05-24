@@ -26,7 +26,8 @@ export enum PaymentPlatformFeePayerEntityType {
 
 export enum PaymentOperationEntityType {
   USER_REQUEST = 1,
-  CONSOLIDATION = 2, // for example, top-up etc.
+  RELAYER = 2,
+  CONSOLIDATION = 3, // for example, top-up etc.
 }
 
 @Entity({ name: PaymentIntentEntity.NAME, schema: APP_SCHEMA })

@@ -1,13 +1,15 @@
 import {
   AbstractInteractor,
   IntegrationAccount,
-  type IntegrationCurrency,
+  IntegrationCurrency,
   SourceTransactionId,
   Numeric,
   RawNumeric,
+  EvmAddress,
 } from '@app/types'
 import { IntegrationType } from '@app/shared'
 import { randomBytes } from 'node:crypto'
+import { EvmTransaction } from '../../../../model/transaction-intent.model'
 
 export interface EvmSingleTransferParams {
   readonly integration: IntegrationType
@@ -19,13 +21,6 @@ export interface EvmSingleTransferParams {
   readonly toCurrency: IntegrationCurrency
 }
 
-export interface EvmTransaction {
-  readonly hash: SourceTransactionId
-  readonly nonce: number
-  readonly from: IntegrationAccount
-  readonly to: IntegrationAccount | IntegrationCurrency
-}
-
 export interface EvmSingleTransferResult {
   readonly id: SourceTransactionId
   readonly executor: IntegrationAccount
@@ -34,14 +29,14 @@ export interface EvmSingleTransferResult {
   readonly rawTransaction: EvmTransaction
 }
 
-export class InternalEvmSingleTransferBuilder extends AbstractInteractor<
+export class EvmSingleTransferBuilder extends AbstractInteractor<
   EvmSingleTransferParams,
   Promise<EvmSingleTransferResult>
 > {
   async execute(params: EvmSingleTransferParams): Promise<EvmSingleTransferResult> {
     const hash: SourceTransactionId = `0x${randomBytes(20).toString('hex')}`
     // estimate tx fee
-    const fee = Numeric.ZERO.toString()
+    const fee = Numeric.create('0.1').mul(Numeric.create(10).pow(18)).toString()
 
     return {
       id: hash,
@@ -51,8 +46,12 @@ export class InternalEvmSingleTransferBuilder extends AbstractInteractor<
       rawTransaction: {
         hash,
         from: params.fromAccount,
-        to: params.toCurrency,
+        to:
+          params.fromCurrency === 'native'
+            ? params.toAccount
+            : IntegrationAccount.create(params.integration, params.toCurrency as EvmAddress),
         nonce: Math.round(Math.random() * 1000),
+        data: params.fromCurrency === 'native' ? null : '0xsometxdata',
       },
     }
   }

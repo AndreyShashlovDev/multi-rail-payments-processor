@@ -8,6 +8,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { ConfirmTransactionInteractor } from '../../../module/transaction/interactor/confirm-transaction/confirm-transaction.interactor'
 import { randomBytes } from 'node:crypto'
 import { InternalBlockRepository } from '../../../data/repository/internal-block/internal-block.repository'
+import { TransferRouteRepository } from '../../../data/repository/transfer-route/transfer-route.repository'
 
 /**
  * @deprecated remove it in real project! just for example. simulation finalize tx
@@ -25,6 +26,7 @@ export class FinalizePayoutFlowInteractor extends AbstractInteractor<never, Prom
     private readonly acceptTransactionInteractor: WebhookAcceptTransactionInteractor,
     private readonly confirmTransactionInteractor: ConfirmTransactionInteractor,
     private readonly internalBlockRepository: InternalBlockRepository,
+    private readonly transferRouteRepository: TransferRouteRepository,
   ) {
     super()
     this.logger.warn(`Enabled FinalizePayoutFlowInteractor! Remove it!!`)
@@ -68,12 +70,19 @@ export class FinalizePayoutFlowInteractor extends AbstractInteractor<never, Prom
           txIntents.map(
             async (intent) =>
               await this.promoteTransactionInteractor.execute({
-                sourceTxId: intent.txId,
+                sourceTxId: intent.sourceTxId,
                 integration: intent.integration,
                 ctx,
               }),
           ),
         )
+
+        const routes = await this.transferRouteRepository.getByTransactionIntent(
+          new Set(txIntents.map((item) => item.id)),
+          ctx,
+        )
+
+        const routesByTransaction = Map.groupBy(routes, (item) => item.transactionIntentId)
 
         // webhook/event from blockchain simulation
         await Promise.all(
@@ -84,7 +93,8 @@ export class FinalizePayoutFlowInteractor extends AbstractInteractor<never, Prom
                 ? await this.internalBlockRepository.incrementAndGet(intent.integration, ctx)
                 : '33'
 
-            const transfer = intent.transfers[0]
+            // fixme single route by transaction (skip batch flow)
+            const transfer = (routesByTransaction.get(intent.id) ?? [])[0]
 
             await this.acceptTransactionInteractor.execute({
               integration: intent.integration,
@@ -93,17 +103,17 @@ export class FinalizePayoutFlowInteractor extends AbstractInteractor<never, Prom
                 chain: 'ethereum',
                 from: IntegrationAccount.create(intent.integration, transfer.fromAccount) as EvmAddress,
                 to: IntegrationAccount.create(intent.integration, transfer.toAccount) as EvmAddress,
-                currency: transfer.fromCurrency,
+                currency: transfer.currency,
                 fee:
                   intent.executionType === ExecutionType.INTERNAL
                     ? Numeric.ZERO.toString()
                     : Numeric.create('0.1').mul(Numeric.create(10).pow(18)).toString(),
                 index: 0,
-                amount: transfer.fromRawAmount,
+                amount: transfer.rawAmount.toFixed(Numeric.DECIMALS),
                 success: true,
                 blockNumber,
                 blockHash: randomBytes(32).toString('hex') as EvmHashType,
-                hash: intent.txId,
+                hash: intent.sourceTxId,
                 timestamp: Math.round(Date.now() / 1000),
               },
               ctx,
@@ -115,7 +125,7 @@ export class FinalizePayoutFlowInteractor extends AbstractInteractor<never, Prom
           txIntents.map(
             async (intent) =>
               await this.confirmTransactionInteractor.execute({
-                sourceTxId: intent.txId,
+                sourceTxId: intent.sourceTxId,
                 integration: intent.integration,
                 ctx,
               }),

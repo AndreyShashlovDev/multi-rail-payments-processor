@@ -30,7 +30,7 @@ export class RelayerRepository {
         {
           integration: integrationTypeFromDomain(params.integration),
           currency: params.currency,
-          amount: params.amount.toFixed(Numeric.EXPONENT),
+          amount: params.amount.toFixed(Numeric.DECIMALS),
         },
       )
       .where('lia.integration = :integration', {

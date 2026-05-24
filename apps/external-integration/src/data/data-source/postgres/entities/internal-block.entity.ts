@@ -5,7 +5,7 @@ import type { SourceTransactionId } from '@app/types'
 import { IntegrationEntityType } from '@app/shared'
 
 @Entity({ schema: APP_SCHEMA, name: InternalBlockEntity.NAME })
-@Unique('idx_unique_internal_block', ['integration'])
+@Unique('idx_unique_internal_block_internal_block', ['integration'])
 export class InternalBlockEntity extends BasicEntity {
   static readonly NAME = 'internal_block' as const
 

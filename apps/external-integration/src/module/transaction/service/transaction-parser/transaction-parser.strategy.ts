@@ -1,6 +1,6 @@
 import { TransactionParser, TransactionParseResult } from './transaction-parser'
 import { IntegrationType } from '@app/shared'
-import { EvmTransactionWebhook } from '../../integration/blockchain/simple-webhook-parser/webhook-evm-transaction-parser'
+import { EvmTransactionWebhook } from '../integration/blockchain/simple-webhook-parser/webhook-evm-transaction-parser'
 
 export type DataSourceType = 'webhook'
 

@@ -154,6 +154,8 @@ export class PaymentIntentRepositoryMapper {
     switch (operation) {
       case PaymentOperationType.USER_REQUEST:
         return PaymentOperationEntityType.USER_REQUEST
+      case PaymentOperationType.RELAYER:
+        return PaymentOperationEntityType.RELAYER
       case PaymentOperationType.CONSOLIDATION:
         return PaymentOperationEntityType.CONSOLIDATION
 
@@ -168,6 +170,8 @@ export class PaymentIntentRepositoryMapper {
     switch (operation) {
       case PaymentOperationEntityType.USER_REQUEST:
         return PaymentOperationType.USER_REQUEST
+      case PaymentOperationEntityType.RELAYER:
+        return PaymentOperationType.RELAYER
       case PaymentOperationEntityType.CONSOLIDATION:
         return PaymentOperationType.CONSOLIDATION
 
