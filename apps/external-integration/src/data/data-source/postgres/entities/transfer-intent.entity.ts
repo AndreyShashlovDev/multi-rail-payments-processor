@@ -6,15 +6,11 @@ import { IntegrationEntityType, IntentEntityType } from '@app/shared'
 
 export enum TransferIntentEntityStatus {
   CREATED = 1,
-  ACCEPTED = 2,
-  PREPARED = 3, // after held event
-  PROCESSING = 4, // send to integration
-  COMPLETED = 5,
-  CANCELED = 6,
-  FAILED = 7,
+  PROCESSING = 2, // send to integration
+  COMPLETED = 3,
+  CANCELED = 4,
+  FAILED = 5,
 }
-
-export type TransferIntentEntityMetadata = Record<string, unknown>
 
 @Entity({ name: TransferIntentEntity.NAME, schema: APP_SCHEMA })
 @Unique('idx_unique_transfer_intent_intenttype_intentid', [...TransferIntentEntity.UNIQUE])
@@ -67,6 +63,6 @@ export class TransferIntentEntity extends BasicEntity {
   @Column({ type: 'smallint' })
   readonly status: TransferIntentEntityStatus
 
-  @Column({ type: 'jsonb', nullable: true })
-  readonly metadata: TransferIntentEntityMetadata | null
+  @Column({ type: 'text', nullable: true })
+  readonly depositId: string | null // cross chain relayer ID
 }

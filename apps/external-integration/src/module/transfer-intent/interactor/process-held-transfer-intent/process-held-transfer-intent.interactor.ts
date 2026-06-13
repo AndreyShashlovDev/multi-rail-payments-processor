@@ -51,23 +51,6 @@ export class ProcessHeldTransferIntentInteractor extends AbstractInteractor<
         }))
 
         await this.transferRouteRepository.markAsHeld(queryParams, ctx)
-        const intentIds = new Set(params.intentData.map((item) => item.intentId))
-        const fullyHeldIntents = await this.transferRouteRepository.getFullyHeldIntentIds(intentIds, ctx)
-        /*
-          1. находим transferRoute по интентИД и по ТиксИД
-          2. выставляем трнасферо роут, что он захолжен
-          3. если все роуты захолжены, выставляем что интен захолжен.
-         */
-        if (fullyHeldIntents.size === 0) {
-          return
-        }
-
-        await this.transferIntentRepository.markAsPrepared(
-          {
-            ids: fullyHeldIntents,
-          },
-          ctx,
-        )
       })
       .execute()
   }

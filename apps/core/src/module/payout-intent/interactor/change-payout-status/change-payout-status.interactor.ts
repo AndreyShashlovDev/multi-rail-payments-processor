@@ -57,7 +57,9 @@ export class ChangePayoutStatusInteractor extends AbstractInteractor<ChangePayou
         const heldIntentData: Map<string, { intentId: UUID; txId: Id }> = new Map()
 
         for (const [id, changes] of changeByPayout.entries()) {
-          let wasChangedSuccess: boolean = false
+          let wasChangedSuccess: boolean | null = null
+
+          const payout = (await this.payoutIntentRepository.getByIds(new Set([id]), ctx))[0]
 
           // we can check just by main amount hold
           const heldEvents = changes.filter(
@@ -67,27 +69,35 @@ export class ChangePayoutStatusInteractor extends AbstractInteractor<ChangePayou
               item.metadata.txStatus === BalanceChangeTxStatus.TX_PREPARED,
           )
 
-          if (heldEvents.length) {
-            wasChangedSuccess = await this.payoutIntentRepository.markAsHeld({ id }, ctx)
-            heldEvents.forEach((item) => {
-              const key = `${id}:${item.metadata.txId}`
-              heldIntentData.set(key, { intentId: id, txId: item.metadata.txId })
-            })
+          const initialHeldEvents = heldEvents.filter(
+            (item) => item.integration === payout.fromIntegration && item.platformAccountId === payout.member.accountId,
+          )
+
+          heldEvents.forEach((item) => {
+            const key = `${id}:${item.metadata.txId}`
+            heldIntentData.set(key, { intentId: id, txId: item.metadata.txId })
+          })
+
+          if (initialHeldEvents.length) {
+            wasChangedSuccess = await this.payoutIntentRepository.markProcessing(new Set([id]), ctx)
           } else {
-            const payout = changes.find(
+            // todo fix me! check when to = to
+            const payoutData = changes.find(
               (item) =>
+                item.integration === payout.toIntegration &&
+                // item.platformAccountId === payout.to.platformAccountId &&
                 item.type === BalanceChangeType.DEBIT &&
                 item.metadata.reason === BalanceChangeReason.AMOUNT &&
                 item.metadata.txStatus === BalanceChangeTxStatus.TX_CONFIRMED,
             )
 
-            if (payout) {
+            if (payoutData) {
               wasChangedSuccess = await this.payoutIntentRepository.markSuccess({ id }, ctx)
               this.logger.debug(`Payout ${id} success payed!`)
             }
           }
 
-          if (!wasChangedSuccess) {
+          if (wasChangedSuccess !== null && !wasChangedSuccess) {
             throw new PayoutStatusNotChangedException(changes)
           }
         }

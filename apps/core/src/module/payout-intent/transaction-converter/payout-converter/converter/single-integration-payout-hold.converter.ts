@@ -2,7 +2,6 @@ import { TransactionConverterResult } from '../../../../../shared/projection/bas
 import { PayoutPriority, PayoutConverterPriority } from '../../converter-priority.constants'
 import { UUID } from '@app/types'
 import { isUUID } from 'class-validator'
-import { PayoutIntentStatus } from '../../../model/payout-intent.model'
 import { PayoutTransactionConverter, PayoutTransactionContext } from '../payout-transaction.converter'
 import { IntentType } from '@app/shared'
 import { PayoutHoldsOperation } from '../operation/payout-holds.operation'
@@ -29,21 +28,34 @@ export class SingleIntegrationPayoutHoldConverter implements PayoutTransactionCo
 
         const payout = params.payoutIntents.get(validIntentId)
 
-        if (!payout || payout.status !== PayoutIntentStatus.PREPARED) {
+        if (!payout) {
           return []
         }
 
         notMatchedPayout.delete(payout.id)
         notMatchedTransfers.delete(transfer.id)
 
-        return { payout, transfer }
+        const fromPlatformAccountId: UUID | null = params.platformAccountIds.has(transfer.initiator)
+          ? (transfer.initiator as UUID)
+          : (params.accountLinks.get(transfer.initiator)?.platformAccountId ?? null)
+
+        const fromIntegrationAccount = params.accountLinks.get(transfer.from)?.integrationAccount.account ?? null
+
+        return {
+          payout,
+          transfer,
+          txInitiator: params.accountLinks.get(params.transaction.initiator) ?? null,
+          from: { platformAccountId: fromPlatformAccountId, integrationAccount: fromIntegrationAccount },
+        }
       })
 
-    const changes = matchedPayout.flatMap(({ payout, transfer }) =>
+    const changes = matchedPayout.flatMap(({ payout, transfer, txInitiator, from }) =>
       this.holdsOperation.execute({
         payout,
         tx: params.transaction,
         transfer,
+        txInitiator,
+        from,
       }),
     )
 

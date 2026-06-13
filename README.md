@@ -140,6 +140,81 @@ This project demonstrates a clean, scalable payment infrastructure built with Ev
 - Signs transactions upon request from External Integration
 - No business logic — pure cryptographic operations
 
+## Supported Transfer Types
+
+External Integration currently supports the following transfer execution strategies,
+defined by two axes: number of steps and execution type of each step.
+
+### Single-Step Transfers
+
+#### 1. Internal Transfer
+Both sender and recipient are platform accounts. Pure ledger operation, no blockchain involved.
+
+```
+user → recipient (INTERNAL)
+```
+
+- Single `transfer_route`, single `transaction_intent`
+- No on-chain gas cost, instant settlement
+
+#### 2. Native Transfer
+Sender is a platform account, recipient is an external address. Platform provides a free wallet from the pool.
+
+```
+user → pool wallet (NATIVE) → external recipient
+```
+
+- Single `transfer_route`, single `transaction_intent`
+- `initiator` = original user, `from` = pool wallet (actual on-chain sender)
+
+---
+
+### Two-Step Transfers
+
+Always start with an INTERNAL step (user → relayer), followed by a second step
+that depends on where the recipient is.
+
+#### 3. INTERNAL + INTERNAL (Cross-Chain or Cross-Currency, Internal Recipient)
+Recipient is a platform account on a different chain or currency.
+
+```
+user → relayer (INTERNAL) → recipient (INTERNAL)
+```
+
+#### 4. INTERNAL + NATIVE via Platform Relayer (Cross-Chain or Cross-Currency, External Recipient)
+Recipient is an external address. Platform relayer sends funds directly without a bridge contract.
+We control both transactions.
+
+```
+user → relayer (INTERNAL) → external recipient (NATIVE)
+```
+
+#### 5. INTERNAL + NATIVE via External Bridge (Cross-Chain, External Recipient)
+Recipient is on a different blockchain. Funds are sent to an external bridge contract.
+The bridge initiates the final transaction on the destination chain — we do not control it.
+Settlement is tracked via `depositId` extracted from on-chain logs.
+
+```
+user → relayer (INTERNAL) → bridge contract (NATIVE)
+                                    ···
+                             bridge → recipient (destination chain, not our transaction)
+```
+
+- `depositId` captured from on-chain logs after confirmation
+- Bridge handles cross-chain settlement asynchronously on the destination chain
+
+---
+
+For all two-step transfers:
+- Two `transfer_route` entries (`txIndex: 0` and `txIndex: 1`)
+- Two `transaction_intent` entries executed **sequentially**
+- `txIndex: 1` is only initiated after `txIndex: 0` is CONFIRMED
+
+> **Note**: For case 3 where both steps are INTERNAL on the same chain (currency swap),
+> a future optimization could combine both into a single `transaction_intent`.
+> Currently two separate intents are always created. See `TransferRouteExecutionPlanner`.
+---
+
 ## Data Flow Diagrams
 
 ### 1. Create Integration Account Flow

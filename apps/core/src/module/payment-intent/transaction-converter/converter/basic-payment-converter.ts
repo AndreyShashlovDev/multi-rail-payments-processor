@@ -86,7 +86,7 @@ export abstract class BasicPaymentConverter implements PaymentTransactionConvert
         if (usedTransfers.has(transfer.id)) break
         if (usedPayments.has(payment.id)) continue
         if (transfer.currency !== payment.currency) continue
-        if (transfer.to !== payment.to.account) continue
+        if (transfer.to !== payment.to.account && transfer.to !== payment.to.platformAccountId) continue
 
         const transferredAmounts = params.amounts.get(payment.id) ?? []
         const accumulatedAmountGross = transferredAmounts.reduce(

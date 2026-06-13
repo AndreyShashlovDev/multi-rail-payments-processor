@@ -4,7 +4,7 @@ import {
   BalanceChangeTxStatus,
   PayoutBalanceChangeMetadata,
 } from '@app/shared/types/balance-change'
-import { Id, AbstractInteractor, IntegrationAccount } from '@app/types'
+import { Id, AbstractInteractor, UUID, IntegrationAccount } from '@app/types'
 import { IntentType, BalanceChangeType, ExecutionType } from '@app/shared'
 import { PayoutIntentModel } from '../../../model/payout-intent.model'
 import { OperationTypeMapper } from '../../../../../shared/projection/operation-type.mapper'
@@ -12,9 +12,9 @@ import { TransactionModel } from '../../../../../shared/model/transaction.model'
 
 export interface PlatformFeePayoutOperationParams {
   readonly payout: PayoutIntentModel
-  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executionType' | 'executedAt'>
-  readonly from: IntegrationAccount
+  readonly tx: Omit<TransactionModel, 'transfers'>
   readonly transferIds: ReadonlySet<Id>
+  readonly from: { platformAccountId: UUID | null; integrationAccount: IntegrationAccount | null }
 }
 
 export class PlatformFeePayoutOperation extends AbstractInteractor<
@@ -22,9 +22,13 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
   ReadonlyArray<BalanceChange>
 > {
   execute(params: PlatformFeePayoutOperationParams): ReadonlyArray<BalanceChange> {
-    const { payout, tx, from, transferIds } = params
+    const { payout, tx, transferIds, from } = params
 
     if (!payout.platformFee || !payout.platformFeeAccount) {
+      return []
+    }
+
+    if (from.platformAccountId !== payout.member.accountId) {
       return []
     }
 
@@ -45,14 +49,14 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
       executionType: tx.executionType,
     }
 
-    if (!isInternalTransfer) {
-      const integrationAccount = from
+    const { platformAccountId, integrationAccount } = from
 
+    if (!isInternalTransfer) {
       return [
         {
           type: BalanceChangeType.RELEASE_HOLD,
           ...basicData,
-          platformAccountId: payout.member.accountId,
+          platformAccountId,
           integrationAccount,
           currency: payout.fromCurrency,
           integration: payout.fromIntegration,
@@ -65,7 +69,7 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
         {
           type: BalanceChangeType.DEBIT,
           ...basicData,
-          platformAccountId: payout.member.accountId,
+          platformAccountId,
           integrationAccount: null,
           currency: payout.fromCurrency,
           integration: payout.fromIntegration,
@@ -76,10 +80,10 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
           },
         },
         {
-          type: BalanceChangeType.PLATFORM_FEE_ACCRUED,
+          type: BalanceChangeType.CREDIT,
           ...basicData,
-          platformAccountId: null,
-          integrationAccount,
+          platformAccountId: payout.platformFeeAccount.platformAccountId ?? platformAccountId,
+          integrationAccount: null,
           currency: payout.fromCurrency,
           integration: payout.fromIntegration,
           amount: payout.platformFee,
@@ -96,7 +100,7 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
       {
         type: BalanceChangeType.RELEASE_HOLD,
         ...basicData,
-        platformAccountId: payout.member.accountId,
+        platformAccountId,
         integrationAccount: null,
         currency: payout.fromCurrency,
         integration: payout.fromIntegration,
@@ -109,7 +113,7 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
       {
         type: BalanceChangeType.DEBIT,
         ...basicData,
-        platformAccountId: payout.member.accountId,
+        platformAccountId,
         integrationAccount: null,
         currency: payout.fromCurrency,
         integration: payout.fromIntegration,
@@ -122,7 +126,7 @@ export class PlatformFeePayoutOperation extends AbstractInteractor<
       {
         type: BalanceChangeType.CREDIT,
         ...basicData,
-        platformAccountId: payout.platformFeeAccount.platformAccountId ?? payout.member.accountId,
+        platformAccountId: payout.platformFeeAccount.platformAccountId ?? platformAccountId,
         integrationAccount: null,
         currency: payout.fromCurrency,
         integration: payout.fromIntegration,

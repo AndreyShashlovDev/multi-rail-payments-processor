@@ -20,8 +20,8 @@ export interface CreatePaymentParams {
   readonly integration: IntegrationType
   readonly currency: IntegrationCurrency
   readonly amount: Numeric
-  // PaymentPlatformFeePayerModelType.CLIENT by default
-  readonly platformFeePayer?: PaymentPlatformFeePayerType
+  readonly platformFeePayer: PaymentPlatformFeePayerType | null
+  readonly to: IntegrationAccountLinkModel | null
 }
 
 @Injectable()
@@ -41,10 +41,13 @@ export class CreatePaymentIntentInteractor extends AbstractInteractor<
   }
 
   async execute(params: CreatePaymentParams): Promise<PaymentIntentModel> {
-    const { platformFee, platformFeeAccount } = await this.feeRepository.getPlatformFee({
-      integration: params.integration,
-      currency: params.currency,
-    })
+    const { platformFee, platformFeeAccount } =
+      params.operationType === PaymentOperationType.USER_REQUEST
+        ? await this.feeRepository.getPlatformFee({
+            integration: params.integration,
+            currency: params.currency,
+          })
+        : { platformFee: null, platformFeeAccount: null }
 
     const result = await this.txContextRunner
       .createWithData<{ accountLink: IntegrationAccountLinkModel; payment?: PaymentIntentModel }>()
@@ -62,7 +65,13 @@ export class CreatePaymentIntentInteractor extends AbstractInteractor<
         }
         return data
       })
-      .pipeline(async (ctx) => await this.prepareAccountForPayment(params, ctx))
+      .pipeline(async (ctx) => {
+        if (params.to) {
+          return { accountLink: params.to }
+        }
+
+        return await this.prepareAccountForPayment(params, ctx)
+      })
       .pipeline(async (ctx, data) => {
         const payment = await this.paymentRepository.create(
           {
@@ -78,7 +87,7 @@ export class CreatePaymentIntentInteractor extends AbstractInteractor<
               platformAccountId: data.accountLink.platformAccountId,
               accountLinkId: data.accountLink.id,
             },
-            platformFeePayer: params.platformFeePayer ?? PaymentPlatformFeePayerType.CLIENT,
+            platformFeePayer: params.platformFeePayer,
             platformFee,
             platformFeeAccount: platformFeeAccount
               ? {

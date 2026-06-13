@@ -31,6 +31,8 @@ export interface CreatePayoutIntentParams {
   readonly fromIntegration: IntegrationType
   readonly fromCurrency: IntegrationCurrency
 
+  readonly toIntegration: IntegrationType
+  readonly toCurrency: IntegrationCurrency
   readonly toAccount: IntegrationAccount
   readonly estimatedTransferFeeId: UUID
 }
@@ -99,11 +101,10 @@ export class CreatePayoutIntentInteractor extends AbstractInteractor<
             platformFeeAccount,
             integrationFeeRate: convertIntegrationFee.to.rate,
             to,
+            toIntegration: params.toIntegration,
+            toCurrency: params.toCurrency,
             toAmount: params.amount,
-            toCurrency: params.fromCurrency,
-            toIntegration: params.fromIntegration,
             exchangeRate: Numeric.create(1), // same currency and same integration
-            integrationFeePayer: null,
             integrationFee: null,
             integrationFeeCurrency: convertIntegrationFee.from.currency,
           },

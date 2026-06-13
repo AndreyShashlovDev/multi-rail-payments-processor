@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common'
 import { PaymentController } from './payment.controller'
-import { CreatePaymentIntentInteractorModule } from '../../../module/payment-intent/interactor/create-payment-intent/create-payment-intent-interactor.module'
+import { CreatePaymentResolverInteractorModule } from '../../../application/interactor/create-payment-resolver/create-payment-resolver-interactor.module'
 
 @Module({
-  imports: [CreatePaymentIntentInteractorModule],
+  imports: [CreatePaymentResolverInteractorModule],
   controllers: [PaymentController],
 })
 export class PaymentControllerModule {}

@@ -20,6 +20,7 @@ export class TransferRouteRepositoryMapper {
       intentId: entity.intentId,
       executionType: executionTypeToDomain(entity.executionType),
       integration: integrationTypeToDomain(entity.integration),
+      initiator: entity.initiator,
       fromAccount: entity.fromAccount,
       toAccount: entity.toAccount,
       rawAmount: entity.rawAmount,
@@ -41,6 +42,7 @@ export class TransferRouteRepositoryMapper {
       txIndex: data.txIndex,
       executionType: executionTypeFromDomain(data.executionType),
       integration: integrationTypeFromDomain(data.integration),
+      initiator: data.initiator,
       fromAccount: data.fromAccount,
       toAccount: data.toAccount,
       rawAmount: data.rawAmount,
@@ -53,6 +55,8 @@ export class TransferRouteRepositoryMapper {
     switch (status) {
       case TransferRouteEntityStatus.CREATED:
         return TransferRouteStatus.CREATED
+      case TransferRouteEntityStatus.PENDING_HOLD:
+        return TransferRouteStatus.PENDING_HOLD
       case TransferRouteEntityStatus.HELD:
         return TransferRouteStatus.HELD
       case TransferRouteEntityStatus.IN_PROGRESS:
@@ -70,6 +74,8 @@ export class TransferRouteRepositoryMapper {
     switch (status) {
       case TransferRouteStatus.CREATED:
         return TransferRouteEntityStatus.CREATED
+      case TransferRouteStatus.PENDING_HOLD:
+        return TransferRouteEntityStatus.PENDING_HOLD
       case TransferRouteStatus.HELD:
         return TransferRouteEntityStatus.HELD
       case TransferRouteStatus.IN_PROGRESS:

@@ -52,7 +52,7 @@ export class PayoutInboxTransferRepository {
    */
   async insertTransfers(transfers: ReadonlyArray<PayoutInboxTransferData>): Promise<void> {
     const byKey = Map.groupBy(transfers, (transfer) =>
-      PayoutInboxTransferKey.create(transfer.data.executionType, transfer.integration, transfer.intentId),
+      PayoutInboxTransferKey.create(transfer.data.executionType, transfer.intentId),
     )
 
     for (const [key, group] of byKey) {
@@ -165,6 +165,16 @@ export class PayoutInboxTransferRepository {
       .createQueryBuilder(PayoutInboxTransferEntity, 'it')
       .where('it.key IN (:...keys)', { keys: [...keys] })
       .andWhere('it.state = :state', { state: PayoutInboxTransferEntityState.BLOCKED })
+      .andWhere(
+        `it.tx_id = (
+        SELECT MIN(sub.tx_id)
+        FROM ${PayoutInboxTransferEntity.PATH} sub
+        WHERE sub.key = it.key
+        AND sub.deleted_at IS NULL
+        AND sub.state = :blockedState
+      )`,
+        { blockedState: PayoutInboxTransferEntityState.BLOCKED },
+      )
       .orderBy('it.created_at', 'ASC')
       .addOrderBy('it.tx_id', 'ASC')
       .addOrderBy('it.transfer_id', 'ASC')
@@ -213,8 +223,17 @@ export class PayoutInboxTransferRepository {
         )`,
         { keys: [...keys], blockedState: PayoutInboxTransferEntityState.BLOCKED },
       )
+      .andWhere(
+        `it.tx_id = (
+        SELECT MIN(sub.tx_id)
+        FROM ${PayoutInboxTransferEntity.PATH} sub
+        WHERE sub.key = it.key
+        AND sub.deleted_at IS NULL
+        AND sub.state = :createdState
+      )`,
+        { createdState: PayoutInboxTransferEntityState.CREATED },
+      )
       .orderBy('it.key', 'ASC')
-      .addOrderBy('it.created_at', 'ASC')
       .addOrderBy('it.tx_id', 'ASC')
       .addOrderBy('it.transfer_id', 'ASC')
       .getMany()

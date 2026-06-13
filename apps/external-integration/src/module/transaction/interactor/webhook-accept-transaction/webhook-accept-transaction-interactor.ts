@@ -34,6 +34,8 @@ export class WebhookAcceptTransactionInteractor extends BasicTransactionInteract
     const parsedTransaction = await this.transactionParser.parse(params.source, params.integration, params.raw)
     // this.integrationAccountRepository.hasAccounts() - todo call for check before save and publish event (grpc request to Core)
 
+    //todo const parse logs (or account record of Solana). looking for bridge (relayer) deposit event (extract deposit id)
+    // update transfer intent with deposit id
     await this.txRunner
       .create(params.ctx)
       .pipeline(async (ctx) => {

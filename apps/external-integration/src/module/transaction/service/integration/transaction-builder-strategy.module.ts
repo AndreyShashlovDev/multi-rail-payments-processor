@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common'
-import { TransactionBuilderStrategy } from './transaction-builder.strategy'
+import { TransferRouteExecutionPlanner } from './transfer-route-execution-planner.service'
 import { EvmSingleTransferBuilderModule } from './blockchain/transaction-builder/evm-single-transfer-builder.module'
 import { InternalEvmSingleTransferBuilderModule } from './internal/blockchain/transaction-builder/internal-evm-single-transfer-builder.module'
 import { IntegrationAccountRepositoryModule } from '../../../../data/repository/integration-account/integration-account-repository.module'
 import { RelayerStrategyModule } from '../relayer/relayer-strategy.module'
+import { CorePaymentRepositoryModule } from '../../../../data/repository/core-payment/core-payment-repository.module'
 
 @Module({
   imports: [
@@ -11,8 +12,9 @@ import { RelayerStrategyModule } from '../relayer/relayer-strategy.module'
     InternalEvmSingleTransferBuilderModule,
     IntegrationAccountRepositoryModule,
     RelayerStrategyModule,
+    CorePaymentRepositoryModule,
   ],
-  providers: [TransactionBuilderStrategy],
-  exports: [TransactionBuilderStrategy],
+  providers: [TransferRouteExecutionPlanner],
+  exports: [TransferRouteExecutionPlanner],
 })
 export class TransactionBuilderStrategyModule {}

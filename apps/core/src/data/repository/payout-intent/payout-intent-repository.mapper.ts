@@ -35,14 +35,6 @@ export class PayoutIntentRepositoryMapper {
               accountLinkId: entity.platformFeeAccountId,
             }
           : null,
-      integrationFeePayer:
-        entity.integrationFeePayerIntegrationAccount && entity.integrationFeePayerPlatformAccount
-          ? {
-              account: entity.integrationFeePayerIntegrationAccount,
-              platformAccountId: entity.integrationFeePayerPlatformAccount,
-              accountLinkId: entity.integrationFeePayerId ?? undefined,
-            }
-          : null,
       integrationFee: entity.integrationFee,
       integrationFeeCurrency: entity.integrationFeeCurrency,
       integrationFeeRate: entity.integrationFeeRate,
@@ -83,12 +75,6 @@ export class PayoutIntentRepositoryMapper {
       platformFeeAccount: undefined,
       platformFeeIntegrationAccount: model.platformFeeAccount?.account,
 
-      // integrationFeePayer
-      integrationFeePayerIntegrationAccount: model.integrationFeePayer?.account,
-      integrationFeePayerPlatformAccount: model.integrationFeePayer?.platformAccountId,
-      integrationFeePayerId: model.integrationFeePayer?.accountLinkId,
-      integrationFeePayer: undefined,
-
       integrationFee: model.integrationFee,
       integrationFeeCurrency: model.integrationFeeCurrency,
       integrationFeeRate: model.integrationFeeRate,
@@ -115,8 +101,6 @@ export class PayoutIntentRepositoryMapper {
         return PayoutIntentStatus.CREATED
       case PayoutIntentEntityStatus.PREPARED:
         return PayoutIntentStatus.PREPARED
-      case PayoutIntentEntityStatus.HELD:
-        return PayoutIntentStatus.HELD
       case PayoutIntentEntityStatus.PROCESSING:
         return PayoutIntentStatus.PROCESSING
       case PayoutIntentEntityStatus.CONFIRMING:
@@ -139,8 +123,6 @@ export class PayoutIntentRepositoryMapper {
         return PayoutIntentEntityStatus.CREATED
       case PayoutIntentStatus.PREPARED:
         return PayoutIntentEntityStatus.PREPARED
-      case PayoutIntentStatus.HELD:
-        return PayoutIntentEntityStatus.HELD
       case PayoutIntentStatus.PROCESSING:
         return PayoutIntentEntityStatus.PROCESSING
       case PayoutIntentStatus.CONFIRMING:

@@ -4,17 +4,20 @@ import {
   BalanceChangeTxStatus,
   PayoutBalanceChangeMetadata,
 } from '@app/shared/types/balance-change'
-import { AbstractInteractor } from '@app/types'
+import { AbstractInteractor, UUID, IntegrationAccount } from '@app/types'
 import { IntentType, BalanceChangeType, ExecutionType } from '@app/shared'
 import { PayoutIntentModel } from '../../../model/payout-intent.model'
 import { OperationTypeMapper } from '../../../../../shared/projection/operation-type.mapper'
 import { TransactionModel } from '../../../../../shared/model/transaction.model'
 import { TransferModel } from '../../../../../shared/model/transfer.model'
+import { IntegrationAccountLinkModel } from '../../../../../shared/model/integration-account-link.model'
 
 export interface PayoutHoldsOperationParams {
   readonly payout: PayoutIntentModel
   readonly tx: Omit<TransactionModel, 'transfers'>
   readonly transfer: TransferModel
+  readonly txInitiator: IntegrationAccountLinkModel | null
+  readonly from: { platformAccountId: UUID | null; integrationAccount: IntegrationAccount | null }
 }
 
 export class PayoutHoldsOperation extends AbstractInteractor<
@@ -22,14 +25,17 @@ export class PayoutHoldsOperation extends AbstractInteractor<
   ReadonlyArray<BalanceChange<PayoutBalanceChangeMetadata>>
 > {
   execute(params: PayoutHoldsOperationParams): ReadonlyArray<BalanceChange<PayoutBalanceChangeMetadata>> {
-    const { payout, tx, transfer } = params
+    const { payout, tx, transfer, txInitiator, from } = params
 
     const optionalHolds: BalanceChange<PayoutBalanceChangeMetadata>[] = []
     const isInternalTransfer = tx.executionType === ExecutionType.INTERNAL
 
-    const amountIntegrationAccount = isInternalTransfer ? null : transfer.from
-    const platformFeeIntegrationAccount = isInternalTransfer ? null : transfer.from
-    const integrationFeeIntegrationAccount = isInternalTransfer ? null : payout.platformFeeAccount?.account
+    const amountIntegrationAccount = isInternalTransfer ? null : from.integrationAccount
+    const platformFeeIntegrationAccount = isInternalTransfer ? null : from.integrationAccount
+
+    if (!from.platformAccountId && !from.integrationAccount) {
+      return []
+    }
 
     const basicData: Pick<
       BalanceChange<PayoutBalanceChangeMetadata>,
@@ -50,7 +56,7 @@ export class PayoutHoldsOperation extends AbstractInteractor<
       executionType: tx.executionType,
     }
 
-    if (payout.platformFee && payout.platformFee.gt(0)) {
+    if (payout.platformFee && payout.platformFee.gt(0) && from.platformAccountId === payout.member.accountId) {
       optionalHolds.push({
         ...basicData,
         platformAccountId: payout.member.accountId,
@@ -65,14 +71,15 @@ export class PayoutHoldsOperation extends AbstractInteractor<
       })
     }
 
-    if (payout.integrationFee && payout.integrationFee.gt(0)) {
-      const convertedIntegrationFee = payout.integrationFee.mul(payout.integrationFeeRate)
+    if (tx.fee && tx.fee.gt(0) && txInitiator) {
+      const convertedIntegrationFee = tx.fee.mul(payout.integrationFeeRate)
       const diff = payout.estimatedFee.minus(convertedIntegrationFee).div(payout.integrationFeeRate)
 
       optionalHolds.push({
         ...basicData,
         platformAccountId: payout.member.accountId,
-        integrationAccount: integrationFeeIntegrationAccount ?? null,
+        integrationAccount:
+          txInitiator.platformAccountId === payout.member.accountId ? txInitiator.integrationAccount.account : null,
         currency: payout.estimatedFeeCurrency,
         integration: payout.fromIntegration,
         amount: payout.estimatedFee,
@@ -83,18 +90,17 @@ export class PayoutHoldsOperation extends AbstractInteractor<
         },
       })
 
-      if (payout.integrationFeePayer) {
+      if (txInitiator.platformAccountId !== payout.member.accountId) {
         optionalHolds.push({
           ...basicData,
-          platformAccountId: payout.integrationFeePayer.platformAccountId ?? null,
-          integrationAccount: isInternalTransfer ? null : payout.integrationFeePayer.account,
-          currency: payout.integrationFeeCurrency,
-          integration: payout.fromIntegration,
-          amount: payout.integrationFee,
+          platformAccountId: txInitiator.platformAccountId,
+          integrationAccount: txInitiator.integrationAccount.account,
+          currency: tx.feeCurrency,
+          integration: tx.integration,
+          amount: tx.fee,
           metadata: {
             ...basicMetadata,
             reason: BalanceChangeReason.INTEGRATION_FEE,
-            integrationFeeDiff: diff,
           },
         })
       }
@@ -103,7 +109,7 @@ export class PayoutHoldsOperation extends AbstractInteractor<
     return [
       {
         ...basicData,
-        platformAccountId: payout.member.accountId,
+        platformAccountId: from.platformAccountId,
         integrationAccount: amountIntegrationAccount,
         currency: transfer.currency,
         integration: tx.integration,

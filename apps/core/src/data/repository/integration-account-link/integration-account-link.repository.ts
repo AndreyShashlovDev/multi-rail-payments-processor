@@ -2,7 +2,11 @@ import { Injectable } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { DataSource, In } from 'typeorm'
 import { CorePostgresConfig } from '../../data-source/postgres/core-postgres.config'
-import { GetActiveLinkParams, GetPlatformAccountParams } from './integration-account-link-repository.types'
+import {
+  GetActiveLinkParams,
+  GetPlatformAccountParams,
+  GetByPlatformParams,
+} from './integration-account-link-repository.types'
 import {
   IntegrationAccountLinkModel,
   IntegrationAccountLinkData,
@@ -22,6 +26,21 @@ import { AccountEntity, AccountEntityRole } from '../../data-source/postgres/ent
 @Injectable()
 export class IntegrationAccountLinkRepository {
   constructor(@InjectDataSource(CorePostgresConfig.DATASOURCE_NAME) private readonly datasource: DataSource) {}
+
+  async getByPlatformAccount(param: GetByPlatformParams, ctx?: TxContext): Promise<IntegrationAccountLinkModel | null> {
+    const em = ctx?.em ?? this.datasource.manager
+    const result = await em
+      .createQueryBuilder(IntegrationAccountLinkEntity, 'link')
+      .innerJoinAndSelect('link.integrationAccount', 'ia')
+      .where('link.platformAccountId = :platformAccountId', { platformAccountId: param.platformAccountId })
+      .andWhere('link.status = :status', { status: LinkEntityStatus.ACTIVE })
+      .andWhere('ia.integration = :integration', { integration: integrationTypeFromDomain(param.integration) })
+      .andWhere('(ia.currency = :currency OR ia.currency IS NULL)', { currency: param.currency })
+      .orderBy('ia.currency', 'ASC', 'NULLS LAST')
+      .getOne()
+
+    return result ? IntegrationAccountLinkRepositoryMapper.toDomain(result, result.integrationAccount!) : null
+  }
 
   async getPlatformFeeAccount(params: GetPlatformAccountParams): Promise<IntegrationAccountLinkModel | null> {
     return this.getPlatformHotAccount(params)

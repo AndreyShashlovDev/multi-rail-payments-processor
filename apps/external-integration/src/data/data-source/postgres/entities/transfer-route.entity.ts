@@ -8,11 +8,12 @@ import { TransactionIntentEntity } from './transaction-intent.entity'
 
 export enum TransferRouteEntityStatus {
   CREATED = 1, // создан, ждёт запуска
-  HELD = 2,
-  IN_PROGRESS = 3, // transaction_intent создан и в работе
-  COMPLETED = 4,
-  FAILED = 5,
-  CANCELED = 6,
+  PENDING_HOLD = 2,
+  HELD = 3,
+  IN_PROGRESS = 4, // transaction_intent создан и в работе
+  COMPLETED = 5,
+  FAILED = 6,
+  CANCELED = 7,
 }
 
 @Entity({ schema: APP_SCHEMA, name: TransferRouteEntity.NAME })
@@ -47,6 +48,9 @@ export class TransferRouteEntity extends BasicEntity {
 
   @Column({ type: 'smallint' })
   readonly integration: IntegrationEntityType
+
+  @Column({ type: 'text' })
+  readonly initiator: IntegrationAccount
 
   @Column({ type: 'text' })
   readonly fromAccount: IntegrationAccount

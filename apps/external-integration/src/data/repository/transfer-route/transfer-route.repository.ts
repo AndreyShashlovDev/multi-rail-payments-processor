@@ -8,7 +8,8 @@ import {
 import { IntegrationPostgresConfig } from '../../data-source/postgres/integration-postgres.config'
 import { DataSource, In } from 'typeorm'
 import { InjectDataSource } from '@nestjs/typeorm'
-import { UUID, Id } from '@app/types'
+import { Id } from '@app/types'
+import { FindOptionsWhere } from 'typeorm/find-options/FindOptionsWhere'
 
 export class TransferRouteRepository {
   constructor(
@@ -34,24 +35,69 @@ export class TransferRouteRepository {
           status: TransferRouteEntityStatus.HELD,
           transactionIntentId: txId,
         })
-        .where('"intent_id" = :intentId', { intentId })
-        .andWhere('status = :status', { status: TransferRouteEntityStatus.CREATED })
+        .where('intent_id = :intentId', { intentId })
+        .andWhere(`tx_id = :txId`, { txId })
+        .andWhere('status = :status', { status: TransferRouteEntityStatus.PENDING_HOLD })
         .execute()
     }
   }
 
-  async getFullyHeldIntentIds(intentIds: ReadonlySet<UUID>, ctx: TxContext): Promise<ReadonlySet<Id>> {
-    if (intentIds.size === 0) return new Set()
-
+  async getFullyCompletedIntentIdByTxId(
+    txId: Id,
+    ctx: TxContext,
+  ): Promise<Pick<TransferRouteData, 'transferIntentId'> | null> {
     const result = await ctx.em
       .createQueryBuilder(TransferRouteEntity, 'route')
       .select('route.transferIntentId', 'transferIntentId')
-      .where('route.intentId IN (:...ids)', { ids: Array.from(intentIds) })
+      .where((qb) => {
+        const sub = qb
+          .subQuery()
+          .select('r.transferIntentId')
+          .from(TransferRouteEntity, 'r')
+          .where('r.txId = :txId', { txId })
+          .getQuery()
+        return `route.transferIntentId IN ${sub}`
+      })
       .groupBy('route.transferIntentId')
-      .having('COUNT(*) FILTER (WHERE route.status != :status) = 0', { status: TransferRouteEntityStatus.HELD })
-      .getRawMany<{ transferIntentId: Id }>()
+      .having('COUNT(*) FILTER (WHERE route.status != :completed) = 0', {
+        completed: TransferRouteEntityStatus.COMPLETED,
+      })
+      .getRawOne<{ transferIntentId: Id }>()
 
-    return new Set(result.map((r) => r.transferIntentId))
+    return result?.transferIntentId ? { transferIntentId: result.transferIntentId } : null
+  }
+
+  async claimNextPendingRoutesByTxId(
+    txId: Id,
+    ctx: TxContext,
+  ): Promise<ReadonlyArray<Pick<TransferRouteData, 'transactionIntentId'>>> {
+    const routes = await ctx.em
+      .createQueryBuilder(TransferRouteEntity, 'next')
+      .select(['next.id', 'next.transactionIntentId'])
+      .innerJoin(
+        TransferRouteEntity,
+        'completed',
+        'completed.txId = :txId AND completed.transferIntentId = next.transferIntentId',
+        { txId },
+      )
+      .where('next.txIndex = completed.txIndex + 1')
+      .andWhere('next.status = :created', { created: TransferRouteEntityStatus.CREATED })
+      .setLock('pessimistic_write')
+      .setOnLocked('skip_locked')
+      .getMany()
+
+    if (routes.length === 0) return []
+
+    await ctx.em
+      .createQueryBuilder()
+      .update(TransferRouteEntity)
+      .set({ status: TransferRouteEntityStatus.PENDING_HOLD })
+      .whereInIds(routes.map((r) => r.id))
+      .execute()
+
+    return routes
+      .filter((r) => r.transactionIntentId != null)
+      .map((r) => ({ transactionIntentId: r.transactionIntentId! }))
   }
 
   async getByTransactionIntent(
@@ -64,5 +110,29 @@ export class TransferRouteRepository {
     })
 
     return result.map((entity) => TransferRouteRepositoryMapper.toDomain(entity))
+  }
+
+  async markAsProcessing(txId: Id, ctx: TxContext): Promise<boolean> {
+    const em = ctx.em
+    const where: FindOptionsWhere<TransferRouteEntity> = {
+      txId,
+      status: TransferRouteEntityStatus.HELD,
+    }
+
+    const result = await em.update(TransferRouteEntity, where, { status: TransferRouteEntityStatus.IN_PROGRESS })
+
+    return (result.affected ?? 0) > 0
+  }
+
+  async markAsCompleted(txId: Id, ctx: TxContext): Promise<boolean> {
+    const em = ctx.em
+    const where: FindOptionsWhere<TransferRouteEntity> = {
+      txId,
+      status: TransferRouteEntityStatus.IN_PROGRESS,
+    }
+
+    const result = await em.update(TransferRouteEntity, where, { status: TransferRouteEntityStatus.COMPLETED })
+
+    return (result.affected ?? 0) > 0
   }
 }

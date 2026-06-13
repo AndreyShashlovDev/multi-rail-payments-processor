@@ -10,6 +10,14 @@ export enum IntegrationType {
   POLYGON = 'POLYGON',
 }
 
+const types: ReadonlySet<IntegrationType> = new Set(Object.values(IntegrationType))
+
+export function assertIntegrationType(value: string): asserts value is IntegrationType {
+  if (!types.has(value as IntegrationType)) {
+    throw new Error(`Invalid IntegrationType: "${value}"`)
+  }
+}
+
 export function integrationTypeToDomain(integration: IntegrationEntityType): IntegrationType {
   switch (integration) {
     case IntegrationEntityType.PLATFORM:

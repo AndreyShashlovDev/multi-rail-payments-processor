@@ -48,6 +48,14 @@ export class AcceptedHandler implements TransactionHandler {
         continue
       }
 
+      const isFinalTransfer = transaction.transfers.some(
+        (item) => item.to === payout.to.account && payout.toIntegration === transaction.integration,
+      )
+
+      if (!isFinalTransfer) {
+        continue
+      }
+
       await this.payoutIntentRepository.makeConfirming(
         {
           id: payout.id,
@@ -59,6 +67,7 @@ export class AcceptedHandler implements TransactionHandler {
               }
             : { account: transaction.initiator },
           // fee per transfer
+          // todo should make plus
           integrationFee: transaction.fee?.div(transaction.transfers.length) ?? null,
         },
         ctx,

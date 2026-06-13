@@ -1,6 +1,6 @@
 import { TransactionModel, TransactionData } from '../../../module/transaction/model/transaction.model'
 import { Injectable } from '@nestjs/common'
-import { DataSource, EntityManager } from 'typeorm'
+import { DataSource, EntityManager, In } from 'typeorm'
 import { TransactionRepositoryMapper } from './transaction-repository.mapper'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { IntegrationPostgresConfig } from '../../data-source/postgres/integration-postgres.config'
@@ -9,6 +9,7 @@ import { TransactionRawEntity } from '../../data-source/postgres/entities/transa
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { integrationTypeFromDomain } from '@app/shared'
 import { TransferEntity } from '../../data-source/postgres/entities/transfer.entity'
+import { Id } from '@app/types'
 
 @Injectable()
 export class TransactionRepository {
@@ -137,6 +138,13 @@ export class TransactionRepository {
     })
 
     return result ? TransactionRepositoryMapper.toDomainRaw(result) : null
+  }
+
+  async findByIds(ids: ReadonlySet<Id>, ctx?: TxContext): Promise<ReadonlyArray<TransactionModel>> {
+    const em = ctx?.em ?? this.datasource.manager
+    const result = await em.find(TransactionEntity, { where: { id: In(Array.from(ids)) }, relations: ['transfers'] })
+
+    return result.map((item) => TransactionRepositoryMapper.toDomainRaw(item))
   }
 
   async getConfirmed(

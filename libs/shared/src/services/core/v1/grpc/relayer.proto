@@ -3,9 +3,14 @@ syntax = "proto3";
 package core;
 
 message GetRelayerQuery {
-  string integration = 1;
-  string currency = 2;
-  string amount = 3;
+  string fromIntegration = 1;
+  string fromAccount = 2;
+  string fromCurrency = 3;
+  string fromAmount = 4;
+  string toIntegration = 5;
+  string toAccount = 6;
+  string toCurrency = 7;
+  string toAmount = 8;
 }
 
 message RelayerResponse {

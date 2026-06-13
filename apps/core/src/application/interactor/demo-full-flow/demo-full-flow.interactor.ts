@@ -23,8 +23,12 @@ import { ChangeBalanceData } from '../../../data/publisher/ledger/ledger-publish
  */
 @Injectable()
 export class DemoFullFlowInteractor extends AbstractInteractor<never, Promise<void>> {
-  private static readonly INTEGRATION: IntegrationType = IntegrationType.ETHEREUM
-  private static readonly CURRENCY: IntegrationCurrency = 'native'
+  private static readonly FROM_INTEGRATION: IntegrationType = IntegrationType.ETHEREUM
+  private static readonly FROM_CURRENCY: IntegrationCurrency = 'native' // eth
+
+  private static readonly TO_INTEGRATION: IntegrationType = IntegrationType.POLYGON
+  private static readonly TO_CURRENCY: IntegrationCurrency = 'native' // matic
+
   private static readonly BASIC_AMOUNT: Numeric = Numeric.create(5)
   private static readonly EXCHANGE_AMOUNT: Numeric = Numeric.create(5)
 
@@ -45,8 +49,8 @@ export class DemoFullFlowInteractor extends AbstractInteractor<never, Promise<vo
 
   async execute(): Promise<void> {
     const platformHotAccount = await this.integrationAccountLinkRepository.getPlatformHotAccount({
-      currency: DemoFullFlowInteractor.CURRENCY,
-      integration: DemoFullFlowInteractor.INTEGRATION,
+      currency: DemoFullFlowInteractor.FROM_CURRENCY,
+      integration: DemoFullFlowInteractor.FROM_INTEGRATION,
     })
 
     const paymentMerchant = await this.accountRepository.getRandomMerchant()
@@ -69,56 +73,86 @@ export class DemoFullFlowInteractor extends AbstractInteractor<never, Promise<vo
       platform: [
         {
           accountId: platformHotAccount.platformAccountId,
-          integration: DemoFullFlowInteractor.INTEGRATION,
-          currencies: new Set([DemoFullFlowInteractor.CURRENCY]),
+          integration: DemoFullFlowInteractor.FROM_INTEGRATION,
+          currencies: new Set([DemoFullFlowInteractor.FROM_CURRENCY]),
+        },
+        {
+          accountId: platformHotAccount.platformAccountId,
+          integration: DemoFullFlowInteractor.TO_INTEGRATION,
+          currencies: new Set([DemoFullFlowInteractor.TO_CURRENCY]),
         },
         {
           accountId: payoutMerchant.id,
-          integration: DemoFullFlowInteractor.INTEGRATION,
-          currencies: new Set([DemoFullFlowInteractor.CURRENCY]),
+          integration: DemoFullFlowInteractor.FROM_INTEGRATION,
+          currencies: new Set([DemoFullFlowInteractor.FROM_CURRENCY]),
         },
       ],
       integration: [
         {
           account: platformHotAccount.integrationAccount.account,
-          integration: DemoFullFlowInteractor.INTEGRATION,
-          currencies: new Set([DemoFullFlowInteractor.CURRENCY]),
+          integration: DemoFullFlowInteractor.FROM_INTEGRATION,
+          currencies: new Set([DemoFullFlowInteractor.FROM_CURRENCY]),
+        },
+        {
+          account: platformHotAccount.integrationAccount.account,
+          integration: DemoFullFlowInteractor.TO_INTEGRATION,
+          currencies: new Set([DemoFullFlowInteractor.TO_CURRENCY]),
         },
       ],
     })
 
-    const hotAccountBalance = balances.platform
+    const hotAccountBalanceFrom = balances.platform
       .get(platformHotAccount.platformAccountId)
-      ?.get(DemoFullFlowInteractor.INTEGRATION)
-      ?.get(DemoFullFlowInteractor.CURRENCY)
+      ?.get(DemoFullFlowInteractor.FROM_INTEGRATION)
+      ?.get(DemoFullFlowInteractor.FROM_CURRENCY)
 
-    if (!hotAccountBalance || hotAccountBalance.available.lte(DemoFullFlowInteractor.BASIC_AMOUNT)) {
+    if (!hotAccountBalanceFrom || hotAccountBalanceFrom.available.lte(DemoFullFlowInteractor.BASIC_AMOUNT)) {
       const amount = DemoFullFlowInteractor.BASIC_AMOUNT.mul(10)
 
       await this.deposit({
         platformAccount: platformHotAccount.platformAccountId,
-        integration: DemoFullFlowInteractor.INTEGRATION,
-        currency: DemoFullFlowInteractor.CURRENCY,
+        integration: DemoFullFlowInteractor.FROM_INTEGRATION,
+        currency: DemoFullFlowInteractor.FROM_CURRENCY,
         amount,
       })
 
-      this.logger.debug(`Deposit funds into Platform (hot) account. ${amount.toString()}`)
+      this.logger.debug(`Deposit funds into Platform (hot) account (from). ${amount.toString()}`)
+
+      await this.delay(2000)
+    }
+
+    const hotAccountBalanceTo = balances.platform
+      .get(platformHotAccount.platformAccountId)
+      ?.get(DemoFullFlowInteractor.TO_INTEGRATION)
+      ?.get(DemoFullFlowInteractor.TO_CURRENCY)
+
+    if (!hotAccountBalanceTo || hotAccountBalanceTo.available.lte(DemoFullFlowInteractor.BASIC_AMOUNT)) {
+      const amount = DemoFullFlowInteractor.BASIC_AMOUNT.mul(10)
+
+      await this.deposit({
+        platformAccount: platformHotAccount.platformAccountId,
+        integration: DemoFullFlowInteractor.TO_INTEGRATION,
+        currency: DemoFullFlowInteractor.TO_CURRENCY,
+        amount,
+      })
+
+      this.logger.debug(`Deposit funds into Platform (hot) account (to). ${amount.toString()}`)
 
       await this.delay(2000)
     }
 
     const payoutAccountBalance = balances.platform
       .get(payoutMerchant.id)
-      ?.get(DemoFullFlowInteractor.INTEGRATION)
-      ?.get(DemoFullFlowInteractor.CURRENCY)
+      ?.get(DemoFullFlowInteractor.FROM_INTEGRATION)
+      ?.get(DemoFullFlowInteractor.FROM_CURRENCY)
 
     if (!payoutAccountBalance || payoutAccountBalance.available.lte(DemoFullFlowInteractor.BASIC_AMOUNT)) {
       const amount = DemoFullFlowInteractor.BASIC_AMOUNT.mul(4)
 
       await this.deposit({
         platformAccount: payoutMerchant.id,
-        integration: DemoFullFlowInteractor.INTEGRATION,
-        currency: DemoFullFlowInteractor.CURRENCY,
+        integration: DemoFullFlowInteractor.FROM_INTEGRATION,
+        currency: DemoFullFlowInteractor.FROM_CURRENCY,
         amount,
       })
 
@@ -132,10 +166,11 @@ export class DemoFullFlowInteractor extends AbstractInteractor<never, Promise<vo
       operationType: PaymentOperationType.USER_REQUEST,
       platformAccountId: paymentMerchant.id,
       userId: paymentMerchant.owner,
-      integration: DemoFullFlowInteractor.INTEGRATION,
-      currency: DemoFullFlowInteractor.CURRENCY,
+      integration: DemoFullFlowInteractor.TO_INTEGRATION,
+      currency: DemoFullFlowInteractor.TO_CURRENCY,
       amount: DemoFullFlowInteractor.EXCHANGE_AMOUNT,
       platformFeePayer: PaymentPlatformFeePayerType.CLIENT,
+      to: null,
     })
 
     this.logger.debug(`Payment id ${payment.id}`)
@@ -148,8 +183,10 @@ export class DemoFullFlowInteractor extends AbstractInteractor<never, Promise<vo
         userId: payoutMerchant.owner,
       },
       amount: DemoFullFlowInteractor.EXCHANGE_AMOUNT,
-      fromIntegration: DemoFullFlowInteractor.INTEGRATION,
-      fromCurrency: DemoFullFlowInteractor.CURRENCY,
+      fromIntegration: DemoFullFlowInteractor.FROM_INTEGRATION,
+      fromCurrency: DemoFullFlowInteractor.FROM_CURRENCY,
+      toIntegration: DemoFullFlowInteractor.TO_INTEGRATION,
+      toCurrency: DemoFullFlowInteractor.TO_CURRENCY,
       toAccount: payment.to.account,
       estimatedTransferFeeId: randomUUID(),
     })

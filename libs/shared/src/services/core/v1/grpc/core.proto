@@ -4,6 +4,7 @@ package core;
 
 import "relayer.proto";
 import "integration-account.proto";
+import "payment.proto";
 
 service Relayer {
   rpc getRelayerAccount (GetRelayerQuery) returns (RelayerResponse);
@@ -11,4 +12,8 @@ service Relayer {
 
 service IntegrationAccount {
   rpc hasAccount (HasAccountQuery) returns (HasAccountResponse);
+}
+
+service Payment {
+  rpc createPayment (CreatePaymentQuery) returns (CreatePaymentResponse);
 }

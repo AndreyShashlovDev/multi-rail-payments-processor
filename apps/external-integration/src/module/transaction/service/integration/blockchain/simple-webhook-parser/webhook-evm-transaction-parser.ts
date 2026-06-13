@@ -24,6 +24,7 @@ export interface EvmTransactionWebhook {
   readonly hash: SourceTransactionId
   readonly timestamp: number
   readonly fee: RawNumeric
+  readonly logs: ReadonlyArray<string> // some logs of transfers.
 }
 
 // just for example
@@ -59,6 +60,7 @@ export class WebhookEvmTransactionParser implements TransactionParser<EvmTransac
             integration,
             operation: OperationType.NATIVE_TRANSFER,
             index: rawTransaction.index,
+            initiator: IntegrationAccount.create(integration, rawTransaction.from),
             from: IntegrationAccount.create(integration, rawTransaction.from),
             to: IntegrationAccount.create(integration, rawTransaction.to),
             fromOwner: IntegrationAccount.create(integration, rawTransaction.from),

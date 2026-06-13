@@ -10,7 +10,6 @@ export interface RelayerGetAccountParams {
   readonly toCurrency: IntegrationCurrency
   readonly fromAmount: RawNumeric
   readonly toAmount: RawNumeric
-  readonly platformAccounts: ReadonlySet<IntegrationAccount>
 }
 
 export interface Relayer {

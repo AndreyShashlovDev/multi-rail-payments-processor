@@ -25,6 +25,7 @@ export class TransactionEventPublisherMapper {
     return new TransferEventData(
       model.id,
       model.index,
+      model.initiator,
       model.from,
       model.to,
       model.amountRaw,

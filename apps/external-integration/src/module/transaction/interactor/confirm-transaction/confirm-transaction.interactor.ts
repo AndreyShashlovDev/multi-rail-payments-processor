@@ -7,6 +7,8 @@ import { TransferIntentRepository } from '../../../../data/repository/transfer-i
 import { IntegrationType, OutboxTxContextRunner } from '@app/shared'
 import { TransactionRepository } from '../../../../data/repository/transaction/transaction.repository'
 import { TxContext } from '@app/shared/types/tx-context.type'
+import { TransferRouteRepository } from '../../../../data/repository/transfer-route/transfer-route.repository'
+import { TransactionEventData } from '../../../../data/publisher/transaction-event/transaction-event-publisher.types'
 
 export interface ConfirmTransactionParams {
   readonly sourceTxId: SourceTransactionId
@@ -19,8 +21,9 @@ export class ConfirmTransactionInteractor extends BasicTransactionInteractor<Con
   constructor(
     private readonly txRunner: OutboxTxContextRunner,
     private readonly transactionRepository: TransactionRepository,
-    private readonly transactionEventPublisher: TransactionEventPublisher,
     transferIntentRepository: TransferIntentRepository,
+    private readonly transferRouteRepository: TransferRouteRepository,
+    private readonly transactionEventPublisher: TransactionEventPublisher,
   ) {
     super(transferIntentRepository)
   }
@@ -36,11 +39,50 @@ export class ConfirmTransactionInteractor extends BasicTransactionInteractor<Con
           throw new TransactionNotFoundException(sourceTxId, integration)
         }
 
+        const completedRoutes = await this.transferRouteRepository.markAsCompleted(tx.id, ctx)
+
+        if (!completedRoutes) {
+          // todo
+          throw new Error(`No one routes not completed for tx id: ${tx.id}`)
+        }
+
+        const completedTransferIntent = await this.transferRouteRepository.getFullyCompletedIntentIdByTxId(tx.id, ctx)
+
+        if (completedTransferIntent) {
+          const changedCompletedIntent = await this.transferIntentRepository.markAsCompleted(
+            { id: completedTransferIntent.transferIntentId },
+            ctx,
+          )
+
+          if (!changedCompletedIntent) {
+            throw new Error(
+              `Transfer intent not marked as Completed! transfer intent id: ${completedTransferIntent.transferIntentId}`,
+            )
+          }
+        }
+
         const transfers = await this.mergeTransfersWithTransferIntent(tx.transfers, ctx)
 
-        const result = { ...tx, transfers }
+        const result: TransactionEventData[] = [{ ...tx, transfers }]
 
-        await this.transactionEventPublisher.enqueue(result, ctx)
+        // send next tx of transfer intent
+        if (!completedTransferIntent) {
+          const nextRoutes = await this.transferRouteRepository.claimNextPendingRoutesByTxId(tx.id, ctx)
+
+          if (nextRoutes.length > 0) {
+            const transactionIntentIds = new Set(nextRoutes.map((r) => r.transactionIntentId!))
+            const nextTransactions = await this.transactionRepository.findByIds(transactionIntentIds, ctx)
+
+            for (const nextTx of nextTransactions) {
+              const transfers = await this.mergeTransfersWithTransferIntent(nextTx.transfers, ctx)
+              result.push({ ...nextTx, transfers })
+            }
+          }
+        }
+
+        for (const event of result) {
+          await this.transactionEventPublisher.enqueue(event, ctx)
+        }
       })
       .execute()
   }

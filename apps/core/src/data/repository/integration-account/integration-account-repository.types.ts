@@ -16,5 +16,5 @@ export interface HasAccountsResult {
 
 export interface GetAccountsData {
   readonly integration: IntegrationType
-  readonly addresses: ReadonlySet<IntegrationAccount>
+  readonly accounts: ReadonlySet<IntegrationAccount>
 }

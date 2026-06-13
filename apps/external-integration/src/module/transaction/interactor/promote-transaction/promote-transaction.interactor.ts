@@ -10,7 +10,6 @@ import { TxContext } from '@app/shared/types/tx-context.type'
 import { TransactionIntentNotMarkAsPromotedException } from '../../exception/transaction-intent-not-mark-as-promoted.exception'
 import { TransactionNotMarkAsPromotedException } from '../../exception/transaction-not-mark-as-promoted.exception'
 import { TransactionNotFoundException } from '../../exception/transaction-not-found.exception'
-import { TransferIntentsNotMarkedAsProcessingException } from '../../exception/transfer-intents-not-marked-as-processing.exception'
 import { TransferRouteRepository } from '../../../../data/repository/transfer-route/transfer-route.repository'
 
 export interface PromoteTransactionParams {
@@ -60,15 +59,6 @@ export class PromoteTransactionInteractor extends BasicTransactionInteractor<Pro
         if (transferRoutes.length === 0) {
           // todo
           throw new Error('Routes not found')
-        }
-
-        const updateTransferIntents = await this.transferIntentRepository.markAsProcessing(
-          { ids: new Set(transferRoutes.map((item) => item.transferIntentId)) },
-          ctx,
-        )
-
-        if (!updateTransferIntents) {
-          throw new TransferIntentsNotMarkedAsProcessingException(updatedTransactionIntentId)
         }
 
         const tx = await this.transactionRepository.get({ sourceTxId, integration }, ctx)

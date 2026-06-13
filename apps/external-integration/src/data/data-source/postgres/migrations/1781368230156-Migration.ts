@@ -1,11 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm'
 
-export class Migration1779617782198 implements MigrationInterface {
-  name = 'Migration1779617782198'
+export class Migration1781368230156 implements MigrationInterface {
+  name = 'Migration1781368230156'
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `CREATE TABLE "external_integration"."transfer" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" BIGSERIAL NOT NULL, "transaction_id" bigint NOT NULL, "index" integer NOT NULL, "integration" smallint NOT NULL, "operation" smallint NOT NULL, "from" text NOT NULL, "to" text NOT NULL, "from_owner" text, "to_owner" text, "currency" text NOT NULL, "amount_raw" text NOT NULL, "transfer_route_id" bigint, "transfer_intent_id" bigint, "metadata" jsonb, CONSTRAINT "PK_fd9ddbdd49a17afcbe014401295" PRIMARY KEY ("id"))`,
+      `CREATE TABLE "external_integration"."transfer" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" BIGSERIAL NOT NULL, "transaction_id" bigint NOT NULL, "index" integer NOT NULL, "integration" smallint NOT NULL, "operation" smallint NOT NULL, "initiator" text NOT NULL, "from" text NOT NULL, "to" text NOT NULL, "from_owner" text, "to_owner" text, "currency" text NOT NULL, "amount_raw" text NOT NULL, "transfer_intent_id" bigint, "metadata" jsonb, CONSTRAINT "PK_fd9ddbdd49a17afcbe014401295" PRIMARY KEY ("id"))`,
     )
     await queryRunner.query(
       `CREATE INDEX "idx_transfer_transaction_id" ON "external_integration"."transfer" ("transaction_id") `,
@@ -17,13 +17,13 @@ export class Migration1779617782198 implements MigrationInterface {
       `CREATE TABLE "external_integration"."transaction" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" BIGSERIAL NOT NULL, "execution_type" smallint NOT NULL, "integration" smallint NOT NULL, "initiator" text NOT NULL, "source_tx_id" text NOT NULL, "block_id" text, "block_time" TIMESTAMP WITH TIME ZONE, "status" smallint NOT NULL, "metadata" jsonb, "fee" text, "fee_currency" text NOT NULL, CONSTRAINT "idx_unique_transaction_sourcetxid_integration" UNIQUE ("source_tx_id", "integration"), CONSTRAINT "PK_89eadb93a89810556e1cbcd6ab9" PRIMARY KEY ("id"))`,
     )
     await queryRunner.query(
-      `CREATE TABLE "external_integration"."transfer_intent" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" BIGSERIAL NOT NULL, "intent_type" smallint NOT NULL, "intent_id" text NOT NULL, "estimated_raw_fee" text NOT NULL, "fee_currency" text NOT NULL, "from_account" text NOT NULL, "from_raw_amount" text NOT NULL, "from_currency" text NOT NULL, "from_integration" smallint NOT NULL, "to_account" text NOT NULL, "to_raw_amount" text NOT NULL, "to_currency" text NOT NULL, "to_integration" smallint NOT NULL, "status" smallint NOT NULL, "metadata" jsonb, CONSTRAINT "idx_unique_transfer_intent_intenttype_intentid" UNIQUE ("intent_type", "intent_id"), CONSTRAINT "PK_f72f801793b62aba3858f923bfd" PRIMARY KEY ("id"))`,
+      `CREATE TABLE "external_integration"."transfer_intent" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" BIGSERIAL NOT NULL, "intent_type" smallint NOT NULL, "intent_id" text NOT NULL, "estimated_raw_fee" text NOT NULL, "fee_currency" text NOT NULL, "from_account" text NOT NULL, "from_raw_amount" text NOT NULL, "from_currency" text NOT NULL, "from_integration" smallint NOT NULL, "to_account" text NOT NULL, "to_raw_amount" text NOT NULL, "to_currency" text NOT NULL, "to_integration" smallint NOT NULL, "status" smallint NOT NULL, "deposit_id" text, CONSTRAINT "idx_unique_transfer_intent_intenttype_intentid" UNIQUE ("intent_type", "intent_id"), CONSTRAINT "PK_f72f801793b62aba3858f923bfd" PRIMARY KEY ("id"))`,
     )
     await queryRunner.query(
       `CREATE INDEX "idx_transfer_intent_status" ON "external_integration"."transfer_intent" ("status") `,
     )
     await queryRunner.query(
-      `CREATE TABLE "external_integration"."transfer_route" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" BIGSERIAL NOT NULL, "tx_id" bigint, "transfer_intent_id" bigint NOT NULL, "intent_id" text NOT NULL, "tx_index" smallint NOT NULL, "execution_type" smallint NOT NULL, "integration" smallint NOT NULL, "from_account" text NOT NULL, "to_account" text NOT NULL, "raw_amount" numeric(60,30) NOT NULL, "currency" text NOT NULL, "status" smallint NOT NULL, "transaction_intent_id" bigint, CONSTRAINT "PK_transfer_route" PRIMARY KEY ("id"))`,
+      `CREATE TABLE "external_integration"."transfer_route" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" BIGSERIAL NOT NULL, "tx_id" bigint, "transfer_intent_id" bigint NOT NULL, "intent_id" text NOT NULL, "tx_index" smallint NOT NULL, "execution_type" smallint NOT NULL, "integration" smallint NOT NULL, "initiator" text NOT NULL, "from_account" text NOT NULL, "to_account" text NOT NULL, "raw_amount" numeric(60,30) NOT NULL, "currency" text NOT NULL, "status" smallint NOT NULL, "transaction_intent_id" bigint, CONSTRAINT "PK_transfer_route" PRIMARY KEY ("id"))`,
     )
     await queryRunner.query(
       `CREATE INDEX "idx_transfer_route_intent_id" ON "external_integration"."transfer_route" ("intent_id") `,

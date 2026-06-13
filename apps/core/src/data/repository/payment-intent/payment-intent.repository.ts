@@ -17,6 +17,7 @@ import { FindOptionsWhere } from 'typeorm/find-options/FindOptionsWhere'
 import { integrationTypeFromDomain } from '@app/shared'
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { UUID } from '@app/types'
+import { isUUID } from 'class-validator'
 
 @Injectable()
 export class PaymentIntentRepository {
@@ -28,16 +29,27 @@ export class PaymentIntentRepository {
   async findByParams(params: FindAvailableByParams, ctx?: TxContext): Promise<PaymentIntentModel[]> {
     if (params.params.length === 0) return []
 
-    const conditions: FindOptionsWhere<PaymentIntentEntity>[] = params.params.map((dataParam) => ({
-      to: {
-        integrationAccount: {
-          account: dataParam.to,
+    const conditions: FindOptionsWhere<PaymentIntentEntity>[] = params.params.flatMap((dataParam) => {
+      const query: FindOptionsWhere<PaymentIntentEntity>[] = [
+        {
+          toIntegrationAccount: dataParam.to,
+          status: In(Array.from(params.status).map((status) => PaymentIntentRepositoryMapper.fromDomainStatus(status))),
+          integration: integrationTypeFromDomain(params.integration),
+          currency: dataParam.currency,
         },
-      },
-      status: In(Array.from(params.status).map((status) => PaymentIntentRepositoryMapper.fromDomainStatus(status))),
-      integration: integrationTypeFromDomain(params.integration),
-      currency: dataParam.currency,
-    }))
+      ]
+
+      if (isUUID(dataParam.to)) {
+        query.push({
+          toPlatformAccount: dataParam.to as UUID,
+          status: In(Array.from(params.status).map((status) => PaymentIntentRepositoryMapper.fromDomainStatus(status))),
+          integration: integrationTypeFromDomain(params.integration),
+          currency: dataParam.currency,
+        })
+      }
+
+      return query
+    })
 
     const em = ctx?.em ?? this.datasource.manager
     const result = await em.find(PaymentIntentEntity, { where: conditions })

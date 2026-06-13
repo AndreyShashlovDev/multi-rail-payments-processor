@@ -3,8 +3,6 @@ import { IntentType, IntegrationType } from '@app/shared'
 
 export enum TransferIntentStatus {
   CREATED = 'CREATED',
-  ACCEPTED = 'ACCEPTED',
-  PREPARED = 'PREPARED',
   PROCESSING = 'PROCESSING',
   COMPLETED = 'COMPLETED',
   CANCELED = 'CANCELED',
@@ -28,6 +26,7 @@ export interface TransferIntentData {
 
 export interface TransferIntentModel extends TransferIntentData {
   readonly id: Id
+  readonly depositId: string | null
   readonly status: TransferIntentStatus
   readonly createdAt: Date
   readonly updatedAt: Date

@@ -115,6 +115,7 @@ export class FinalizePayoutFlowInteractor extends AbstractInteractor<never, Prom
                 blockHash: randomBytes(32).toString('hex') as EvmHashType,
                 hash: intent.sourceTxId,
                 timestamp: Math.round(Date.now() / 1000),
+                logs: [], // should have deposit/fill log event for cross-chain relayer
               },
               ctx,
             })

@@ -9,11 +9,10 @@ import { IntegrationEntityType } from '@app/shared'
 export enum PayoutIntentEntityStatus {
   CREATED = 1,
   PREPARED = 2,
-  HELD = 3,
-  PROCESSING = 4,
-  CONFIRMING = 5,
-  SUCCESS = 6,
-  FAILED = 7,
+  PROCESSING = 3,
+  CONFIRMING = 4,
+  SUCCESS = 5,
+  FAILED = 6,
 }
 
 export enum PayoutOperationEntityType {
@@ -84,24 +83,6 @@ export class PayoutIntentEntity extends BasicEntity {
   })
   @JoinColumn()
   readonly platformFeeAccount?: IntegrationAccountLinkEntity | null
-
-  @Column({ type: 'text', nullable: true })
-  readonly integrationFeePayerIntegrationAccount: IntegrationAccount | null
-
-  @Column({ type: 'uuid', nullable: true })
-  readonly integrationFeePayerPlatformAccount: UUID | null
-
-  @Column({ type: 'bigint', nullable: true })
-  readonly integrationFeePayerId: Id | null
-
-  @OneToOne(() => IntegrationAccountLinkEntity, {
-    createForeignKeyConstraints: false,
-    persistence: false,
-    eager: false,
-    nullable: true,
-  })
-  @JoinColumn()
-  readonly integrationFeePayer?: IntegrationAccountLinkEntity | null
 
   @NumericColumn({ nullable: true })
   readonly integrationFee: Numeric | null

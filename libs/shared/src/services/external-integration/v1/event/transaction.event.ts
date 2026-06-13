@@ -45,6 +45,9 @@ export class TransferEventData {
   readonly index: number
 
   @IsString() // todo some smart validator
+  readonly initiator: IntegrationAccount
+
+  @IsString() // todo some smart validator
   readonly from: IntegrationAccount
 
   @IsString() // todo some smart validator
@@ -65,6 +68,7 @@ export class TransferEventData {
   constructor(
     id: Id,
     index: number,
+    initiator: IntegrationAccount,
     from: IntegrationAccount,
     to: IntegrationAccount,
     rawAmount: string,
@@ -73,6 +77,7 @@ export class TransferEventData {
   ) {
     this.id = id
     this.index = index
+    this.initiator = initiator
     this.from = from
     this.to = to
     this.rawAmount = rawAmount

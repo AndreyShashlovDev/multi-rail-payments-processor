@@ -43,9 +43,21 @@ export class TransactionIntentRepository {
       .createQueryBuilder(TransactionIntentEntity, 'ti')
       .setLock('pessimistic_write', undefined, ['ti'])
       .setOnLocked('skip_locked')
+      // transaction is waiting for hold
       .where('ti.status = :status', { status: TransactionIntentEntityStatus.HOLD_PENDING })
       .andWhere('ti.signedData IS NULL')
-      // нет незавершённых предшественников
+      // all routes of this transaction are in HELD status
+      .andWhere((qb) => {
+        const sub = qb
+          .subQuery()
+          .select('1')
+          .from(TransferRouteEntity, 'route')
+          .where('route.transactionIntentId = ti.id')
+          .andWhere('route.status != :held', { held: TransferRouteEntityStatus.HELD })
+          .getQuery()
+        return `NOT EXISTS ${sub}`
+      })
+      // no unfinished predecessors at txIndex
       .andWhere((qb) => {
         const sub = qb
           .subQuery()
@@ -63,7 +75,7 @@ export class TransactionIntentRepository {
           .getQuery()
         return `NOT EXISTS ${sub}`
       })
-      // нет другой транзакции от того же initiator уже в работе
+      // there is no other transaction from the same initiator in the signing process
       .andWhere((qb) => {
         const sub = qb
           .subQuery()
@@ -72,8 +84,8 @@ export class TransactionIntentRepository {
           .where('other.initiator = ti.initiator')
           .andWhere('other.integration = ti.integration')
           .andWhere('other.id != ti.id')
-          .andWhere('other.status = :inProgress', {
-            inProgress: TransactionIntentEntityStatus.SIGNING,
+          .andWhere('other.status = :signing', {
+            signing: TransactionIntentEntityStatus.SIGNING,
           })
           .getQuery()
         return `NOT EXISTS ${sub}`

@@ -6,6 +6,7 @@ export class TransferFactory {
     return {
       id: Id.create(Math.floor(Math.random() * 1000_000_00)),
       index: 1,
+      initiator: 'TR7From' as IntegrationAccount,
       from: 'TR7From' as IntegrationAccount,
       to: 'TR7To' as IntegrationAccount,
       amount: Numeric.create(100),

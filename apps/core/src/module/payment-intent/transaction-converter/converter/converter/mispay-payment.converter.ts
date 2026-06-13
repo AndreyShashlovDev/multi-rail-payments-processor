@@ -38,7 +38,7 @@ export class MispayPaymentConverter extends BasicPaymentConverter {
     }
 
     const changes = transfers
-      .filter((transfer) => params.integrationAccounts.get(transfer.to))
+      .filter((transfer) => params.integrationAccounts.get(transfer.to) || params.platformAccounts.has(transfer.to))
       .flatMap((transfer) => {
         const link = params.accountsLink.get(transfer.to)
         const platformAccount = params.platformAccounts.get(transfer.to)

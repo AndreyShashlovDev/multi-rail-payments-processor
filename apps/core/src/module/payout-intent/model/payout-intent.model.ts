@@ -9,10 +9,6 @@ import {
 export enum PayoutIntentStatus {
   CREATED = 'CREATED',
   PREPARED = 'PREPARED',
-  /**
-   * @deprecated
-   */
-  HELD = 'HELD',
   PROCESSING = 'PROCESSING',
   CONFIRMING = 'CONFIRMING',
   SUCCESS = 'SUCCESS',
@@ -42,9 +38,6 @@ export interface PayoutIntentData {
   readonly platformFee: Numeric | null
   // where the platform's fee is credited
   readonly platformFeeAccount: SourceIntegrationAccount | null
-
-  // the person who actually paid for the transfer. (Could be a system wallet) null because it's filled in later
-  readonly integrationFeePayer: DestinationIntegrationAccount | null
 
   readonly integrationFee: Numeric | null
   readonly integrationFeeCurrency: IntegrationCurrency

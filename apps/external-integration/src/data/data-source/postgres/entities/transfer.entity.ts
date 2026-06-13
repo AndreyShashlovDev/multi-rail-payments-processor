@@ -42,6 +42,9 @@ export class TransferEntity extends BasicEntity {
   readonly operation: OperationEntityType
 
   @Column({ type: 'text' })
+  readonly initiator: IntegrationAccount
+
+  @Column({ type: 'text' })
   readonly from: IntegrationAccount
 
   @Column({ type: 'text' })
@@ -58,9 +61,6 @@ export class TransferEntity extends BasicEntity {
 
   @Column({ type: 'text' })
   readonly amountRaw: RawNumeric
-
-  @Column({ type: 'bigint', nullable: true })
-  readonly transferRouteId: Id | null
 
   @Column({ type: 'bigint', nullable: true })
   readonly transferIntentId: Id | null

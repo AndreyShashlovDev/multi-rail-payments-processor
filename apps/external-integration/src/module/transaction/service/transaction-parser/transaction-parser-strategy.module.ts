@@ -15,6 +15,7 @@ const Provider: FactoryProvider = {
           'webhook',
           new Map<IntegrationType, TransactionParser<RawDataType, TransactionParseResult>>([
             [IntegrationType.ETHEREUM, webhookEvmTransactionParser],
+            [IntegrationType.POLYGON, webhookEvmTransactionParser],
           ]),
         ],
       ]),

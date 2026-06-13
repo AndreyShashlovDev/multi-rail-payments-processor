@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package core;
+
+message CreatePaymentQuery {
+  string idempotencyKey = 1;
+  string integration = 2;
+  string currency = 3;
+  string amount = 4;
+  string from = 5;
+  string to = 6;
+}
+
+message CreatePaymentResponse {
+  string id = 1;
+  // addition data for...
+}

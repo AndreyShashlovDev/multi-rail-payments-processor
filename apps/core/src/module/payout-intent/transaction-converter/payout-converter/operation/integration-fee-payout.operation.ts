@@ -4,35 +4,36 @@ import {
   BalanceChangeTxStatus,
   PayoutBalanceChangeMetadata,
 } from '@app/shared/types/balance-change'
-import { Id, AbstractInteractor, Numeric, IntegrationAccount, UUID } from '@app/types'
-import { IntentType, BalanceChangeType, ExecutionType } from '@app/shared'
+import { Id, AbstractInteractor } from '@app/types'
+import { IntentType, BalanceChangeType } from '@app/shared'
 import { PayoutIntentModel } from '../../../model/payout-intent.model'
 import { OperationTypeMapper } from '../../../../../shared/projection/operation-type.mapper'
 import { TransactionModel } from '../../../../../shared/model/transaction.model'
+import { TransferModel } from '../../../../../shared/model/transfer.model'
+import { IntegrationAccountLinkModel } from '../../../../../shared/model/integration-account-link.model'
 
-export interface PlatformFeePayoutOperationParams {
+export interface IntegrationFeePayoutOperationParams {
   readonly payout: PayoutIntentModel
-  readonly tx: Pick<TransactionModel, 'id' | 'sourceTxId' | 'executionType' | 'executedAt'>
-  readonly from: IntegrationAccount
+  readonly tx: Omit<TransactionModel, 'transfers'>
+  readonly transfer: TransferModel
   readonly transferIds: ReadonlySet<Id>
+  readonly txInitiator: IntegrationAccountLinkModel | null
 }
 
 export class IntegrationFeePayoutOperation extends AbstractInteractor<
-  PlatformFeePayoutOperationParams,
+  IntegrationFeePayoutOperationParams,
   ReadonlyArray<BalanceChange>
 > {
-  execute(params: PlatformFeePayoutOperationParams): ReadonlyArray<BalanceChange> {
-    const { payout, tx, from, transferIds } = params
+  execute(params: IntegrationFeePayoutOperationParams): ReadonlyArray<BalanceChange> {
+    const { payout, tx, transferIds, txInitiator } = params
 
-    if (!payout.integrationFee || payout.integrationFee.lte(0) || !payout.integrationFeePayer) {
+    if (!tx.fee || tx.fee.lte(0) || !txInitiator) {
       return []
     }
 
-    const convertedIntegrationFee = payout.integrationFee.mul(payout.integrationFeeRate)
+    const convertedIntegrationFee = tx.fee.mul(payout.integrationFeeRate)
     const diff = payout.estimatedFee.minus(convertedIntegrationFee).div(payout.integrationFeeRate)
-    const userIntegrationFee = Numeric.min(convertedIntegrationFee, payout.estimatedFee)
-    const isInternalTransfer = tx.executionType === ExecutionType.INTERNAL
-    const isUserPaysIntegrationFee = payout.integrationFeePayer.platformAccountId === payout.member.accountId
+    // const userIntegrationFee = Numeric.min(convertedIntegrationFee, payout.estimatedFee)
 
     const metadata: PayoutBalanceChangeMetadata = {
       txId: tx.id,
@@ -51,66 +52,13 @@ export class IntegrationFeePayoutOperation extends AbstractInteractor<
       operationType: OperationTypeMapper.toBalanceChange(payout.operationType),
     }
 
-    if (isInternalTransfer) {
-      return [
-        {
-          type: BalanceChangeType.RELEASE_HOLD,
-          ...basicData,
-          platformAccountId: from as UUID,
-          integrationAccount: null,
-          currency: payout.estimatedFeeCurrency,
-          integration: payout.fromIntegration,
-          amount: payout.estimatedFee,
-          metadata,
-        },
-        {
-          type: BalanceChangeType.PLATFORM_FEE_ACCRUED,
-          ...basicData,
-          platformAccountId: from as UUID,
-          integrationAccount: null,
-          currency: payout.integrationFeeCurrency,
-          integration: payout.fromIntegration,
-          amount: payout.integrationFee,
-          metadata,
-        },
-      ]
-    }
-
-    if (isUserPaysIntegrationFee) {
-      // User pays integration fee from their own wallet in the integration currency (e.g. ETH).
-      // Release hold and debit the actual fee without limit — blockchain already validated funds.
-      return [
-        {
-          type: BalanceChangeType.RELEASE_HOLD,
-          ...basicData,
-          platformAccountId: payout.integrationFeePayer.platformAccountId,
-          integrationAccount: payout.integrationFeePayer.account,
-          currency: payout.estimatedFeeCurrency,
-          integration: payout.fromIntegration,
-          amount: payout.estimatedFee,
-          metadata,
-        },
-        {
-          type: BalanceChangeType.DEBIT,
-          ...basicData,
-          platformAccountId: payout.integrationFeePayer.platformAccountId,
-          integrationAccount: payout.integrationFeePayer.account,
-          currency: payout.integrationFeeCurrency,
-          integration: payout.fromIntegration,
-          amount: payout.integrationFee,
-          metadata,
-        },
-      ]
-    }
-
-    // Platform (hot wallet) or external payer covers the gas in integration currency (e.g. ETH).
-    // User is charged in their own currency (e.g. USDT) up to the estimated fee — no overage.
-    return [
+    const result: BalanceChange[] = [
       {
         type: BalanceChangeType.RELEASE_HOLD,
         ...basicData,
         platformAccountId: payout.member.accountId,
-        integrationAccount: payout.integrationFeePayer.account,
+        integrationAccount:
+          txInitiator.platformAccountId === payout.member.accountId ? txInitiator.integrationAccount.account : null,
         currency: payout.estimatedFeeCurrency,
         integration: payout.fromIntegration,
         amount: payout.estimatedFee,
@@ -120,32 +68,52 @@ export class IntegrationFeePayoutOperation extends AbstractInteractor<
         type: BalanceChangeType.DEBIT,
         ...basicData,
         platformAccountId: payout.member.accountId,
+        integrationAccount:
+          txInitiator.platformAccountId === payout.member.accountId ? txInitiator.integrationAccount.account : null,
+        currency: payout.integrationFeeCurrency,
+        integration: payout.fromIntegration,
+        amount: payout.integrationFee!,
+        metadata,
+      },
+      {
+        type: BalanceChangeType.CREDIT,
+        ...basicData,
+        platformAccountId: txInitiator.platformAccountId,
         integrationAccount: null,
-        currency: payout.estimatedFeeCurrency,
-        integration: payout.fromIntegration,
-        amount: userIntegrationFee,
-        metadata,
-      },
-      {
-        type: BalanceChangeType.RELEASE_HOLD,
-        ...basicData,
-        platformAccountId: payout.integrationFeePayer.platformAccountId ?? null,
-        integrationAccount: payout.integrationFeePayer.account,
         currency: payout.integrationFeeCurrency,
         integration: payout.fromIntegration,
-        amount: payout.integrationFee,
-        metadata,
-      },
-      {
-        type: BalanceChangeType.DEBIT,
-        ...basicData,
-        platformAccountId: payout.integrationFeePayer.platformAccountId ?? null,
-        integrationAccount: payout.integrationFeePayer.account,
-        currency: payout.integrationFeeCurrency,
-        integration: payout.fromIntegration,
-        amount: payout.integrationFee,
+        amount: payout.integrationFee!,
         metadata,
       },
     ]
+
+    if (txInitiator.platformAccountId !== payout.member.accountId) {
+      result.push(
+        ...[
+          {
+            type: BalanceChangeType.RELEASE_HOLD,
+            ...basicData,
+            platformAccountId: txInitiator.platformAccountId,
+            integrationAccount: txInitiator.integrationAccount.account,
+            currency: tx.feeCurrency,
+            integration: tx.integration,
+            amount: tx.fee,
+            metadata,
+          },
+          {
+            type: BalanceChangeType.DEBIT,
+            ...basicData,
+            platformAccountId: txInitiator.platformAccountId,
+            integrationAccount: txInitiator.integrationAccount.account,
+            currency: tx.feeCurrency,
+            integration: tx.integration,
+            amount: tx.fee,
+            metadata,
+          },
+        ],
+      )
+    }
+
+    return result
   }
 }

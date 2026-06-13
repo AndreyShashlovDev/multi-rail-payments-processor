@@ -23,12 +23,17 @@ export class PreparedProjector extends BasicProjector {
     }
 
     const supportTransfers = await this.filterSupportedTransfers(transaction, ctx)
-    const { payouts } = await this.transactionDataLoader.getLookupData({ transfers: supportTransfers }, ctx)
+    const { payouts, platformAccountIds, accountLinks } = await this.transactionDataLoader.getLookupData(
+      { transaction, transfers: supportTransfers },
+      ctx,
+    )
 
     return await this.payoutPreparedTransactionConverter.process({
       transaction,
       transfers: supportTransfers,
       payoutIntents: payouts,
+      platformAccountIds,
+      accountLinks,
     })
   }
 }

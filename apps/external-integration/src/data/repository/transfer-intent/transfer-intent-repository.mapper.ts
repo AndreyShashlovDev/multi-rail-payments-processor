@@ -33,6 +33,7 @@ export class TransferIntentRepositoryMapper {
       toCurrency: entity.toCurrency,
       toAccount: entity.toAccount,
       status: TransferIntentRepositoryMapper.toDomainStatus(entity.status),
+      depositId: entity.depositId,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     }
@@ -53,7 +54,6 @@ export class TransferIntentRepositoryMapper {
       toIntegration: integrationTypeFromDomain(model.toIntegration),
       toCurrency: model.toCurrency,
       toAccount: model.toAccount,
-      transactionIntent: undefined,
     })
   }
 
@@ -61,10 +61,6 @@ export class TransferIntentRepositoryMapper {
     switch (status) {
       case TransferIntentEntityStatus.CREATED:
         return TransferIntentStatus.CREATED
-      case TransferIntentEntityStatus.ACCEPTED:
-        return TransferIntentStatus.ACCEPTED
-      case TransferIntentEntityStatus.PREPARED:
-        return TransferIntentStatus.PREPARED
       case TransferIntentEntityStatus.PROCESSING:
         return TransferIntentStatus.PROCESSING
       case TransferIntentEntityStatus.COMPLETED:
@@ -86,10 +82,6 @@ export class TransferIntentRepositoryMapper {
     switch (status) {
       case TransferIntentStatus.CREATED:
         return TransferIntentEntityStatus.CREATED
-      case TransferIntentStatus.ACCEPTED:
-        return TransferIntentEntityStatus.ACCEPTED
-      case TransferIntentStatus.PREPARED:
-        return TransferIntentEntityStatus.PREPARED
       case TransferIntentStatus.PROCESSING:
         return TransferIntentEntityStatus.PROCESSING
       case TransferIntentStatus.COMPLETED:

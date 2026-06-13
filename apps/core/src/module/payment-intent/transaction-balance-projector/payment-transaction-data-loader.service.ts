@@ -49,14 +49,8 @@ export class PaymentTransactionDataLoader {
     const { transaction, paymentConfig } = data
 
     const integrationAccounts = await this.loadIntegrationAccounts(transaction.integration, transaction.transfers, ctx)
-    const accounts = new Set(integrationAccounts.map((item) => item.account))
-
-    const actualTransfers = transaction.transfers.filter(
-      (transfer) => accounts.has(transfer.from) || accounts.has(transfer.to),
-    )
-
-    const accountLinks = await this.loadAssignments(transaction.integration, actualTransfers, ctx)
-    const payments = await this.loadPayments(transaction.integration, actualTransfers, paymentConfig, ctx)
+    const accountLinks = await this.loadAssignments(transaction.integration, transaction.transfers, ctx)
+    const payments = await this.loadPayments(transaction.integration, transaction.transfers, paymentConfig, ctx)
     const currencies = await this.loadCurrencies(transaction.integration, ctx)
 
     const accountLinksByAccount = new Map(
@@ -70,8 +64,8 @@ export class PaymentTransactionDataLoader {
       integrationAccounts: integrationAccountByAccount,
       accountsLink: accountLinksByAccount,
       payments,
-      accountsForPayment: await this.loadAccountForPayment(actualTransfers, ctx),
-      actualTransfers,
+      accountsForPayment: await this.loadAccountForPayment(transaction.transfers, ctx),
+      actualTransfers: transaction.transfers,
       amounts,
       currencies,
     }
@@ -89,7 +83,7 @@ export class PaymentTransactionDataLoader {
     return await this.integrationAccountRepository.get(
       {
         integration,
-        addresses,
+        accounts: addresses,
       },
       ctx,
     )

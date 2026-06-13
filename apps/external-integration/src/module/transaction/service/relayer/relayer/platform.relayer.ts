@@ -9,10 +9,9 @@ export class PlatformRelayer implements Relayer {
 
   async getAccount(params: RelayerGetAccountParams): Promise<IntegrationAccount> {
     return await this.relayerRepository.getRelayerAccount({
-      integration: params.toIntegration,
-      currency: params.toCurrency,
-      amount: params.toAmount,
-      integrationFee: '0',
+      ...params,
+      fromAccount: params.from,
+      toAccount: params.to,
     })
   }
 

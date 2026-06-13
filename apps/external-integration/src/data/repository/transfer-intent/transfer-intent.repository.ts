@@ -10,8 +10,6 @@ import {
 } from '../../data-source/postgres/entities/transfer-intent.entity'
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { Id } from '@app/types'
-import { MarkAsPreparedParams, MarkAsProcessingParams } from './transfer-intent-repository.types'
-import { FindOptionsWhere } from 'typeorm/find-options/FindOptionsWhere'
 
 @Injectable()
 export class TransferIntentRepository {
@@ -47,14 +45,21 @@ export class TransferIntentRepository {
     const result = await ctx.em.update(
       TransferIntentEntity,
       { id: entity.id },
-      { status: TransferIntentEntityStatus.ACCEPTED },
+      { status: TransferIntentEntityStatus.PROCESSING },
     )
 
     if (result.affected !== 1) {
       throw new Error(`cannot make claim! ${entity.id}`)
     }
 
-    return TransferIntentRepositoryMapper.toDomain({ ...entity, status: TransferIntentEntityStatus.ACCEPTED })
+    return TransferIntentRepositoryMapper.toDomain({ ...entity, status: TransferIntentEntityStatus.PROCESSING })
+  }
+
+  async changeDepositId(params: Pick<TransferIntentModel, 'id' | 'depositId'>, ctx?: TxContext): Promise<boolean> {
+    const em = ctx?.em ?? this.datasource.manager
+    const result = await em.update(TransferIntentEntity, { id: params.id }, { depositId: params.depositId })
+
+    return result.affected === 1
   }
 
   async get(ids: ReadonlySet<Id>, ctx?: TxContext): Promise<ReadonlyArray<TransferIntentModel>> {
@@ -67,25 +72,15 @@ export class TransferIntentRepository {
     return result.map((intent) => TransferIntentRepositoryMapper.toDomain(intent))
   }
 
-  async markAsPrepared(params: MarkAsPreparedParams, ctx: TxContext): Promise<boolean> {
-    const where: FindOptionsWhere<TransferIntentEntity> = {
-      status: TransferIntentEntityStatus.ACCEPTED,
-      id: In(Array.from(params.ids)),
-    }
+  async markAsCompleted(params: Pick<TransferIntentModel, 'id'>, ctx: TxContext): Promise<boolean> {
+    const em = ctx.em
 
-    const result = await ctx.em.update(TransferIntentEntity, where, { status: TransferIntentEntityStatus.PREPARED })
+    const result = await em.update(
+      TransferIntentEntity,
+      { id: params.id, status: TransferIntentEntityStatus.PROCESSING },
+      { status: TransferIntentEntityStatus.COMPLETED },
+    )
 
-    return result.affected === params.ids.size
-  }
-
-  async markAsProcessing(params: MarkAsProcessingParams, ctx: TxContext): Promise<boolean> {
-    const where: FindOptionsWhere<TransferIntentEntity> = {
-      id: In(Array.from(params.ids)),
-      status: TransferIntentEntityStatus.PREPARED,
-    }
-
-    const result = await ctx.em.update(TransferIntentEntity, where, { status: TransferIntentEntityStatus.PROCESSING })
-
-    return result.affected === params.ids.size
+    return result.affected === 1
   }
 }

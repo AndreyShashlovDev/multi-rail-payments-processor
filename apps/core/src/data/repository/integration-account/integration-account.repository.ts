@@ -72,7 +72,7 @@ export class IntegrationAccountRepository {
     const result = await em.find(IntegrationAccountEntity, {
       where: {
         integration: integrationTypeFromDomain(data.integration),
-        account: In(Array.from(data.addresses)),
+        account: In(Array.from(data.accounts)),
       },
     })
 

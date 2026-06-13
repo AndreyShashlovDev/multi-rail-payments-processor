@@ -45,9 +45,6 @@ export class PayoutIntentRepository {
       PayoutIntentEntity,
       { id: data.id, status: PayoutIntentEntityStatus.CREATED },
       {
-        integrationFeePayerIntegrationAccount: data.integrationFeePayer.account,
-        integrationFeePayerPlatformAccount: data.integrationFeePayer.platformAccountId,
-        integrationFeePayerId: data.integrationFeePayer.accountLinkId,
         integrationFee: data.integrationFee,
         status: PayoutIntentEntityStatus.PREPARED,
       },
@@ -56,10 +53,11 @@ export class PayoutIntentRepository {
     return result.affected === 1
   }
 
-  async markProcessing(ids: ReadonlySet<UUID>): Promise<boolean> {
-    const result = await this.datasource.manager.update(
+  async markProcessing(ids: ReadonlySet<UUID>, ctx?: TxContext): Promise<boolean> {
+    const em = ctx?.em ?? this.datasource.manager
+    const result = await em.update(
       PayoutIntentEntity,
-      { id: In(Array.from(ids)), status: PayoutIntentEntityStatus.HELD },
+      { id: In(Array.from(ids)), status: PayoutIntentEntityStatus.PREPARED },
       { status: PayoutIntentEntityStatus.PROCESSING },
     )
 
@@ -71,9 +69,6 @@ export class PayoutIntentRepository {
       PayoutIntentEntity,
       { id: data.id, status: PayoutIntentEntityStatus.PROCESSING },
       {
-        integrationFeePayerIntegrationAccount: data.integrationFeePayer.account,
-        integrationFeePayerPlatformAccount: data.integrationFeePayer.platformAccountId,
-        integrationFeePayerId: data.integrationFeePayer.accountLinkId,
         integrationFee: data.integrationFee,
         status: PayoutIntentEntityStatus.CONFIRMING,
       },
@@ -87,16 +82,6 @@ export class PayoutIntentRepository {
       PayoutIntentEntity,
       { id: params.id, status: PayoutIntentEntityStatus.CONFIRMING },
       { status: PayoutIntentEntityStatus.SUCCESS },
-    )
-
-    return result.affected === 1
-  }
-
-  async markAsHeld(param: Pick<PayoutIntentModel, 'id'>, ctx: TxContext): Promise<boolean> {
-    const result = await ctx.em.update(
-      PayoutIntentEntity,
-      { id: param.id, status: PayoutIntentEntityStatus.PREPARED },
-      { status: PayoutIntentEntityStatus.HELD },
     )
 
     return result.affected === 1

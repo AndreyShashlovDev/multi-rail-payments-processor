@@ -4,22 +4,24 @@ import { AccountEntity, AccountEntityRole } from '../entities/account.entity'
 import { randomUUID } from 'node:crypto'
 import { IntegrationAccount, UUID, Id } from '@app/types'
 import { IntegrationAccountEntity, IntegrationAccountEntityStatus } from '../entities/integration-account.entity'
-import { IntegrationEntityType, IntegrationType } from '@app/shared'
+import { IntegrationEntityType, IntegrationType, integrationTypeFromDomain } from '@app/shared'
 import {
   IntegrationAccountLinkEntity,
   LinkEntityStatus,
   LinkEntityType,
 } from '../entities/integration-account-link.entity'
-import { EntityManager } from 'typeorm'
+import { EntityManager, In } from 'typeorm'
 import { IntegrationCurrencyEntity } from '../entities/integration-currency.entity'
 
-const integration = IntegrationEntityType.ETHEREUM
-const integrationAccounts: IntegrationAccount[] = [
-  IntegrationAccount.create(IntegrationType.ETHEREUM, '0x1'),
-  IntegrationAccount.create(IntegrationType.ETHEREUM, '0x2'),
-  IntegrationAccount.create(IntegrationType.ETHEREUM, '0x3'),
-  IntegrationAccount.create(IntegrationType.ETHEREUM, '0x4'),
-]
+const integrationAccounts: ReadonlyMap<IntegrationAccount, IntegrationType> = new Map([
+  [IntegrationAccount.create(IntegrationType.ETHEREUM, '0x1'), IntegrationType.ETHEREUM],
+  [IntegrationAccount.create(IntegrationType.ETHEREUM, '0x2'), IntegrationType.ETHEREUM],
+  [IntegrationAccount.create(IntegrationType.ETHEREUM, '0x3'), IntegrationType.ETHEREUM],
+  [IntegrationAccount.create(IntegrationType.ETHEREUM, '0x4'), IntegrationType.ETHEREUM],
+  [IntegrationAccount.create(IntegrationType.POLYGON, '0x5'), IntegrationType.POLYGON],
+  [IntegrationAccount.create(IntegrationType.POLYGON, '0x6'), IntegrationType.POLYGON],
+])
+
 const platformUserId: UUID = randomUUID()
 const merchantUser1Id: UUID = randomUUID()
 const merchantUser2Id: UUID = randomUUID()
@@ -57,6 +59,15 @@ async function createCurrencies(em: EntityManager) {
     minorUnit: 18,
     displayDecimals: 5,
   })
+  await em.insert(IntegrationCurrencyEntity, {
+    code: 'matic',
+    name: 'Polygon',
+    symbol: 'pol',
+    integration: IntegrationEntityType.POLYGON,
+    currency: 'native',
+    minorUnit: 18,
+    displayDecimals: 5,
+  })
 }
 
 async function createAccountFixtures(em: EntityManager) {
@@ -77,19 +88,13 @@ async function createAccountFixtures(em: EntityManager) {
 }
 
 async function createIntegrationAccounts(em: EntityManager) {
-  await em
-    .createQueryBuilder()
-    .insert()
-    .into(IntegrationAccountEntity)
-    .values(
-      integrationAccounts.map((account, index) => ({
-        account: account,
-        integration: integration,
-        custodyAccountId: Id.create(index + 1),
-      })),
-    )
-    .orIgnore()
-    .execute()
+  const entities = Array.from(integrationAccounts.entries()).map(([account, integration], index) => ({
+    account,
+    integration: integrationTypeFromDomain(integration),
+    custodyAccountId: Id.create(index + 1),
+  }))
+
+  await em.createQueryBuilder().insert().into(IntegrationAccountEntity).values(entities).orIgnore().execute()
 }
 
 async function createPermanentLink(em: EntityManager) {
@@ -100,24 +105,29 @@ async function createPermanentLink(em: EntityManager) {
     },
   })
 
-  const account = await em.findOne(IntegrationAccountEntity, {
+  const accounts = await em.find(IntegrationAccountEntity, {
     where: {
-      account: IntegrationAccount.create(IntegrationType.ETHEREUM, '0x1'),
+      account: In([
+        IntegrationAccount.create(IntegrationType.ETHEREUM, '0x1'),
+        IntegrationAccount.create(IntegrationType.POLYGON, '0x5'),
+      ]),
       status: IntegrationAccountEntityStatus.AVAILABLE,
     },
   })
 
-  if (!platform || !account) {
+  if (!platform || !accounts.length) {
     throw new Error('Check platform or account')
   }
 
-  await em.update(IntegrationAccountEntity, { id: account.id }, { status: IntegrationAccountEntityStatus.IN_USE })
+  for (const account of accounts) {
+    await em.update(IntegrationAccountEntity, { id: account.id }, { status: IntegrationAccountEntityStatus.IN_USE })
 
-  await em.insert(IntegrationAccountLinkEntity, {
-    platformAccountId: platform.id,
-    userId: platform.owner,
-    integrationAccountId: account.id,
-    status: LinkEntityStatus.ACTIVE,
-    linkType: LinkEntityType.REGULAR,
-  })
+    await em.insert(IntegrationAccountLinkEntity, {
+      platformAccountId: platform.id,
+      userId: platform.owner,
+      integrationAccountId: account.id,
+      status: LinkEntityStatus.ACTIVE,
+      linkType: LinkEntityType.REGULAR,
+    })
+  }
 }

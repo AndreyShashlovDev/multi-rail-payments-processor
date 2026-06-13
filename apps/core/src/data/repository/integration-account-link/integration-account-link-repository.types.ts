@@ -1,6 +1,6 @@
 import { IntegrationAccount } from '@app/types/integration-account'
 import { IntegrationType } from '@app/shared'
-import { IntegrationCurrency } from '@app/types'
+import { IntegrationCurrency, UUID } from '@app/types'
 
 export interface GetActiveLinkParams {
   readonly integration: IntegrationType
@@ -9,5 +9,11 @@ export interface GetActiveLinkParams {
 
 export interface GetPlatformAccountParams {
   readonly integration: IntegrationType
+  readonly currency: IntegrationCurrency
+}
+
+export interface GetByPlatformParams {
+  readonly integration: IntegrationType
+  readonly platformAccountId: UUID
   readonly currency: IntegrationCurrency
 }
