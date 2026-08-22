@@ -9,7 +9,6 @@ import {
   BalanceChangeTxStatus,
   PayoutBalanceChangeMetadata,
 } from '@app/shared/types/balance-change'
-import { ChangePaymentStatusParams } from '../../../payment-intent/interactor/change-payment-status/change-payment-status.interactor'
 import { PayoutStatusNotChangedException } from '../../exception/payout-status-not-changed.exception'
 import { ExternalIntegrationPublisher } from '../../../../data/publisher/external-integration/external-integration.publisher'
 import { BalanceUpdatedResult } from '../../../../data/consumer/ledger/ledger-consumer.types'
@@ -31,7 +30,7 @@ export class ChangePayoutStatusInteractor extends AbstractInteractor<ChangePayou
     super()
   }
 
-  async execute(params: ChangePaymentStatusParams): Promise<void> {
+  async execute(params: ChangePayoutStatusParams): Promise<void> {
     const { data } = params
 
     const changeByPayout = data.changes.reduce((prev, curr) => {
