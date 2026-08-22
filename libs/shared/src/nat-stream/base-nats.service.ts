@@ -33,6 +33,16 @@ export abstract class BaseNatsService implements OnModuleInit, OnModuleDestroy {
   protected constructor(protected readonly natsUrl: string) {}
 
   async onModuleInit(): Promise<void> {
+    // NestJS can call onModuleInit more than once on the very same
+    // instance when a provider is exported from its owning module and also
+    // injected by class reference into another module's own
+    // FactoryProvider (a confirmed lifecycle-hook quirk, not something
+    // specific to this code — see TransactionEventPublisherSourceModule
+    // for the case that hits it). Guard idempotently rather than fight it.
+    if (this.initialized) {
+      throw new Error('Already initialized!')
+    }
+
     await this.connect()
     await this.setupStreams()
     this.initialized = true

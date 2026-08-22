@@ -1,17 +1,17 @@
-import { CoreJetstreamDataSource } from '../../data-source/nats-jetstream/core-jetstream.data-source'
 import { Injectable } from '@nestjs/common'
-import { transactionSubject, SignatureService } from '@app/shared'
+import { SignatureService, TRANSACTION_TOPIC_NAME } from '@app/shared'
 import { TransactionEventPublisherMapper } from './transaction-event-publisher.mapper'
 import { TransactionEventData } from './transaction-event-publisher.types'
 import { OutboxRepository } from '../../repository/outbox/outbox.repository'
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { TransactionEvent } from '@app/shared/services/external-integration/v1'
 import { validateSync } from 'class-validator'
+import { TransactionKafkaDataSource } from '../../data-source/kafka/transaction-kafka-data-source.service'
 
 @Injectable()
 export class TransactionEventPublisher {
   constructor(
-    private readonly source: CoreJetstreamDataSource,
+    private readonly source: TransactionKafkaDataSource,
     private readonly outboxRepository: OutboxRepository,
     private readonly signatureService: SignatureService,
   ) {}
@@ -39,6 +39,6 @@ export class TransactionEventPublisher {
   async publish(event: TransactionEvent): Promise<void> {
     const envelop = this.signatureService.createSignedEnvelop(event)
 
-    await this.source.publish(transactionSubject(event.integration), envelop)
+    await this.source.publish(TRANSACTION_TOPIC_NAME, event.integration, envelop)
   }
 }

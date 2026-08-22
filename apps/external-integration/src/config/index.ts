@@ -15,3 +15,6 @@ export * from './logging-config.module'
 
 export * from './core.grpc.config'
 export * from './core-grpc-config.module'
+
+export * from './kafka.config'
+export * from './kafka-config.module'

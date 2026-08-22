@@ -1,5 +1,5 @@
 import { TRANSACTION_STREAM, BaseNatsService, SignatureService } from '@app/shared'
-import { Injectable } from '@nestjs/common'
+import { Injectable, OnApplicationBootstrap } from '@nestjs/common'
 import type { NatsConfig } from '../../../config'
 import { TransferIntentCreateEvent } from '@app/shared/services/external-integration/v1'
 import {
@@ -22,7 +22,7 @@ export interface CoreJetstreamHandler {
 const TRANSFER_INTENT_SUBSCRIPTION_TYPES: ReadonlyArray<TransferIntentEventType> = ['create', 'update', 'held']
 
 @Injectable()
-export class CoreJetstreamDataSource extends BaseNatsService {
+export class CoreJetstreamDataSource extends BaseNatsService implements OnApplicationBootstrap {
   private handler: CoreJetstreamHandler | null = null
 
   constructor(
@@ -45,9 +45,7 @@ export class CoreJetstreamDataSource extends BaseNatsService {
     this.handler = handler
   }
 
-  async onModuleInit(): Promise<void> {
-    await super.onModuleInit()
-
+  async onApplicationBootstrap(): Promise<void> {
     for (const type of TRANSFER_INTENT_SUBSCRIPTION_TYPES) {
       await this.startConsuming<JsonObject<SignedEnvelopeEvent<TransferIntentIncomingEventType>>>(
         transferIntentConsumer(type),

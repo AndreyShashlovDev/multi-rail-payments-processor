@@ -69,6 +69,7 @@
     "concurrently": "9.2.1",
     "decimal.js": "10.6.0",
     "dotenv": "17.4.2",
+    "kafkajs": "2.2.4",
     "nats": "2.29.3",
     "pg": "8.20.0",
     "reflect-metadata": "0.2.2",

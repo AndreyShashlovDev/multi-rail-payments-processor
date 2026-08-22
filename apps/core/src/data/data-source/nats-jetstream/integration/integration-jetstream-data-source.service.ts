@@ -4,20 +4,21 @@ import {
   IntegrationType,
   TRANSACTION_STREAM,
   SignatureService,
+  TransactionEventHandler,
+  TransactionEventSource,
 } from '@app/shared'
-import { Injectable } from '@nestjs/common'
+import { Injectable, OnApplicationBootstrap } from '@nestjs/common'
 import type { NatsConfig } from '../../../../config'
 import { TransactionEvent } from '@app/shared/services/external-integration/v1'
 import { TRANSFER_INTENT_STREAM } from '@app/shared/nat-stream/transfer-intent-stream.types'
 import { JsonObject, SignedEnvelopeEvent } from '@app/types'
 
-export interface IntegrationJetstreamHandler {
-  transactionEventHandler(event: JsonObject<TransactionEvent>): Promise<void>
-}
-
 @Injectable()
-export class IntegrationJetstreamDataSource extends BaseNatsService {
-  private handler: IntegrationJetstreamHandler | null = null
+export class IntegrationJetstreamDataSource
+  extends BaseNatsService
+  implements TransactionEventSource, OnApplicationBootstrap
+{
+  private handler: TransactionEventHandler | null = null
 
   constructor(
     config: NatsConfig,
@@ -35,13 +36,11 @@ export class IntegrationJetstreamDataSource extends BaseNatsService {
     }
   }
 
-  setupHandler(handler: IntegrationJetstreamHandler | null): void {
+  setupHandler(handler: TransactionEventHandler | null): void {
     this.handler = handler
   }
 
-  async onModuleInit(): Promise<void> {
-    await super.onModuleInit()
-
+  async onApplicationBootstrap(): Promise<void> {
     for (const integration of Object.values(IntegrationType)) {
       await this.startConsuming<JsonObject<SignedEnvelopeEvent<TransactionEvent>>>(
         transactionConsumer(integration),
