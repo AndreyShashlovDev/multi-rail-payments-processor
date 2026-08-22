@@ -10,7 +10,12 @@ export class HmacUtils {
   static verify(payload: object, sig: string, secret: string): boolean {
     const expected = this.sign(payload, secret)
 
-    return timingSafeEqual(Buffer.from(sig), Buffer.from(expected))
+    const sigBuf = Buffer.from(sig, 'hex')
+    const expectedBuf = Buffer.from(expected, 'hex')
+
+    if (sigBuf.length !== expectedBuf.length) return false
+
+    return timingSafeEqual(sigBuf, expectedBuf)
   }
 
   private static sortDeep(obj: unknown): unknown {
