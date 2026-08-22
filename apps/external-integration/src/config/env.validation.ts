@@ -1,18 +1,6 @@
 import { plainToClass } from 'class-transformer'
-import {
-  IsEnum,
-  IsNumber,
-  IsString,
-  IsBoolean,
-  IsOptional,
-  validateSync,
-  Min,
-  Max,
-  IsJSON,
-  IsNotEmpty,
-  IsInt,
-  IsPositive,
-} from 'class-validator'
+import { IsEnum, IsNumber, IsString, IsOptional, validateSync, Min, Max, IsInt, IsPositive } from 'class-validator'
+import { TransformBoolean, TransformStringArray, TransformNumber, TransformJsonStringMap } from '@app/env'
 
 export enum Environment {
   development = 'development',
@@ -20,7 +8,7 @@ export enum Environment {
   test = 'test',
 }
 
-class EnvironmentVariables {
+export class EnvironmentVariables {
   // App
   @IsEnum(Environment)
   @IsOptional()
@@ -30,10 +18,10 @@ class EnvironmentVariables {
   @IsOptional()
   readonly SERVICE_NAME: string = 'integration'
 
-  @IsJSON()
-  @IsNotEmpty()
-  readonly SECURE_SIGNATURE_SECRETS: Record<string, string>
+  @TransformJsonStringMap()
+  readonly SECURE_SIGNATURE_SECRETS: ReadonlyMap<string, string>
 
+  @TransformNumber()
   @IsNumber()
   @Min(1)
   @Max(65535)
@@ -45,6 +33,7 @@ class EnvironmentVariables {
   @IsOptional()
   readonly DB_HOST: string = 'localhost'
 
+  @TransformNumber()
   @IsNumber()
   @Min(1)
   @Max(65535)
@@ -67,11 +56,11 @@ class EnvironmentVariables {
   @IsOptional()
   readonly DB_SCHEMA: string = 'integration'
 
-  @IsBoolean()
+  @TransformBoolean()
   @IsOptional()
   readonly DB_SSL: boolean = false
 
-  @IsBoolean()
+  @TransformBoolean()
   @IsOptional()
   readonly DB_LOGGING: boolean = false
 
@@ -92,20 +81,33 @@ class EnvironmentVariables {
   @IsString()
   readonly CORE_GRPC_URL: string
 
+  @TransformNumber()
   @IsInt()
   @IsPositive()
   readonly CORE_GRPC_TIMEOUT: number
 
+  @TransformNumber()
   @IsInt()
   readonly CORE_GRPC_RETRIES: number
 
-  @IsBoolean()
+  @TransformBoolean()
   readonly CORE_GRPC_USE_SSL: boolean
+
+  @TransformStringArray()
+  @IsOptional()
+  readonly KAFKA_BROKERS: ReadonlyArray<string> = ['localhost:19092']
+
+  @IsString()
+  readonly KAFKA_CLIENT_ID: string = 'integration-service'
 }
 
 export function validate(config: Record<string, unknown>): EnvironmentVariables {
   const validatedConfig = plainToClass(EnvironmentVariables, config, {
-    enableImplicitConversion: true,
+    // Off on purpose: with implicit conversion, an empty string ENV value silently becomes `0`
+    // for numeric fields (`Number('') === 0`) instead of failing validation or falling back to
+    // the default. Every field that needs parsing from a string (numbers, booleans, arrays,
+    // JSON) has an explicit @TransformXxx() decorator from @app/env instead.
+    enableImplicitConversion: false,
   })
 
   const errors = validateSync(validatedConfig, {

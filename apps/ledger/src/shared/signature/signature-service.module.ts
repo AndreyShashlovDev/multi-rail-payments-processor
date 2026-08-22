@@ -1,21 +1,16 @@
 import { Module, FactoryProvider } from '@nestjs/common'
 import { SignatureService } from '@app/shared'
-import { ConfigService } from '@nestjs/config'
-import { AppRootConfig } from '../../config/app-root-config'
-import { AppConfig } from '../../config'
+import { AppConfig, AppConfigModule } from '../../config'
 
 const Provider: FactoryProvider = {
   provide: SignatureService,
-  inject: [ConfigService],
-  useFactory: (config: ConfigService<AppRootConfig>) => {
-    const app = config.getOrThrow<AppConfig>('app')
-
-    return new SignatureService(app.name, app.secure.signatureSecrets)
-  },
+  inject: [AppConfig],
+  useFactory: (appConfig: AppConfig) => new SignatureService(appConfig.name, appConfig.secure.signatureSecrets),
 }
 
 @Module({
-  providers: [ConfigService, Provider],
+  imports: [AppConfigModule],
+  providers: [Provider],
   exports: [Provider],
 })
 export class SignatureServiceModule {}

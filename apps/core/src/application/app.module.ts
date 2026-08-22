@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common'
-import { ConfigModule } from '@nestjs/config'
-import { validate } from '../config'
+import { EnvironmentModule, AppConfigModule, GrpcConfigModule } from '../config'
 import { CorePostgresModule } from '../data/data-source/postgres/core-postgres.module'
 import { IntegrationAccountControllerModule } from '../api/controller/integration-account/integration-account-controller.module'
 import { PaymentControllerModule } from '../api/controller/payment/payment-controller.module'
@@ -19,20 +18,14 @@ import { RateModule } from '../module/rate/rate.module'
 import { CqrsModule } from '@nestjs/cqrs'
 import { IntegrationAccountModule } from '../module/integration-account/integration-account.module'
 import { RelayerControllerModule } from '../api/controller/relayer/relayer-controller.module'
-import { AppConfigs } from '../config/app-root-config'
 
 const CRON_MODULES = [InboxTransferCronModule, OutboxPublisherCronModule]
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      load: AppConfigs,
-      validate,
-      cache: true,
-      expandVariables: true,
-      envFilePath: ['.env', '.env.sample'],
-    }),
+    EnvironmentModule,
+    AppConfigModule,
+    GrpcConfigModule,
     ScheduleModule.forRoot(),
     EventEmitterModule.forRoot(),
     CqrsModule.forRoot(),

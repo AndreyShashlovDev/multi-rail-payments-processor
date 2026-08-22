@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common'
-import { ConfigModule } from '@nestjs/config'
-import { validate, AppConfigs } from '../config'
+import { EnvironmentModule, AppConfigModule } from '../config'
 import { WebhookControllerModule } from '../api/controller/webhook/webhook-controller.module'
 import { IntegrationPostgresModule } from '../data/data-source/postgres/integration-postgres.module'
 import { ScheduleModule } from '@nestjs/schedule'
@@ -15,14 +14,8 @@ const CRON_MODULES = [TransactionIntentCronModule, FinalizePayoutFlowCronModule,
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: ['.env', '.env.sample'],
-      load: AppConfigs,
-      validate,
-      cache: true,
-      expandVariables: true,
-    }),
+    EnvironmentModule,
+    AppConfigModule,
     ScheduleModule.forRoot(),
     EventEmitterModule.forRoot(),
     ...CRON_MODULES,

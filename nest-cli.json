@@ -28,6 +28,15 @@
         "tsConfigPath": "libs/database/tsconfig.lib.json"
       }
     },
+    "env": {
+      "type": "library",
+      "root": "libs/env",
+      "entryFile": "index",
+      "sourceRoot": "libs/env/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/env/tsconfig.lib.json"
+      }
+    },
     "external-integration": {
       "type": "application",
       "root": "apps/external-integration",
