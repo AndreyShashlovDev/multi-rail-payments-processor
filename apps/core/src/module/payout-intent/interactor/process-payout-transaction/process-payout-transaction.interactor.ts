@@ -1,7 +1,7 @@
 import { AbstractInteractor } from '@app/types'
 import { Injectable, Logger } from '@nestjs/common'
 import { TransactionBalanceProjectorStrategy } from '../../../../shared/projection/transaction-balance-projector.strategy'
-import { OutboxTxContextRunner } from '@app/shared'
+import { OutboxTxContextRunner, PromiseQueue } from '@app/shared'
 import { BalanceChange, PayoutBalanceChangeMetadata } from '@app/shared/types/balance-change'
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { PayoutInboxTransferRepository } from '../../../../data/repository/payout-inbox-transfer/payout-inbox-transfer.repository'
@@ -27,9 +27,8 @@ interface GroupedResult {
 
 @Injectable()
 export class ProcessPayoutTransactionInteractor extends AbstractInteractor<never, Promise<void>> {
-  private static RUNNING_PROCESS = false
-
   private readonly logger = new Logger(ProcessPayoutTransactionInteractor.name)
+  private readonly queue = new PromiseQueue({ maxSize: 1 })
 
   constructor(
     private readonly txRunner: OutboxTxContextRunner,
@@ -42,12 +41,10 @@ export class ProcessPayoutTransactionInteractor extends AbstractInteractor<never
   }
 
   async execute(): Promise<void> {
-    if (ProcessPayoutTransactionInteractor.RUNNING_PROCESS) {
-      this.logger.warn(`Skip! ${ProcessPayoutTransactionInteractor.name} Already running!`)
-      return
-    }
+    await this.queue.enqueue(() => this.run())
+  }
 
-    ProcessPayoutTransactionInteractor.RUNNING_PROCESS = true
+  private async run(): Promise<void> {
     try {
       await this.txRunner
         .create()
@@ -80,8 +77,8 @@ export class ProcessPayoutTransactionInteractor extends AbstractInteractor<never
           }
         })
         .execute()
-    } finally {
-      ProcessPayoutTransactionInteractor.RUNNING_PROCESS = false
+    } catch (err) {
+      this.logger.error(err)
     }
   }
 
