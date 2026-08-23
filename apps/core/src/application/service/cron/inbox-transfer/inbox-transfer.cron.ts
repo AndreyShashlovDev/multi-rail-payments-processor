@@ -12,7 +12,7 @@ export class InboxTransferCron {
     private readonly processPayout: ProcessPayoutTransactionInteractor,
   ) {}
 
-  @Cron(CronExpression.EVERY_30_SECONDS)
+  @Cron(CronExpression.EVERY_5_SECONDS)
   async checkInboxTransfers(): Promise<void> {
     this.processPayment.execute().catch((e) => this.logger.error(e))
     this.processPayout.execute().catch((e) => this.logger.error(e))

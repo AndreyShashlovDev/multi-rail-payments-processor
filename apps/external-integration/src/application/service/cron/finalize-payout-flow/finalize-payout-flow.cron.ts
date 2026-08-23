@@ -24,7 +24,7 @@ export class FinalizePayoutFlowCron implements OnModuleDestroy {
   /**
    * todo For test only!!! Delete it
    */
-  @Cron(CronExpression.EVERY_10_SECONDS)
+  @Cron(CronExpression.EVERY_SECOND)
   async finalizePayoutFlow(): Promise<void> {
     if (FinalizePayoutFlowCron.task.has(this.finalizePayoutFlow.name)) {
       this.logger.debug(`skip ${this.finalizePayoutFlow.name}! already running!`)

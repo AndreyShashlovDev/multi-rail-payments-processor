@@ -19,7 +19,7 @@ export class OutboxPublisherCron implements OnModuleDestroy {
     private readonly outboxRepository: OutboxRepository,
   ) {}
 
-  @Cron(CronExpression.EVERY_30_SECONDS)
+  @Cron(CronExpression.EVERY_5_SECONDS)
   async outboxPublish(): Promise<void> {
     if (OutboxPublisherCron.task.has(this.outboxPublish.name)) {
       this.logger.debug(`skip ${this.outboxPublish.name}! already running!`)
