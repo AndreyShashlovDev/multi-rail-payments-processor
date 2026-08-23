@@ -71,6 +71,9 @@ export class Migration1781368237828 implements MigrationInterface {
       `CREATE TABLE "core"."payment_inbox_transfer" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" BIGSERIAL NOT NULL, "key" text NOT NULL, "tx_id" bigint NOT NULL, "transfer_id" bigint NOT NULL, "integration" smallint NOT NULL, "to" text NOT NULL, "currency" text NOT NULL, "tx_status" text NOT NULL, "data" json NOT NULL, "state" smallint NOT NULL, "reason" text, "deleted_at" TIMESTAMP, CONSTRAINT "idx_unique_integration_txid_transferid_txstatus" UNIQUE ("integration", "tx_id", "transfer_id", "tx_status"), CONSTRAINT "PK_41b711a0f910b8723f9571ae209" PRIMARY KEY ("id"))`,
     )
     await queryRunner.query(
+      `CREATE INDEX "idx_payment_inbox_transfer_key_state_deleted" ON "core"."payment_inbox_transfer" ("key", "state") WHERE "deleted_at" IS NULL`,
+    )
+    await queryRunner.query(
       `CREATE TABLE "core"."outbox" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" text NOT NULL, "event" text NOT NULL, "payload" text NOT NULL, "status" smallint NOT NULL, "sent_at" TIMESTAMP WITH TIME ZONE, "processing_at" TIMESTAMP WITH TIME ZONE, "retries" smallint NOT NULL, CONSTRAINT "PK_340ab539f309f03bdaa14aa7649" PRIMARY KEY ("id"))`,
     )
     await queryRunner.query(`CREATE INDEX "idx_outbox_processing" ON "core"."outbox" ("status", "processing_at") `)
@@ -87,6 +90,7 @@ export class Migration1781368237828 implements MigrationInterface {
     await queryRunner.query(`DROP INDEX "core"."idx_outbox_status_created_at"`)
     await queryRunner.query(`DROP INDEX "core"."idx_outbox_processing"`)
     await queryRunner.query(`DROP TABLE "core"."outbox"`)
+    await queryRunner.query(`DROP INDEX "core"."idx_payment_inbox_transfer_key_state_deleted"`)
     await queryRunner.query(`DROP TABLE "core"."payment_inbox_transfer"`)
     await queryRunner.query(`DROP INDEX "core"."idx_payout_inbox_transfer_key_state_deleted"`)
     await queryRunner.query(`DROP INDEX "core"."idx_payout_inbox_transfer_key_tx_id_deleted"`)

@@ -1,4 +1,4 @@
-import { Column, DeleteDateColumn, Entity, PrimaryGeneratedColumn, Unique } from 'typeorm'
+import { Column, DeleteDateColumn, Entity, Index, PrimaryGeneratedColumn, Unique } from 'typeorm'
 import { APP_SCHEMA } from '../core-postgres.config'
 import { Id, IntegrationAccount, IntegrationCurrency } from '@app/types'
 import { BasicEntity } from '@app/database'
@@ -13,6 +13,9 @@ export enum PaymentInboxTransferEntityState {
 
 @Entity({ schema: APP_SCHEMA, name: PaymentInboxTransferEntity.NAME })
 @Unique('idx_unique_integration_txid_transferid_txstatus', [...PaymentInboxTransferEntity.UNIQUE])
+@Index('idx_payment_inbox_transfer_key_state_deleted', ['key', 'state'], {
+  where: '"deleted_at" IS NULL',
+})
 export class PaymentInboxTransferEntity extends BasicEntity {
   static readonly NAME = 'payment_inbox_transfer'
   static readonly PATH = `"${APP_SCHEMA}".${PaymentInboxTransferEntity.NAME}`
