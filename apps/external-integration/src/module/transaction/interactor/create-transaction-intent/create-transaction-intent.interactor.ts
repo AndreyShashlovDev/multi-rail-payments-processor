@@ -67,11 +67,8 @@ export class CreateTransactionIntentInteractor extends AbstractInteractor<never,
                 feeCurrency: tx.feeCurrency,
                 raw: JSON.stringify(transactionIntent),
                 transfers: routes.map((route) => ({
-                  integration: transferIntent.fromIntegration,
-                  operation:
-                    transferIntent.fromCurrency === 'native'
-                      ? OperationType.NATIVE_TRANSFER
-                      : OperationType.TOKEN_TRANSFER,
+                  integration: route.integration,
+                  operation: route.currency === 'native' ? OperationType.NATIVE_TRANSFER : OperationType.TOKEN_TRANSFER,
                   index: 0,
                   initiator: route.initiator,
                   from: route.fromAccount,
