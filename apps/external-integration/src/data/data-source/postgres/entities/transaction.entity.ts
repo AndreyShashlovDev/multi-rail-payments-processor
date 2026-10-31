@@ -1,12 +1,13 @@
 import { Column, Entity, PrimaryGeneratedColumn, Unique, OneToMany, OneToOne } from 'typeorm'
 import { BasicEntity } from '@app/database'
 import { Id, type IntegrationCurrency, RawNumeric, IntegrationAccount } from '@app/types'
-import type { TransactionBlockId, TransactionMetadata } from '../../../../module/transaction/model/transaction.model'
 import { TransferEntity } from './transfer.entity'
 import type { SourceTransactionId } from '@app/types/source-transaction-id.type'
 import { APP_SCHEMA } from '../integration-postgres.config'
 import { TransactionRawEntity } from './transaction-raw.entity'
 import { IntegrationEntityType, ExecutionEntityType } from '@app/shared'
+
+export type TransactionEntityMetadata = Record<string, string | number | boolean | null>
 
 export enum TransactionEntityStatus {
   PREPARED = 1,
@@ -42,7 +43,7 @@ export class TransactionEntity extends BasicEntity {
   readonly sourceTxId: SourceTransactionId
 
   @Column({ type: 'text', nullable: true })
-  readonly blockId: TransactionBlockId | null
+  readonly blockId: string | null
 
   @Column({ type: 'timestamptz', nullable: true })
   readonly blockTime: Date | null // like a executedAt
@@ -51,7 +52,7 @@ export class TransactionEntity extends BasicEntity {
   readonly status: TransactionEntityStatus
 
   @Column({ type: 'jsonb', nullable: true })
-  readonly metadata: TransactionMetadata | null
+  readonly metadata: TransactionEntityMetadata | null
 
   @Column({ type: 'text', nullable: true })
   readonly fee: RawNumeric | null

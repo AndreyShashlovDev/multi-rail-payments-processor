@@ -13,7 +13,7 @@ export type PayoutInboxTransferKey = `${string}${string}:${string}` & { readonly
 
 export const PayoutInboxTransferKey = {
   create(executionType: ExecutionType, intentId: UUID): PayoutInboxTransferKey {
-    return `${PostgresAdvisoryLock.CORE_PAYOUT_INBOX.name}${executionType}:${intentId}` as PayoutInboxTransferKey
+    return `${PostgresAdvisoryLock.CORE_PAYOUT_INBOX.name}:${executionType}:${intentId}` as PayoutInboxTransferKey
   },
 }
 

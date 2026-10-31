@@ -1,6 +1,6 @@
 import { AbstractInteractor, UUID, IntegrationCurrency, Numeric } from '@app/types'
 import { PaymentIntentModel, PaymentPlatformFeePayerType, PaymentOperationType } from '../../model/payment-intent.model'
-import { PaymentIntentRepository } from '../../../../data/repository/payment-intent/payment-intent.repository'
+import { PaymentIntentRepository } from '../../repository/payment-intent/payment-intent.repository'
 import { Injectable } from '@nestjs/common'
 import { IntegrationAccountLinkRepository } from '../../../../data/repository/integration-account-link/integration-account-link.repository'
 import { IntegrationType, TxContextRunner } from '@app/shared'

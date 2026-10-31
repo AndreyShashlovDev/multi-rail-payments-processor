@@ -4,7 +4,7 @@ import { TransactionBalanceProjectorStrategy } from '../../../../shared/projecti
 import { OutboxTxContextRunner, PromiseQueue } from '@app/shared'
 import { BalanceChange, PayoutBalanceChangeMetadata } from '@app/shared/types/balance-change'
 import { TxContext } from '@app/shared/types/tx-context.type'
-import { PayoutInboxTransferRepository } from '../../../../data/repository/payout-inbox-transfer/payout-inbox-transfer.repository'
+import { PayoutInboxTransferRepository } from '../../repository/payout-inbox-transfer/payout-inbox-transfer.repository'
 import { PayoutInboxTransferModel } from '../../model/payout-inbox-transfer.model'
 import { createHash } from 'node:crypto'
 import { PayoutTransactionHandlerStrategy } from '../../transaction-handler/transaction-handler.module'

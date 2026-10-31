@@ -2,7 +2,7 @@ import { AbstractInteractor } from '@app/types'
 import { TransferModel } from '../model/transfer.model'
 import { TransferIntentRepository } from '../../../data/repository/transfer-intent/transfer-intent.repository'
 import { TxContext } from '@app/shared/types/tx-context.type'
-import { TransferEventWithIntent } from '../../../data/publisher/transaction-event/transaction-event-publisher.types'
+import { TransferEventWithIntent } from '../model/transaction-event.model'
 
 export abstract class BasicTransactionInteractor<T> extends AbstractInteractor<T, Promise<void>> {
   protected constructor(protected readonly transferIntentRepository: TransferIntentRepository) {

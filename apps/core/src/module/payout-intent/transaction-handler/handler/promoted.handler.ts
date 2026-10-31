@@ -2,7 +2,7 @@ import { TransactionHandler } from '../../../../shared/transaction-handler/trans
 import { TransactionModel } from '../../../../shared/model/transaction.model'
 import { IntentType } from '@app/shared'
 import { UUID } from '@app/types'
-import { PayoutIntentRepository } from '../../../../data/repository/payout-intent/payout-intent.repository'
+import { PayoutIntentRepository } from '../../repository/payout-intent/payout-intent.repository'
 
 export class PromotedHandler implements TransactionHandler {
   constructor(private readonly payoutIntentRepository: PayoutIntentRepository) {}

@@ -4,6 +4,7 @@ import { TransferIntentCreateInteractor } from '../../interactor/create-transfer
 import { ProcessHeldTransferIntentInteractor } from '../../interactor/process-held-transfer-intent/process-held-transfer-intent.interactor'
 import { TransferIntentConsumer } from '../../../../data/consumer/transfer-intent/transfer-intent.consumer'
 import { Injectable, Logger } from '@nestjs/common'
+import { IntentEventListenerMapper } from './intent-event-listener.mapper'
 
 @Injectable()
 export class IntentEventListener {
@@ -16,12 +17,14 @@ export class IntentEventListener {
   ) {
     transferIntentConsumer.subscribeToTransferIntentEvent<'create'>({
       filter: { type: 'create' },
-      handler: async (data) => await this.handleTransferIntentCreateEvent(data),
+      handler: async (event) =>
+        await this.handleTransferIntentCreateEvent(IntentEventListenerMapper.toCreateEventModel(event)),
     })
 
     transferIntentConsumer.subscribeToTransferIntentEvent<'held'>({
       filter: { type: 'held' },
-      handler: async (data) => await this.handleTransferIntentHeldEvent(data),
+      handler: async (event) =>
+        await this.handleTransferIntentHeldEvent(IntentEventListenerMapper.toHeldEventModel(event)),
     })
   }
 

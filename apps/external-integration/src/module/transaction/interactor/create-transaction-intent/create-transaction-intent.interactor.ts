@@ -2,13 +2,14 @@ import { AbstractInteractor, Numeric } from '@app/types'
 import { Injectable } from '@nestjs/common'
 import { TransferIntentRepository } from '../../../../data/repository/transfer-intent/transfer-intent.repository'
 import { TransactionStatus, OutboxTxContextRunner } from '@app/shared'
-import { TransactionIntentRepository } from '../../../../data/repository/transaction-intent/transaction-intent.repository'
+import { TransactionIntentRepository } from '../../repository/transaction-intent/transaction-intent.repository'
 import { OperationType } from '../../model/transfer.model'
 import { TransactionEventPublisher } from '../../../../data/publisher/transaction-event/transaction-event.publisher'
 import { TransactionSaverStrategy } from '../../service/transaction-saver/transaction-saver.strategy'
 import { TransferRouteExecutionPlanner } from '../../service/integration/transfer-route-execution-planner.service'
 import { TransferRouteRepository } from '../../../../data/repository/transfer-route/transfer-route.repository'
 import { TransferRouteStatus } from '../../../../shared/model/transfer-route.model'
+import { TransactionEventMapper } from '../transaction-event.mapper'
 
 @Injectable()
 export class CreateTransactionIntentInteractor extends AbstractInteractor<never, Promise<void>> {
@@ -111,7 +112,7 @@ export class CreateTransactionIntentInteractor extends AbstractInteractor<never,
             }
 
             // todo For a case with an external relay. And in general, if there are several transactions, you need to send them one at a time, waiting for the previous one to complete.
-            await this.transactionEventPublisher.enqueue(result, ctx)
+            await this.transactionEventPublisher.enqueue(TransactionEventMapper.toEvent(result), ctx)
           }
         }
       })

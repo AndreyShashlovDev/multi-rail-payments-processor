@@ -1,7 +1,7 @@
 import { Controller, Logger } from '@nestjs/common'
 import { UUID } from '@app/types'
 import { ExternalIntegrationConsumer } from '../../../../data/consumer/external-integration/external-integration.consumer'
-import { PayoutInboxTransferRepository } from '../../../../data/repository/payout-inbox-transfer/payout-inbox-transfer.repository'
+import { PayoutInboxTransferRepository } from '../../repository/payout-inbox-transfer/payout-inbox-transfer.repository'
 import { ProcessPayoutTransactionInteractor } from '../../interactor/process-payout-transaction/process-payout-transaction.interactor'
 import { TransactionModel } from '../../../../shared/model/transaction.model'
 import { PayoutInboxTransferData } from '../../model/payout-inbox-transfer.model'

@@ -5,10 +5,11 @@ import { Injectable } from '@nestjs/common'
 import { BasicTransactionInteractor } from '../basic-transaction.interactor'
 import { TransferIntentRepository } from '../../../../data/repository/transfer-intent/transfer-intent.repository'
 import { IntegrationType, OutboxTxContextRunner } from '@app/shared'
-import { TransactionRepository } from '../../../../data/repository/transaction/transaction.repository'
+import { TransactionRepository } from '../../repository/transaction/transaction.repository'
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { TransferRouteRepository } from '../../../../data/repository/transfer-route/transfer-route.repository'
-import { TransactionEventData } from '../../../../data/publisher/transaction-event/transaction-event-publisher.types'
+import { TransactionEventData } from '../../model/transaction-event.model'
+import { TransactionEventMapper } from '../transaction-event.mapper'
 
 export interface ConfirmTransactionParams {
   readonly sourceTxId: SourceTransactionId
@@ -81,7 +82,7 @@ export class ConfirmTransactionInteractor extends BasicTransactionInteractor<Con
         }
 
         for (const event of result) {
-          await this.transactionEventPublisher.enqueue(event, ctx)
+          await this.transactionEventPublisher.enqueue(TransactionEventMapper.toEvent(event), ctx)
         }
       })
       .execute()

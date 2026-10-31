@@ -1,4 +1,4 @@
-import { TransactionRepository } from '../../../../../../data/repository/transaction/transaction.repository'
+import { TransactionRepository } from '../../../../repository/transaction/transaction.repository'
 import { TransactionSaver } from '../../../transaction-saver/transaction-saver'
 import { TransactionParseResult } from '../../../transaction-parser/transaction-parser'
 import { TransactionModel } from '../../../../model/transaction.model'

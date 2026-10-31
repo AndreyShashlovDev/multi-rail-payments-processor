@@ -1,7 +1,7 @@
 import { Logger, Injectable } from '@nestjs/common'
 import { LedgerConsumer } from '../../../../data/consumer/ledger/ledger.consumer'
 import { BalanceProjectionUpdatedResult } from '../../../../data/consumer/ledger/ledger-consumer.types'
-import { IntegrationAccountBalanceRepository } from '../../../../data/repository/integration-account-balance/integration-account-balance.repository'
+import { IntegrationAccountBalanceRepository } from '../../repository/integration-account-balance/integration-account-balance.repository'
 
 @Injectable()
 export class IntegrationAccountLedgerEventListener {

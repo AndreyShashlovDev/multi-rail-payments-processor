@@ -7,6 +7,7 @@ import {
   HasAccountsResult,
   GetAccountsData,
   CreateAccountData,
+  MakeUseAccountData,
 } from './integration-account-repository.types'
 import { integrationTypeFromDomain } from '@app/shared'
 import {
@@ -16,7 +17,6 @@ import {
 import { IntegrationAccountRepositoryMapper } from './integration-account-repository.mapper'
 import { IntegrationAccountModel } from '../../../shared/model/integration-account.model'
 import { TxContext } from '@app/shared/types/tx-context.type'
-import { PaymentIntentData } from '../../../module/payment-intent/model/payment-intent.model'
 import { isUUID } from 'class-validator'
 import { IntegrationAccount } from '@app/types'
 import { AccountEntity } from '../../data-source/postgres/entities/account.entity'
@@ -87,10 +87,7 @@ export class IntegrationAccountRepository {
     })
   }
 
-  async makeUseAccount(
-    data: Pick<PaymentIntentData, 'integration' | 'currency'>,
-    ctx: TxContext,
-  ): Promise<IntegrationAccountModel | null> {
+  async makeUseAccount(data: MakeUseAccountData, ctx: TxContext): Promise<IntegrationAccountModel | null> {
     if (!ctx.em.queryRunner?.isTransactionActive) {
       throw new Error('IntegrationAccountRepository.makeUseAccount must be called within an active transaction')
     }

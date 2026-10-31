@@ -1,4 +1,4 @@
-import { PayoutIntentRepository } from '../../../data/repository/payout-intent/payout-intent.repository'
+import { PayoutIntentRepository } from '../repository/payout-intent/payout-intent.repository'
 import { UUID, IntegrationAccount } from '@app/types'
 import { TransferModel } from '../../../shared/model/transfer.model'
 import { PayoutIntentModel } from '../model/payout-intent.model'

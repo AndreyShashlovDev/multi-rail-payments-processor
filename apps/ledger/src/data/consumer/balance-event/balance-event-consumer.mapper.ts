@@ -1,6 +1,5 @@
 import { BalanceChangeRequestEvent } from '@app/shared/services/ledger/v1'
-import { BalanceChangeEvent } from './balance-event-consumer.types'
-import { Numeric, JsonObject } from '@app/types'
+import { JsonObject } from '@app/types'
 import { plainToInstance } from 'class-transformer'
 import { validateSync } from 'class-validator'
 
@@ -21,18 +20,5 @@ export class BalanceEventConsumerMapper {
       )
     }
     return instance
-  }
-
-  static toDomain(event: BalanceChangeRequestEvent): BalanceChangeEvent {
-    return {
-      ver: event.ver,
-      uniqueKey: event.uniqueKey,
-      integration: event.integration,
-      changes: event.changes.map((change) => ({
-        ...change,
-        integration: event.integration,
-        amount: Numeric.create(change.amount),
-      })),
-    }
   }
 }

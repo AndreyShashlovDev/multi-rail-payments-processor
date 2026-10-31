@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common'
 import { FinalizePayoutFlowInteractor } from './finalize-payout-flow.interactor'
-import { TransactionIntentRepositoryModule } from '../../../data/repository/transaction-intent/transaction-intent-repository.module'
+import { TransactionIntentRepositoryModule } from '../../../module/transaction/repository/transaction-intent/transaction-intent-repository.module'
 import { WebhookAcceptTransactionInteractorModule } from '../../../module/transaction/interactor/webhook-accept-transaction/webhook-accept-transaction-interactor.module'
 import { PromoteTransactionInteractorModule } from '../../../module/transaction/interactor/promote-transaction/promote-transaction-interactor.module'
 import { SignTransactionInteractorModule } from '../../../module/transaction/interactor/sign-transaction/sign-transaction-interactor.module'

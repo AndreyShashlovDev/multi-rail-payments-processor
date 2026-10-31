@@ -1,6 +1,6 @@
 import { Logger, Injectable } from '@nestjs/common'
 import { ExternalIntegrationConsumer } from '../../../../data/consumer/external-integration/external-integration.consumer'
-import { PaymentInboxTransferRepository } from '../../../../data/repository/payment-inbox-transfer/payment-inbox-transfer.repository'
+import { PaymentInboxTransferRepository } from '../../repository/payment-inbox-transfer/payment-inbox-transfer.repository'
 import { ProcessPaymentTransactionInteractor } from '../../interactor/process-payment-transaction/process-payment-transaction.interactor'
 import { TransactionModel } from '../../../../shared/model/transaction.model'
 import { PaymentInboxTransferData } from '../../model/payment-inbox-transfer.model'

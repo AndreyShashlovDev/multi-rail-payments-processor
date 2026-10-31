@@ -2,7 +2,7 @@ import { AbstractInteractor, UUID, Id } from '@app/types'
 import { Injectable, Logger } from '@nestjs/common'
 import { BalanceChangeType, IntentType, OutboxTxContextRunner } from '@app/shared'
 import { InboxRepository } from '../../../../data/repository/inbox/inbox.repository'
-import { PayoutIntentRepository } from '../../../../data/repository/payout-intent/payout-intent.repository'
+import { PayoutIntentRepository } from '../../repository/payout-intent/payout-intent.repository'
 import {
   BalanceChange,
   BalanceChangeReason,

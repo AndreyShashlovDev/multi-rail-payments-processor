@@ -1,7 +1,5 @@
 import { Injectable } from '@nestjs/common'
 import { SignatureService, TRANSACTION_TOPIC_NAME } from '@app/shared'
-import { TransactionEventPublisherMapper } from './transaction-event-publisher.mapper'
-import { TransactionEventData } from './transaction-event-publisher.types'
 import { OutboxRepository } from '../../repository/outbox/outbox.repository'
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { TransactionEvent } from '@app/shared/services/external-integration/v1'
@@ -16,9 +14,7 @@ export class TransactionEventPublisher {
     private readonly signatureService: SignatureService,
   ) {}
 
-  async enqueue(tx: TransactionEventData, ctx: TxContext): Promise<void> {
-    const payload = TransactionEventPublisherMapper.transactionToEvent(tx)
-
+  async enqueue(payload: TransactionEvent, ctx: TxContext): Promise<void> {
     const errors = validateSync(payload)
     if (errors.length) throw new Error(`Invalid TransactionEvent structure ${JSON.stringify(errors)}`)
 

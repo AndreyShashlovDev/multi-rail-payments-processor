@@ -4,7 +4,6 @@ import type { Id, UUID } from '@app/types'
 import { BasicEntity } from '@app/database'
 import type { TransactionModel } from '../../../../shared/model/transaction.model'
 import { TransactionStatus, IntegrationEntityType } from '@app/shared'
-import type { PayoutInboxTransferKey } from '../../../../module/payout-intent/model/payout-inbox-transfer.model'
 
 export enum PayoutInboxTransferEntityState {
   CREATED = 1,
@@ -34,7 +33,7 @@ export class PayoutInboxTransferEntity extends BasicEntity {
   readonly id: Id
 
   @Column({ type: 'text' })
-  readonly key: PayoutInboxTransferKey
+  readonly key: string
 
   @Column({ type: 'bigint' })
   readonly txId: Id

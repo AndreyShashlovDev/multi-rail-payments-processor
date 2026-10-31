@@ -1,13 +1,14 @@
 import { AbstractInteractor } from '@app/types'
 import { Logger, Injectable } from '@nestjs/common'
-import { BalanceEventInboxRepository } from '../../../../data/repository/balance-event-inbox/balance-event-inbox.repository'
-import { BalanceRepository } from '../../../../data/repository/balance/balance.repository'
+import { BalanceEventInboxRepository } from '../../repository/balance-event-inbox/balance-event-inbox.repository'
+import { BalanceRepository } from '../../repository/balance/balance.repository'
 import { BalanceChangeData } from '../../model/balance-change.data'
-import { IntentGroup, BalanceApplyError } from '../../../../data/repository/balance/balance-repository.types'
+import { IntentGroup, BalanceApplyError } from '../../repository/balance/balance-repository.types'
 import { randomUUID } from 'node:crypto'
 import { OutboxTxContextRunner } from '@app/shared'
 import { BalanceEventPublisher } from '../../../../data/publisher/balance-event/balance-event.publisher'
 import { BalanceProjectionEventPublisher } from '../../../../data/publisher/balance-projection-event/balance-projection-event.publisher'
+import { ProcessApplyBalanceMapper } from './process-apply-balance.mapper'
 import { ProjectionEventData } from '../../../../data/publisher/balance-projection-event/balance-projection-event-publisher.types'
 
 export interface ProcessApplyBalanceParams {
@@ -65,8 +66,14 @@ export class ProcessApplyBalanceInteractor extends AbstractInteractor<ProcessApp
           },
         )
 
-        await this.balanceEventPublisher.enqueueSuccess({ uniqueKey: `${uniqueKey}:success`, changes: success }, ctx)
-        await this.balanceEventPublisher.enqueueFailed({ uniqueKey: `${uniqueKey}:failed`, ...failed }, ctx)
+        await this.balanceEventPublisher.enqueueSuccess(
+          ProcessApplyBalanceMapper.toUpdatedEvent(`${uniqueKey}:success`, success),
+          ctx,
+        )
+        await this.balanceEventPublisher.enqueueFailed(
+          ProcessApplyBalanceMapper.toFailedEvent(`${uniqueKey}:failed`, failed.changes, failed.errors),
+          ctx,
+        )
         await this.balanceProjectionEventPublisher.enqueue({ date: new Date(), projections }, ctx)
       })
       .execute()

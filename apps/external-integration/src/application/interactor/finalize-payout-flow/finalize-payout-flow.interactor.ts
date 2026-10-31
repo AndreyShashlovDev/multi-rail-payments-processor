@@ -1,5 +1,5 @@
 import { AbstractInteractor, EvmHashType, Numeric, IntegrationAccount, EvmAddress } from '@app/types'
-import { TransactionIntentRepository } from '../../../data/repository/transaction-intent/transaction-intent.repository'
+import { TransactionIntentRepository } from '../../../module/transaction/repository/transaction-intent/transaction-intent.repository'
 import { OutboxTxContextRunner, ExecutionType } from '@app/shared'
 import { WebhookAcceptTransactionInteractor } from '../../../module/transaction/interactor/webhook-accept-transaction/webhook-accept-transaction-interactor'
 import { PromoteTransactionInteractor } from '../../../module/transaction/interactor/promote-transaction/promote-transaction.interactor'

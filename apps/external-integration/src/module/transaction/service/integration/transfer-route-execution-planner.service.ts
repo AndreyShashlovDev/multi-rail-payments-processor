@@ -3,12 +3,12 @@ import { Injectable } from '@nestjs/common'
 import { InternalEvmSingleTransferBuilder } from './internal/blockchain/transaction-builder/internal-evm-single-transfer.builder'
 import { EvmSingleTransferBuilder } from './blockchain/transaction-builder/evm-single-transfer.builder'
 import { ExecutionType, IntegrationType } from '@app/shared'
-import { IntegrationAccountRepository } from '../../../../data/repository/integration-account/integration-account.repository'
+import { IntegrationAccountRepository } from '../../repository/integration-account/integration-account.repository'
 import { RelayerStrategy } from '../relayer/relayer.strategy'
 import { TransferIntentModel } from '../../../transfer-intent/model/transfer-intent.model'
 import { TransactionIntentData } from '../../model/transaction-intent.model'
 import { TransferRouteData, TransferRouteStatus } from '../../../../shared/model/transfer-route.model'
-import { CorePaymentRepository } from '../../../../data/repository/core-payment/core-payment.repository'
+import { CorePaymentRepository } from '../../repository/core-payment/core-payment.repository'
 
 export type TransferRouteExecutionPlannerParamsType = TransferIntentModel[]
 

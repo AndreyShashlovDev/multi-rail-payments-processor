@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { BalanceEventConsumer } from '../../../../data/consumer/balance-event/balance-event-consumer'
 import { ProcessApplyBalanceInteractor } from '../../interactor/process-apply-balance/process-apply-balance.interactor'
-import { BalanceChangeEvent } from '../../../../data/consumer/balance-event/balance-event-consumer.types'
+import { BalanceChangeRequestEvent } from '@app/shared/services/ledger/v1'
+import { BalanceEventListenerMapper } from './balance-event-listener.mapper'
 
 @Injectable()
 export class BalanceEventListener {
@@ -16,10 +17,10 @@ export class BalanceEventListener {
     })
   }
 
-  private async handleBalanceChange(event: BalanceChangeEvent): Promise<void> {
+  private async handleBalanceChange(event: BalanceChangeRequestEvent): Promise<void> {
     await this.processApplyBalanceInteractor.execute({
       uniqueKey: event.uniqueKey,
-      changes: event.changes,
+      changes: BalanceEventListenerMapper.toDomain(event),
     })
   }
 }

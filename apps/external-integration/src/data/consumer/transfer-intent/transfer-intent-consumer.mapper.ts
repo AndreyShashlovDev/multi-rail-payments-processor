@@ -1,10 +1,8 @@
 import { plainToInstance } from 'class-transformer'
 import { TransferIntentCreateEvent } from '@app/shared/services/external-integration/v1'
 import { validateSync } from 'class-validator'
-import { TransferIntentEventModel, TransferIntentEventKeyType } from './transfer-intent-consumer.types'
+import { TransferIntentEvent, TransferIntentEventKeyType } from './transfer-intent-consumer.types'
 import { TransferIntentHeldEvent } from '@app/shared/services/external-integration/v1/event/transfer-intent-held.event'
-import { TransferIntentCreateEventModel } from '../../../module/transfer-intent/model/transfer-intent.create-event.model'
-import { TransferIntentHeldEventModel } from '../../../module/transfer-intent/model/transfer-intent-held-event.model'
 import { JsonObject } from '@app/types'
 import { TransferIntentIncomingEventType } from '../../data-source/nats-jetstream/core-jetstream.data-source'
 
@@ -12,7 +10,7 @@ export class TransferIntentConsumerMapper {
   static async validateTransferIntentEvent<T extends TransferIntentEventKeyType>(
     type: T,
     event: JsonObject<TransferIntentIncomingEventType>,
-  ): Promise<TransferIntentEventModel<T>> {
+  ): Promise<TransferIntentEvent<T>> {
     if (type === 'create') {
       const instance = plainToInstance(TransferIntentCreateEvent, event, {
         exposeDefaultValues: true,
@@ -20,11 +18,7 @@ export class TransferIntentConsumerMapper {
 
       await TransferIntentConsumerMapper.validate(instance)
 
-      return {
-        ...instance,
-        fromRawAmount: instance.fromAmount,
-        toRawAmount: instance.toAmount,
-      } satisfies TransferIntentCreateEventModel as unknown as TransferIntentEventModel<T>
+      return instance as TransferIntentEvent<T>
     } else if (type === 'held') {
       const instance = plainToInstance(TransferIntentHeldEvent, event, {
         exposeDefaultValues: true,
@@ -32,11 +26,7 @@ export class TransferIntentConsumerMapper {
 
       await TransferIntentConsumerMapper.validate(instance)
 
-      return {
-        uniqueKey: instance.uniqueKey,
-        intentType: instance.intentType,
-        intentData: instance.intentData,
-      } satisfies TransferIntentHeldEventModel as unknown as TransferIntentEventModel<T>
+      return instance as TransferIntentEvent<T>
     }
 
     throw new Error(`Unsupported transfer intent event type: ${type}`)

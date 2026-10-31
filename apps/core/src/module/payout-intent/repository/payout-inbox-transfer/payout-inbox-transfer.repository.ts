@@ -1,0 +1,304 @@
+import { Injectable } from '@nestjs/common'
+import { InjectDataSource } from '@nestjs/typeorm'
+import { CorePostgresConfig } from '../../../../data/data-source/postgres/core-postgres.config'
+import { DataSource } from 'typeorm'
+import { PayoutInboxTransferRepositoryMapper } from './payout-inbox-transfer-repository.mapper'
+import { TxContext } from '@app/shared/types/tx-context.type'
+import { Id } from '@app/types'
+import {
+  PayoutInboxTransferData,
+  PayoutInboxTransferKey,
+  PayoutInboxTransferModel,
+} from '../../model/payout-inbox-transfer.model'
+import {
+  PayoutInboxTransferEntity,
+  PayoutInboxTransferEntityState,
+} from '../../../../data/data-source/postgres/entities/payout-inbox-transfer.entity'
+import { FindAndLockParams } from './payout-inbox-transaction-repository.types'
+
+@Injectable()
+export class PayoutInboxTransferRepository {
+  constructor(
+    @InjectDataSource(CorePostgresConfig.DATASOURCE_NAME)
+    private readonly datasource: DataSource,
+  ) {}
+
+  /**
+   * Persists incoming transfers from a blockchain transaction into the inbox queue.
+   *
+   * Transfers are grouped by their queue key (integration:intentId) and inserted
+   * within separate transactions to ensure atomicity per key.
+   *
+   * A blocking advisory lock (`pg_advisory_xact_lock`) is acquired per key before
+   * inserting to prevent race conditions when multiple instances process messages
+   * from JetStream simultaneously.
+   *
+   * State assignment logic:
+   * - If any `BLOCKED` record already exists for this key → new transfers are inserted as `BLOCKED`
+   *   with reason `predecessor_blocked`, preserving queue integrity.
+   * - Otherwise → transfers are inserted as `CREATED`, ready for processing.
+   *
+   * Idempotency is guaranteed via `ON CONFLICT DO NOTHING` using a unique index on
+   * (integration, tx_id, transfer_id). Re-delivered JetStream messages are safely ignored.
+   *
+   * @example
+   * // Two transfers from the same transaction targeting different payout intents:
+   * // key=EVM:uuid-AAA → no blocked predecessors → state: CREATED
+   * // key=EVM:uuid-BBB → has blocked predecessor → state: BLOCKED (reason: predecessor_blocked)
+   * //
+   * // Same intentId across different integrations (bridge case) → independent queues:
+   * // key=EVM:uuid-AAA → state: CREATED
+   * // key=BSC:uuid-AAA → state: CREATED (independent, not blocked by EVM queue)
+   */
+  async insertTransfers(transfers: ReadonlyArray<PayoutInboxTransferData>): Promise<void> {
+    const byKey = Map.groupBy(transfers, (transfer) =>
+      PayoutInboxTransferKey.create(transfer.data.executionType, transfer.intentId),
+    )
+
+    for (const [key, group] of byKey) {
+      await this.datasource.transaction(async (manager) => {
+        await manager.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [key])
+
+        const hasBlocked = await manager
+          .createQueryBuilder(PayoutInboxTransferEntity, 'it')
+          .where('it.key = :key', { key })
+          .andWhere('it.state = :state', { state: PayoutInboxTransferEntityState.BLOCKED })
+          .getExists()
+
+        const state = hasBlocked ? PayoutInboxTransferEntityState.BLOCKED : PayoutInboxTransferEntityState.CREATED
+
+        const reason = hasBlocked ? 'predecessor_blocked' : null
+
+        const values = group.map((transfer) => {
+          const entity = PayoutInboxTransferRepositoryMapper.fromDomain(transfer, manager)
+          return { ...entity, key, state, reason }
+        })
+
+        await manager.createQueryBuilder().insert().into(PayoutInboxTransferEntity).values(values).orIgnore().execute()
+      })
+    }
+  }
+
+  /**
+   * Finds all queue keys that have pending work and attempts to acquire a
+   * non-blocking advisory lock (`pg_try_advisory_xact_lock`) on each.
+   *
+   * Keys that are successfully locked are returned for exclusive processing by
+   * the current instance. Keys already locked by another instance are skipped,
+   * ensuring that the same key is never processed concurrently.
+   *
+   * The advisory lock is transactional — it is automatically released when the
+   * surrounding database transaction commits or rolls back. No manual unlock is needed.
+   *
+   * Optionally filters by integration to scope processing to a specific source.
+   * When integration is null, all integrations are included (used by the fallback cron job).
+   *
+   * @example
+   * // Keys in inbox: EVM:uuid-AAA, EVM:uuid-BBB, BSC:uuid-CCC
+   * // Instance A locks: EVM:uuid-AAA, BSC:uuid-CCC
+   * // Instance B locks: EVM:uuid-BBB (others are skipped)
+   * // Both instances work in parallel without interfering with each other.
+   *
+   * @returns A set of locked keys exclusively owned by the current instance for this transaction.
+   */
+  async findAndLockAvailableKeys(
+    params: FindAndLockParams,
+    ctx: TxContext,
+  ): Promise<ReadonlySet<PayoutInboxTransferKey>> {
+    const whereParams: unknown[] = []
+
+    let where = `state = ANY($1) AND deleted_at IS NULL`
+    whereParams.push([PayoutInboxTransferEntityState.CREATED, PayoutInboxTransferEntityState.BLOCKED])
+
+    if (params.integration) {
+      where += ` AND integration = $2`
+      whereParams.push(params.integration)
+    }
+
+    const lockedRows = await ctx.em.query<{ key: string; locked: boolean }[]>(
+      `SELECT key, pg_try_advisory_xact_lock(hashtext(key)) AS locked
+   FROM (
+     SELECT DISTINCT key
+     FROM ${PayoutInboxTransferEntity.PATH}
+     WHERE ${where}
+     ORDER BY key
+   ) keys`,
+      whereParams,
+    )
+
+    const lockedKeys = lockedRows.filter(({ locked }) => locked).map(({ key }) => key as PayoutInboxTransferKey)
+
+    return new Set(lockedKeys)
+  }
+
+  /**
+   * Retrieves all BLOCKED transfers for the given locked keys, ordered for sequential processing.
+   *
+   * BLOCKED transfers are those that previously failed processing or were created after
+   * a failed predecessor. They must be retried before any CREATED transfers for the same key,
+   * to preserve correct ordering.
+   *
+   * Results are ordered by: key ASC → created_at ASC → tx_id ASC
+   * This guarantees that within each key, transfers are processed in the exact order
+   * they were received from the integration (blockchain order).
+   *
+   * Only keys acquired via `findAndLockAvailableKeys` should be passed here,
+   * ensuring no concurrent access by other instances.
+   *
+   * @example
+   * // Inbox state for key=EVM:uuid-AAA:
+   * //   tx_id=1, created_at=10:00, state=BLOCKED (reason: processing_error)
+   * //   tx_id=2, created_at=10:05, state=BLOCKED (reason: predecessor_blocked)
+   * //   tx_id=3, created_at=10:10, state=BLOCKED (reason: predecessor_blocked)
+   * //
+   * // key=EVM:uuid-BBB:
+   * //   tx_id=4, created_at=10:00, state=BLOCKED (reason: processing_error)
+   * //
+   * // Returns: [EVM:uuid-AAA tx_id=1, EVM:uuid-AAA tx_id=2, EVM:uuid-AAA tx_id=3, EVM:uuid-BBB tx_id=4]
+   * // All BLOCKED transfers across all locked keys, ordered by key → created_at → tx_id
+   */
+  async findBlocked(
+    keys: ReadonlySet<PayoutInboxTransferKey>,
+    ctx: TxContext,
+  ): Promise<ReadonlyArray<PayoutInboxTransferModel>> {
+    const result = await ctx.em
+      .createQueryBuilder(PayoutInboxTransferEntity, 'it')
+      .where('it.key IN (:...keys)', { keys: [...keys] })
+      .andWhere('it.state = :state', { state: PayoutInboxTransferEntityState.BLOCKED })
+      .andWhere(
+        `it.tx_id = (
+        SELECT MIN(sub.tx_id)
+        FROM ${PayoutInboxTransferEntity.PATH} sub
+        WHERE sub.key = it.key
+        AND sub.deleted_at IS NULL
+        AND sub.state = :blockedState
+      )`,
+        { blockedState: PayoutInboxTransferEntityState.BLOCKED },
+      )
+      .orderBy('it.created_at', 'ASC')
+      .addOrderBy('it.tx_id', 'ASC')
+      .addOrderBy('it.transfer_id', 'ASC')
+      .getMany()
+
+    return result.map((transfer) => PayoutInboxTransferRepositoryMapper.toDomain(transfer))
+  }
+
+  /**
+   * Retrieves the earliest CREATED transfer per key, excluding keys that still have
+   * BLOCKED transfers pending.
+   *
+   * This method implements the core ordering guarantee of the inbox pattern:
+   * - Only one transfer per key is returned (the earliest by created_at + tx_id).
+   * - Keys with any remaining BLOCKED transfers are fully excluded, ensuring
+   *   CREATED transfers never overtake unresolved BLOCKED ones.
+   *
+   * Results are ordered by: key ASC → created_at ASC → tx_id ASC
+   *
+   * Only keys acquired via `findAndLockAvailableKeys` should be passed here.
+   *
+   * @example
+   * // Inbox state:
+   * //   key=EVM:uuid-AAA → tx_id=1 BLOCKED, tx_id=2 CREATED, tx_id=3 CREATED
+   * //   key=EVM:uuid-BBB → tx_id=4 CREATED, tx_id=5 CREATED
+   * //   key=BSC:uuid-CCC → tx_id=6 CREATED
+   * //
+   * // Returns:
+   * //   EVM:uuid-AAA → excluded (has BLOCKED)
+   * //   EVM:uuid-BBB → tx_id=4 only (earliest CREATED)
+   * //   BSC:uuid-CCC → tx_id=6
+   */
+  async findNextCreated(
+    keys: ReadonlySet<PayoutInboxTransferKey>,
+    ctx: TxContext,
+  ): Promise<ReadonlyArray<PayoutInboxTransferModel>> {
+    const result = await ctx.em
+      .createQueryBuilder(PayoutInboxTransferEntity, 'it')
+      .where('it.key IN (:...keys)', { keys: [...keys] })
+      .andWhere('it.state = :state', { state: PayoutInboxTransferEntityState.CREATED })
+      .andWhere(
+        `it.key NOT IN (
+          SELECT DISTINCT blocked.key
+          FROM ${PayoutInboxTransferEntity.PATH} blocked
+          WHERE blocked.key IN (:...keys) AND blocked.state = :blockedState AND blocked.deleted_at IS NULL
+        )`,
+        { keys: [...keys], blockedState: PayoutInboxTransferEntityState.BLOCKED },
+      )
+      .andWhere(
+        `it.tx_id = (
+        SELECT MIN(sub.tx_id)
+        FROM ${PayoutInboxTransferEntity.PATH} sub
+        WHERE sub.key = it.key
+        AND sub.deleted_at IS NULL
+        AND sub.state = :createdState
+      )`,
+        { createdState: PayoutInboxTransferEntityState.CREATED },
+      )
+      .orderBy('it.key', 'ASC')
+      .addOrderBy('it.tx_id', 'ASC')
+      .addOrderBy('it.transfer_id', 'ASC')
+      .getMany()
+
+    return result.map((transfer) => PayoutInboxTransferRepositoryMapper.toDomain(transfer))
+  }
+
+  /**
+   * Marks a failed transfer as BLOCKED and cascades the block to all subsequent
+   * CREATED transfers for the same key.
+   *
+   * This ensures that if a transfer fails, no later transfers for the same
+   * (integration:intentId) queue can be processed out of order, which would
+   * result in incorrect balance calculations.
+   *
+   * Two updates are performed within the same transaction:
+   * 1. The failed transfer itself → state: BLOCKED, reason: <error message>
+   * 2. All CREATED transfers for the same key with id > failedId
+   *    → state: BLOCKED, reason: predecessor_blocked
+   *
+   * @example
+   * // Before:
+   * //   id=1, tx_id=1 → CREATED (currently failing)
+   * //   id=2, tx_id=2 → CREATED
+   * //   id=3, tx_id=3 → CREATED
+   * //
+   * // After markBlockedWithSuccessors(id=1, key, 'intent broken'):
+   * //   id=1 → BLOCKED (reason: intent broken)
+   * //   id=2 → BLOCKED (reason: predecessor_blocked)
+   * //   id=3 → BLOCKED (reason: predecessor_blocked)
+   */
+  async markBlockedWithSuccessors(id: Id, key: PayoutInboxTransferKey, reason: string, ctx: TxContext): Promise<void> {
+    await ctx.em
+      .createQueryBuilder()
+      .update(PayoutInboxTransferEntity)
+      .set({ state: PayoutInboxTransferEntityState.BLOCKED, reason })
+      .where('id = :id', { id })
+      .execute()
+
+    await ctx.em
+      .createQueryBuilder()
+      .update(PayoutInboxTransferEntity)
+      .set({
+        state: PayoutInboxTransferEntityState.BLOCKED,
+        reason: 'predecessor_blocked',
+      })
+      .where('key = :key', { key })
+      .andWhere('id > :id', { id })
+      .andWhere('state = :state', { state: PayoutInboxTransferEntityState.CREATED })
+      .andWhere('deleted_at IS NULL')
+      .execute()
+  }
+
+  /**
+   * Removes a successfully processed transfer from the inbox.
+   *
+   * Once deleted, the next transfer for the same key becomes eligible
+   * for processing in the following processor iteration.
+   *
+   * @returns true if the record was found and deleted, false if it no longer exists
+   * (e.g. already deleted by another instance — safe to ignore).
+   */
+  async delete(params: Pick<PayoutInboxTransferModel, 'id'>, ctx: TxContext): Promise<boolean> {
+    const result = await ctx.em.softDelete(PayoutInboxTransferEntity, { id: params.id })
+
+    return result.affected === 1
+  }
+}

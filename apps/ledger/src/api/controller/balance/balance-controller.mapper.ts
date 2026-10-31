@@ -1,6 +1,6 @@
 import { GetBalancesParams, IntegrationType } from '@app/shared'
 import { UUID, IntegrationCurrency, IntegrationAccount } from '@app/types'
-import { BalanceProjectionResult } from '../../../data/repository/balance/balance-repository.types'
+import { BalanceProjectionResult } from '../../../module/balance/repository/balance/balance-repository.types'
 import { GetBalancesRequest, GetBalancesResponse } from '@app/shared/services/ledger/v1/grpc/generated/balance'
 
 export class BalanceControllerMapper {

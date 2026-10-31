@@ -1,4 +1,5 @@
 import { IntegrationAccount } from '@app/types/integration-account'
+import { IntegrationCurrency } from '@app/types'
 import { IntegrationType } from '@app/shared'
 import { IntegrationAccountData } from '../../../shared/model/integration-account.model'
 
@@ -17,4 +18,9 @@ export interface HasAccountsResult {
 export interface GetAccountsData {
   readonly integration: IntegrationType
   readonly accounts: ReadonlySet<IntegrationAccount>
+}
+
+export interface MakeUseAccountData {
+  readonly integration: IntegrationType
+  readonly currency: IntegrationCurrency
 }

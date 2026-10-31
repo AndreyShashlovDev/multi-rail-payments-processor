@@ -1,7 +1,7 @@
 import { AbstractInteractor, IntegrationAccount, IntegrationCurrency, RawNumeric, Numeric } from '@app/types'
 import { Injectable } from '@nestjs/common'
 import { CurrencyRepository } from '../../../../data/repository/currency/currency.repository'
-import { RelayerRepository } from '../../../../data/repository/relayer/relayer.repository'
+import { RelayerRepository } from '../../repository/relayer/relayer.repository'
 import { IntegrationType } from '@app/shared'
 import { IntegrationAccountRepository } from '../../../../data/repository/integration-account/integration-account.repository'
 

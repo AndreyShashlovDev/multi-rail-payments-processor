@@ -1,6 +1,6 @@
 import { AbstractInteractor, UUID, IntegrationCurrency, Numeric, IntegrationAccount } from '@app/types'
 import { PayoutIntentModel, PayoutOperationType } from '../../model/payout-intent.model'
-import { PayoutIntentRepository } from '../../../../data/repository/payout-intent/payout-intent.repository'
+import { PayoutIntentRepository } from '../../repository/payout-intent/payout-intent.repository'
 import { LedgerRepository } from '../../../../data/repository/ledger/ledger.repository'
 import { Injectable } from '@nestjs/common'
 import { IntegrationType, IntentType, Balance, OutboxTxContextRunner } from '@app/shared'
@@ -13,12 +13,12 @@ import {
   DestinationIntegrationAccount,
 } from '../../../../shared/model/composite-integration-account.model'
 import { ExternalIntegrationPublisher } from '../../../../data/publisher/external-integration/external-integration.publisher'
-import { ExternalIntegrationRepository } from '../../../../data/repository/external-integration/external-integration.repository'
+import { ExternalIntegrationRepository } from '../../repository/external-integration/external-integration.repository'
 import { CurrencyRepository } from '../../../../data/repository/currency/currency.repository'
 import { InboxRepository } from '../../../../data/repository/inbox/inbox.repository'
 import { DuplicateRequestException } from '../../../../shared/exception/duplicate-request.exception'
-import { RateRepository } from '../../../../data/repository/rate/rate.repository'
-import { ConversionRateResult } from '../../../../data/repository/rate/rate-repository.types'
+import { RateRepository } from '../../repository/rate/rate.repository'
+import { ConversionRateResult } from '../../repository/rate/rate-repository.types'
 import { FeeRepository } from '../../../../data/repository/fee/fee.repository'
 import { PlatformFeeResult } from '../../../../data/repository/fee/fee-repository.types'
 

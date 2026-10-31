@@ -1,6 +1,6 @@
 import { AbstractInteractor } from '@app/types'
 import { Injectable } from '@nestjs/common'
-import { EscrowRepository } from '../../../data/repository/escrow/escrow.repository'
+import { EscrowRepository } from '../repository/escrow/escrow.repository'
 import { EscrowType } from '../model/escrow.model'
 import { BalanceChange, BalanceChangeReason } from '@app/shared/types/balance-change'
 import { BalanceChangeType, TxContextRunner } from '@app/shared'

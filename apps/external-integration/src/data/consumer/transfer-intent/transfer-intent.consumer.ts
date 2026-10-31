@@ -6,12 +6,12 @@ import {
 } from '../../data-source/nats-jetstream/core-jetstream.data-source'
 import { toError } from '@app/utils'
 import { TransferIntentConsumerMapper } from './transfer-intent-consumer.mapper'
-import { TransferIntentEventModel, TransferIntentEventKeyType } from './transfer-intent-consumer.types'
+import { TransferIntentEvent, TransferIntentEventKeyType } from './transfer-intent-consumer.types'
 import { JsonObject } from '@app/types'
 
 export interface TransferIntentEventSubscription<T extends TransferIntentEventKeyType = TransferIntentEventKeyType> {
   readonly filter?: { type: T }
-  readonly handler: (event: TransferIntentEventModel<T>, type: T) => Promise<void>
+  readonly handler: (event: TransferIntentEvent<T>, type: T) => Promise<void>
 }
 
 @Injectable()
@@ -26,12 +26,12 @@ export class TransferIntentConsumer implements CoreJetstreamHandler {
     type: T,
     event: JsonObject<TransferIntentIncomingEventType>,
   ): Promise<void> {
-    const model = await TransferIntentConsumerMapper.validateTransferIntentEvent<T>(type, event)
+    const validated = await TransferIntentConsumerMapper.validateTransferIntentEvent<T>(type, event)
 
     const result = await Promise.allSettled(
       this.subscriptions
         .filter((sub): sub is TransferIntentEventSubscription<T> => !sub.filter || sub.filter.type === type)
-        .map(async (sub) => await sub.handler(model, type)),
+        .map(async (sub) => await sub.handler(validated, type)),
     )
 
     const failed = result.filter((r): r is PromiseRejectedResult => r.status === 'rejected')

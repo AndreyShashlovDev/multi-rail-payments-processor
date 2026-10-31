@@ -1,6 +1,6 @@
 import { AbstractInteractor, Id } from '@app/types'
 import { Injectable } from '@nestjs/common'
-import { TransactionIntentRepository } from '../../../../data/repository/transaction-intent/transaction-intent.repository'
+import { TransactionIntentRepository } from '../../repository/transaction-intent/transaction-intent.repository'
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { TransferRouteRepository } from '../../../../data/repository/transfer-route/transfer-route.repository'
 

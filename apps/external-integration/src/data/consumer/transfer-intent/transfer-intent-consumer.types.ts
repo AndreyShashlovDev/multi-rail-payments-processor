@@ -1,11 +1,11 @@
-import { TransferIntentHeldEventModel } from '../../../module/transfer-intent/model/transfer-intent-held-event.model'
-import { TransferIntentCreateEventModel } from '../../../module/transfer-intent/model/transfer-intent.create-event.model'
+import { TransferIntentCreateEvent } from '@app/shared/services/external-integration/v1'
+import { TransferIntentHeldEvent } from '@app/shared/services/external-integration/v1/event/transfer-intent-held.event'
 
-export type TransferIntentEventModelType = {
-  readonly create: TransferIntentCreateEventModel
-  readonly held: TransferIntentHeldEventModel
+export type TransferIntentEventType = {
+  readonly create: TransferIntentCreateEvent
+  readonly held: TransferIntentHeldEvent
 }
 
-export type TransferIntentEventKeyType = keyof TransferIntentEventModelType
+export type TransferIntentEventKeyType = keyof TransferIntentEventType
 
-export type TransferIntentEventModel<T extends TransferIntentEventKeyType> = TransferIntentEventModelType[T]
+export type TransferIntentEvent<T extends TransferIntentEventKeyType> = TransferIntentEventType[T]

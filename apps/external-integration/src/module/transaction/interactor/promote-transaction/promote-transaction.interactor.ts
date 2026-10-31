@@ -1,8 +1,8 @@
 import { SourceTransactionId } from '@app/types'
 import { Injectable } from '@nestjs/common'
-import { TransactionIntentRepository } from '../../../../data/repository/transaction-intent/transaction-intent.repository'
+import { TransactionIntentRepository } from '../../repository/transaction-intent/transaction-intent.repository'
 import { TransactionEventPublisher } from '../../../../data/publisher/transaction-event/transaction-event.publisher'
-import { TransactionRepository } from '../../../../data/repository/transaction/transaction.repository'
+import { TransactionRepository } from '../../repository/transaction/transaction.repository'
 import { IntegrationType, OutboxTxContextRunner } from '@app/shared'
 import { BasicTransactionInteractor } from '../basic-transaction.interactor'
 import { TransferIntentRepository } from '../../../../data/repository/transfer-intent/transfer-intent.repository'
@@ -11,6 +11,7 @@ import { TransactionIntentNotMarkAsPromotedException } from '../../exception/tra
 import { TransactionNotMarkAsPromotedException } from '../../exception/transaction-not-mark-as-promoted.exception'
 import { TransactionNotFoundException } from '../../exception/transaction-not-found.exception'
 import { TransferRouteRepository } from '../../../../data/repository/transfer-route/transfer-route.repository'
+import { TransactionEventMapper } from '../transaction-event.mapper'
 
 export interface PromoteTransactionParams {
   readonly sourceTxId: SourceTransactionId
@@ -71,7 +72,7 @@ export class PromoteTransactionInteractor extends BasicTransactionInteractor<Pro
 
         const result = { ...tx, transfers }
 
-        await this.transactionEventPublisher.enqueue(result, ctx)
+        await this.transactionEventPublisher.enqueue(TransactionEventMapper.toEvent(result), ctx)
       })
       .execute()
   }

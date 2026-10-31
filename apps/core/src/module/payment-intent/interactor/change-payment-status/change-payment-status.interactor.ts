@@ -8,7 +8,7 @@ import {
   PaymentBalanceChangeMetadata,
 } from '@app/shared/types/balance-change'
 import { InboxRepository } from '../../../../data/repository/inbox/inbox.repository'
-import { ReceiptRepository } from '../../../../data/repository/receipt/receipt.repository'
+import { ReceiptRepository } from '../../repository/receipt/receipt.repository'
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { PaymentReceiptData } from '../../model/payment-receipt.model'
 import { FinalizePaymentOperation } from '../operation/finalize-payment/finalize-payment.operation'

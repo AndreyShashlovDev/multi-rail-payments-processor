@@ -3,11 +3,12 @@ import { TransactionEventPublisher } from '../../../../data/publisher/transactio
 import { TransactionParserStrategy, RawDataType } from '../../service/transaction-parser/transaction-parser.strategy'
 import { TransactionSaverStrategy } from '../../service/transaction-saver/transaction-saver.strategy'
 import { IntegrationType, TransactionStatus, OutboxTxContextRunner } from '@app/shared'
-import { IntegrationAccountRepository } from '../../../../data/repository/integration-account/integration-account.repository'
+import { IntegrationAccountRepository } from '../../repository/integration-account/integration-account.repository'
 import { TransferIntentRepository } from '../../../../data/repository/transfer-intent/transfer-intent.repository'
 import { BasicTransactionInteractor } from '../basic-transaction.interactor'
-import { TransactionIntentRepository } from '../../../../data/repository/transaction-intent/transaction-intent.repository'
+import { TransactionIntentRepository } from '../../repository/transaction-intent/transaction-intent.repository'
 import { TxContext } from '@app/shared/types/tx-context.type'
+import { TransactionEventMapper } from '../transaction-event.mapper'
 
 export interface AcceptTransactionParams {
   readonly integration: IntegrationType
@@ -59,7 +60,7 @@ export class WebhookAcceptTransactionInteractor extends BasicTransactionInteract
 
         const result = { ...transaction, transfers }
 
-        await this.transactionEventPublisher.enqueue(result, ctx)
+        await this.transactionEventPublisher.enqueue(TransactionEventMapper.toEvent(result), ctx)
       })
       .execute()
   }
