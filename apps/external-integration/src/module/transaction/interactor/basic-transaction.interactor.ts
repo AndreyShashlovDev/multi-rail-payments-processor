@@ -1,36 +1,16 @@
 import { AbstractInteractor } from '@app/types'
 import { TransferModel } from '../model/transfer.model'
-import { TransferIntentRepository } from '../../../data/repository/transfer-intent/transfer-intent.repository'
-import { TxContext } from '@app/shared/types/tx-context.type'
 import { TransferEventWithIntent } from '../model/transaction-event.model'
 
 export abstract class BasicTransactionInteractor<T> extends AbstractInteractor<T, Promise<void>> {
-  protected constructor(protected readonly transferIntentRepository: TransferIntentRepository) {
-    super()
-  }
-
-  protected async mergeTransfersWithTransferIntent(
-    transfer: ReadonlyArray<TransferModel>,
-    ctx?: TxContext,
-  ): Promise<ReadonlyArray<TransferEventWithIntent>> {
-    const ids = new Set(
-      transfer.filter((transfer) => transfer.transferIntentId).map((transfer) => transfer.transferIntentId!),
-    )
-
-    if (ids.size === 0) {
-      return []
-    }
-
-    const intents = await this.transferIntentRepository.get(ids, ctx)
-    const intentsByKey = new Map(intents.map((intent) => [intent.id, intent]))
-
-    return transfer.map((transfer) => {
-      const intent = transfer.transferIntentId ? (intentsByKey.get(transfer.transferIntentId) ?? null) : null
-
-      return {
-        ...transfer,
-        intent,
-      }
-    })
+  // the intent reference is stored with the transfer (opaque for the executor) and echoed back in TRANSACTION events
+  protected withIntent(transfers: ReadonlyArray<TransferModel>): ReadonlyArray<TransferEventWithIntent> {
+    return transfers.map((transfer) => ({
+      ...transfer,
+      intent:
+        transfer.transferIntentId !== null && transfer.intentType !== null && transfer.intentId !== null
+          ? { id: transfer.transferIntentId, intentType: transfer.intentType, intentId: transfer.intentId }
+          : null,
+    }))
   }
 }

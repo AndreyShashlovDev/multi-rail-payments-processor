@@ -5,7 +5,7 @@ export class Migration1781368230156 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `CREATE TABLE "external_integration"."transfer" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" BIGSERIAL NOT NULL, "transaction_id" bigint NOT NULL, "index" integer NOT NULL, "integration" smallint NOT NULL, "operation" smallint NOT NULL, "initiator" text NOT NULL, "from" text NOT NULL, "to" text NOT NULL, "from_owner" text, "to_owner" text, "currency" text NOT NULL, "amount_raw" text NOT NULL, "transfer_intent_id" bigint, "metadata" jsonb, CONSTRAINT "PK_fd9ddbdd49a17afcbe014401295" PRIMARY KEY ("id"))`,
+      `CREATE TABLE "external_integration"."transfer" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" BIGSERIAL NOT NULL, "transaction_id" bigint NOT NULL, "index" integer NOT NULL, "integration" smallint NOT NULL, "operation" smallint NOT NULL, "initiator" text NOT NULL, "from" text NOT NULL, "to" text NOT NULL, "from_owner" text, "to_owner" text, "currency" text NOT NULL, "amount_raw" text NOT NULL, "transfer_intent_id" bigint, "transfer_route_id" bigint, "intent_type" smallint, "intent_id" text, "metadata" jsonb, CONSTRAINT "PK_fd9ddbdd49a17afcbe014401295" PRIMARY KEY ("id"))`,
     )
     await queryRunner.query(
       `CREATE INDEX "idx_transfer_transaction_id" ON "external_integration"."transfer" ("transaction_id") `,
@@ -23,7 +23,7 @@ export class Migration1781368230156 implements MigrationInterface {
       `CREATE INDEX "idx_transfer_intent_status" ON "external_integration"."transfer_intent" ("status") `,
     )
     await queryRunner.query(
-      `CREATE TABLE "external_integration"."transfer_route" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" BIGSERIAL NOT NULL, "tx_id" bigint, "transfer_intent_id" bigint NOT NULL, "intent_id" text NOT NULL, "tx_index" smallint NOT NULL, "execution_type" smallint NOT NULL, "integration" smallint NOT NULL, "initiator" text NOT NULL, "from_account" text NOT NULL, "to_account" text NOT NULL, "raw_amount" numeric(60,30) NOT NULL, "currency" text NOT NULL, "status" smallint NOT NULL, "transaction_intent_id" bigint, CONSTRAINT "PK_transfer_route" PRIMARY KEY ("id"))`,
+      `CREATE TABLE "external_integration"."transfer_route" ("created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "id" BIGSERIAL NOT NULL, "tx_id" bigint, "transfer_intent_id" bigint NOT NULL, "intent_id" text NOT NULL, "tx_index" smallint NOT NULL, "execution_type" smallint NOT NULL, "integration" smallint NOT NULL, "initiator" text NOT NULL, "from_account" text NOT NULL, "to_account" text NOT NULL, "raw_amount" numeric(60,30) NOT NULL, "currency" text NOT NULL, "status" smallint NOT NULL, "result" jsonb, CONSTRAINT "PK_transfer_route" PRIMARY KEY ("id"))`,
     )
     await queryRunner.query(
       `CREATE INDEX "idx_transfer_route_intent_id" ON "external_integration"."transfer_route" ("intent_id") `,
@@ -32,7 +32,7 @@ export class Migration1781368230156 implements MigrationInterface {
       `CREATE INDEX "idx_transfer_route_status" ON "external_integration"."transfer_route" ("status") `,
     )
     await queryRunner.query(
-      `CREATE INDEX "idx_transfer_route_transaction_intent_id" ON "external_integration"."transfer_route" ("transaction_intent_id") `,
+      `CREATE INDEX "idx_transfer_route_tx_id" ON "external_integration"."transfer_route" ("tx_id") `,
     )
     await queryRunner.query(
       `CREATE INDEX "idx_transfer_route_transfer_intent_id" ON "external_integration"."transfer_route" ("transfer_intent_id") `,
@@ -67,15 +67,9 @@ export class Migration1781368230156 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "external_integration"."transfer_route" ADD CONSTRAINT "FK_4afef8c2d55a87e29aaa047f439" FOREIGN KEY ("transfer_intent_id") REFERENCES "external_integration"."transfer_intent"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
     )
-    await queryRunner.query(
-      `ALTER TABLE "external_integration"."transfer_route" ADD CONSTRAINT "FK_2acc3d79714026fc13fe6757284" FOREIGN KEY ("transaction_intent_id") REFERENCES "external_integration"."transaction_intent"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
-    )
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `ALTER TABLE "external_integration"."transfer_route" DROP CONSTRAINT "FK_2acc3d79714026fc13fe6757284"`,
-    )
     await queryRunner.query(
       `ALTER TABLE "external_integration"."transfer_route" DROP CONSTRAINT "FK_4afef8c2d55a87e29aaa047f439"`,
     )
@@ -91,7 +85,7 @@ export class Migration1781368230156 implements MigrationInterface {
     await queryRunner.query(`DROP INDEX "external_integration"."idx_transaction_intent_initiator_integration"`)
     await queryRunner.query(`DROP TABLE "external_integration"."transaction_intent"`)
     await queryRunner.query(`DROP INDEX "external_integration"."idx_transfer_route_transfer_intent_id"`)
-    await queryRunner.query(`DROP INDEX "external_integration"."idx_transfer_route_transaction_intent_id"`)
+    await queryRunner.query(`DROP INDEX "external_integration"."idx_transfer_route_tx_id"`)
     await queryRunner.query(`DROP INDEX "external_integration"."idx_transfer_route_status"`)
     await queryRunner.query(`DROP INDEX "external_integration"."idx_transfer_route_intent_id"`)
     await queryRunner.query(`DROP TABLE "external_integration"."transfer_route"`)

@@ -1,9 +1,8 @@
-import { Entity, Column, OneToMany, Index, PrimaryGeneratedColumn, Unique } from 'typeorm'
+import { Entity, Column, Index, PrimaryGeneratedColumn, Unique } from 'typeorm'
 import { APP_SCHEMA } from '../integration-postgres.config'
 import { BasicEntity } from '@app/database'
 import { type SourceTransactionId, Id, RawNumeric, type IntegrationCurrency, IntegrationAccount } from '@app/types'
 import { IntegrationEntityType, ExecutionEntityType } from '@app/shared'
-import { TransferRouteEntity } from './transfer-route.entity'
 
 export type TransactionIntentMetadata = Record<string, unknown>
 
@@ -55,12 +54,6 @@ export class TransactionIntentEntity extends BasicEntity {
 
   @Column({ type: 'text', nullable: true })
   readonly signedData: string | null
-
-  @OneToMany(() => TransferRouteEntity, (op) => op.transactionIntent, {
-    eager: false,
-    persistence: false,
-  })
-  readonly transferRoutes: TransferRouteEntity[]
 
   @Column({ type: 'text', nullable: true })
   readonly metadata: TransactionIntentMetadata

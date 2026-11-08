@@ -99,6 +99,9 @@ export class EnvironmentVariables {
 
   @IsString()
   readonly KAFKA_CLIENT_ID: string = 'integration-service'
+
+  @IsString()
+  readonly KAFKA_GROUP_ID_PREFIX: string = 'integration'
 }
 
 export function validate(config: Record<string, unknown>): EnvironmentVariables {

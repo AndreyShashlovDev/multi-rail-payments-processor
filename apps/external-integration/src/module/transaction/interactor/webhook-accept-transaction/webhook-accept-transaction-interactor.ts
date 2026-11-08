@@ -3,8 +3,6 @@ import { TransactionEventPublisher } from '../../../../data/publisher/transactio
 import { TransactionParserStrategy, RawDataType } from '../../service/transaction-parser/transaction-parser.strategy'
 import { TransactionSaverStrategy } from '../../service/transaction-saver/transaction-saver.strategy'
 import { IntegrationType, TransactionStatus, OutboxTxContextRunner } from '@app/shared'
-import { IntegrationAccountRepository } from '../../repository/integration-account/integration-account.repository'
-import { TransferIntentRepository } from '../../../../data/repository/transfer-intent/transfer-intent.repository'
 import { BasicTransactionInteractor } from '../basic-transaction.interactor'
 import { TransactionIntentRepository } from '../../repository/transaction-intent/transaction-intent.repository'
 import { TxContext } from '@app/shared/types/tx-context.type'
@@ -25,15 +23,13 @@ export class WebhookAcceptTransactionInteractor extends BasicTransactionInteract
     private readonly transactionParser: TransactionParserStrategy,
     private readonly transactionSaver: TransactionSaverStrategy,
     private readonly transactionIntentRepository: TransactionIntentRepository,
-    private readonly integrationAccountRepository: IntegrationAccountRepository,
-    transferIntentRepository: TransferIntentRepository,
   ) {
-    super(transferIntentRepository)
+    super()
   }
 
   async execute(params: AcceptTransactionParams): Promise<void> {
     const parsedTransaction = await this.transactionParser.parse(params.source, params.integration, params.raw)
-    // this.integrationAccountRepository.hasAccounts() - todo call for check before save and publish event (grpc request to Core)
+    // todo check platform accounts before save and publish event (grpc request to Core)
 
     //todo const parse logs (or account record of Solana). looking for bridge (relayer) deposit event (extract deposit id)
     // update transfer intent with deposit id
@@ -56,9 +52,7 @@ export class WebhookAcceptTransactionInteractor extends BasicTransactionInteract
           ctx,
         )
 
-        const transfers = await this.mergeTransfersWithTransferIntent(transaction.transfers, params.ctx)
-
-        const result = { ...transaction, transfers }
+        const result = { ...transaction, transfers: this.withIntent(transaction.transfers) }
 
         await this.transactionEventPublisher.enqueue(TransactionEventMapper.toEvent(result), ctx)
       })

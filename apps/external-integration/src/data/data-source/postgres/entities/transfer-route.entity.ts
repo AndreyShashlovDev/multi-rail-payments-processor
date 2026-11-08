@@ -4,13 +4,13 @@ import { Id, IntegrationAccount, IntegrationCurrency, NumericColumn, Numeric, UU
 import { IntegrationEntityType, ExecutionEntityType } from '@app/shared'
 import { TransferIntentEntity } from './transfer-intent.entity'
 import { BasicEntity } from '@app/database'
-import { TransactionIntentEntity } from './transaction-intent.entity'
+
+// step result as reported by the executor (TransferRouteCompleted), stored as is
+export type TransferRouteEntityResult = Record<string, string | number | boolean | null>
 
 export enum TransferRouteEntityStatus {
-  CREATED = 1, // создан, ждёт запуска
-  PENDING_HOLD = 2,
-  HELD = 3,
-  IN_PROGRESS = 4, // transaction_intent создан и в работе
+  CREATED = 1, // planned, waits for the previous step
+  IN_PROGRESS = 4, // ExecuteTransferRoute sent to the executor
   COMPLETED = 5,
   FAILED = 6,
   CANCELED = 7,
@@ -18,7 +18,7 @@ export enum TransferRouteEntityStatus {
 
 @Entity({ schema: APP_SCHEMA, name: TransferRouteEntity.NAME })
 @Index(`idx_transfer_route_transfer_intent_id`, ['transferIntentId'])
-@Index('idx_transfer_route_transaction_intent_id', ['transactionIntentId'])
+@Index('idx_transfer_route_tx_id', ['txId'])
 @Index('idx_transfer_route_status', ['status'])
 @Index('idx_transfer_route_intent_id', ['intentId'])
 export class TransferRouteEntity extends BasicEntity {
@@ -67,10 +67,6 @@ export class TransferRouteEntity extends BasicEntity {
   @Column({ type: 'smallint' })
   readonly status: TransferRouteEntityStatus
 
-  @Column({ type: 'bigint', nullable: true })
-  readonly transactionIntentId: Id | null
-
-  @ManyToOne(() => TransactionIntentEntity, { eager: false, persistence: false })
-  @JoinColumn()
-  readonly transactionIntent?: TransactionIntentEntity | null
+  @Column({ type: 'jsonb', nullable: true })
+  readonly result: TransferRouteEntityResult | null
 }

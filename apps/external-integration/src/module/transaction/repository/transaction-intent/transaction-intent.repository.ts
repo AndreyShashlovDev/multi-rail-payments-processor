@@ -11,10 +11,6 @@ import {
 } from '../../../../data/data-source/postgres/entities/transaction-intent.entity'
 import { integrationTypeFromDomain } from '@app/shared'
 import { Id } from '@app/types'
-import {
-  TransferRouteEntity,
-  TransferRouteEntityStatus,
-} from '../../../../data/data-source/postgres/entities/transfer-route.entity'
 
 @Injectable()
 export class TransactionIntentRepository {
@@ -40,38 +36,9 @@ export class TransactionIntentRepository {
       .createQueryBuilder(TransactionIntentEntity, 'ti')
       .setLock('pessimistic_write', undefined, ['ti'])
       .setOnLocked('skip_locked')
-      // transaction is waiting for hold
-      .where('ti.status = :status', { status: TransactionIntentEntityStatus.HOLD_PENDING })
+      // hold confirmed by Core (HELD), see markReadyForSigning
+      .where('ti.status = :status', { status: TransactionIntentEntityStatus.READY_FOR_SIGNING })
       .andWhere('ti.signedData IS NULL')
-      // all routes of this transaction are in HELD status
-      .andWhere((qb) => {
-        const sub = qb
-          .subQuery()
-          .select('1')
-          .from(TransferRouteEntity, 'route')
-          .where('route.transactionIntentId = ti.id')
-          .andWhere('route.status != :held', { held: TransferRouteEntityStatus.HELD })
-          .getQuery()
-        return `NOT EXISTS ${sub}`
-      })
-      // no unfinished predecessors at txIndex
-      .andWhere((qb) => {
-        const sub = qb
-          .subQuery()
-          .select('1')
-          .from(TransferRouteEntity, 'predecessor')
-          .innerJoin(
-            TransferRouteEntity,
-            'current',
-            'current.transactionIntentId = ti.id AND current.transferIntentId = predecessor.transferIntentId',
-          )
-          .where('predecessor.txIndex < current.txIndex')
-          .andWhere('predecessor.status != :completed', {
-            completed: TransferRouteEntityStatus.COMPLETED,
-          })
-          .getQuery()
-        return `NOT EXISTS ${sub}`
-      })
       // there is no other transaction from the same initiator in the signing process
       .andWhere((qb) => {
         const sub = qb
@@ -95,10 +62,17 @@ export class TransactionIntentRepository {
     return result.map((ti) => TransactionIntentRepositoryMapper.toDomain(ti))
   }
 
-  async markReadyForSigning(params: Pick<TransactionIntentModel, 'id'>, ctx: TxContext): Promise<boolean> {
+  async markReadyForSigning(
+    params: Pick<TransactionIntentModel, 'sourceTxId' | 'integration'>,
+    ctx: TxContext,
+  ): Promise<boolean> {
     const result = await ctx.em.update(
       TransactionIntentEntity,
-      { status: TransactionIntentEntityStatus.HOLD_PENDING, id: params.id },
+      {
+        status: TransactionIntentEntityStatus.HOLD_PENDING,
+        integration: integrationTypeFromDomain(params.integration),
+        sourceTxId: params.sourceTxId,
+      },
       { status: TransactionIntentEntityStatus.READY_FOR_SIGNING },
     )
 

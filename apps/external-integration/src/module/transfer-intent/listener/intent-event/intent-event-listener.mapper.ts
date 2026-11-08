@@ -1,7 +1,5 @@
 import { TransferIntentCreateEvent } from '@app/shared/services/external-integration/v1'
-import { TransferIntentHeldEvent } from '@app/shared/services/external-integration/v1/event/transfer-intent-held.event'
 import { TransferIntentCreateEventModel } from '../../model/transfer-intent.create-event.model'
-import { TransferIntentHeldEventModel } from '../../model/transfer-intent-held-event.model'
 
 export class IntentEventListenerMapper {
   static toCreateEventModel(event: TransferIntentCreateEvent): TransferIntentCreateEventModel {
@@ -18,14 +16,6 @@ export class IntentEventListenerMapper {
       toIntegration: event.toIntegration,
       toCurrency: event.toCurrency,
       to: event.to,
-    }
-  }
-
-  static toHeldEventModel(event: TransferIntentHeldEvent): TransferIntentHeldEventModel {
-    return {
-      uniqueKey: event.uniqueKey,
-      intentType: event.intentType,
-      intentData: event.intentData,
     }
   }
 }

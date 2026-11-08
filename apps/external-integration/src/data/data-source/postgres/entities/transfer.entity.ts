@@ -1,9 +1,9 @@
 import { Entity, PrimaryGeneratedColumn, ManyToOne, Column, JoinColumn, Index } from 'typeorm'
-import { type IntegrationAccount, type IntegrationCurrency, Id, type RawNumeric } from '@app/types'
+import { type IntegrationAccount, type IntegrationCurrency, Id, type RawNumeric, type UUID } from '@app/types'
 import { BasicEntity } from '@app/database'
 import { TransactionEntity } from './transaction.entity'
 import { APP_SCHEMA } from '../integration-postgres.config'
-import { IntegrationEntityType } from '@app/shared'
+import { IntegrationEntityType, IntentEntityType } from '@app/shared'
 
 export type TransferEntityMetadata = Record<string, unknown>
 
@@ -64,6 +64,16 @@ export class TransferEntity extends BasicEntity {
 
   @Column({ type: 'bigint', nullable: true })
   readonly transferIntentId: Id | null
+
+  // the step (orchestrator's transfer route) this transfer executes, opaque for the executor
+  @Column({ type: 'bigint', nullable: true })
+  readonly transferRouteId: Id | null
+
+  @Column({ type: 'smallint', nullable: true })
+  readonly intentType: IntentEntityType | null
+
+  @Column({ type: 'text', nullable: true })
+  readonly intentId: UUID | Id | null
 
   @Column({ type: 'jsonb', nullable: true })
   readonly metadata: TransferEntityMetadata | null // tx fee and some additional data.

@@ -5,12 +5,10 @@ import { TransactionEventPublisher } from '../../../../data/publisher/transactio
 import { TransactionRepository } from '../../repository/transaction/transaction.repository'
 import { IntegrationType, OutboxTxContextRunner } from '@app/shared'
 import { BasicTransactionInteractor } from '../basic-transaction.interactor'
-import { TransferIntentRepository } from '../../../../data/repository/transfer-intent/transfer-intent.repository'
 import { TxContext } from '@app/shared/types/tx-context.type'
 import { TransactionIntentNotMarkAsPromotedException } from '../../exception/transaction-intent-not-mark-as-promoted.exception'
 import { TransactionNotMarkAsPromotedException } from '../../exception/transaction-not-mark-as-promoted.exception'
 import { TransactionNotFoundException } from '../../exception/transaction-not-found.exception'
-import { TransferRouteRepository } from '../../../../data/repository/transfer-route/transfer-route.repository'
 import { TransactionEventMapper } from '../transaction-event.mapper'
 
 export interface PromoteTransactionParams {
@@ -26,10 +24,8 @@ export class PromoteTransactionInteractor extends BasicTransactionInteractor<Pro
     private readonly transactionIntentRepository: TransactionIntentRepository,
     private readonly transactionEventPublisher: TransactionEventPublisher,
     private readonly transactionRepository: TransactionRepository,
-    transferIntentRepository: TransferIntentRepository,
-    private readonly transferRouteRepository: TransferRouteRepository,
   ) {
-    super(transferIntentRepository)
+    super()
   }
 
   async execute({ sourceTxId, integration, ctx }: PromoteTransactionParams): Promise<void> {
@@ -37,12 +33,12 @@ export class PromoteTransactionInteractor extends BasicTransactionInteractor<Pro
     await this.txRunner
       .create(ctx)
       .pipeline(async (ctx) => {
-        const updatedTransactionIntentId = await this.transactionIntentRepository.markPromoted(
+        const promotedTransactionIntentId = await this.transactionIntentRepository.markPromoted(
           { sourceTxId, integration },
           ctx,
         )
 
-        if (!updatedTransactionIntentId) {
+        if (!promotedTransactionIntentId) {
           throw new TransactionIntentNotMarkAsPromotedException(sourceTxId, integration)
         }
 
@@ -52,25 +48,13 @@ export class PromoteTransactionInteractor extends BasicTransactionInteractor<Pro
           throw new TransactionNotMarkAsPromotedException(sourceTxId, integration)
         }
 
-        const transferRoutes = await this.transferRouteRepository.getByTransactionIntent(
-          new Set([updatedTransactionIntentId]),
-          ctx,
-        )
-
-        if (transferRoutes.length === 0) {
-          // todo
-          throw new Error('Routes not found')
-        }
-
         const tx = await this.transactionRepository.get({ sourceTxId, integration }, ctx)
 
         if (!tx) {
           throw new TransactionNotFoundException(sourceTxId, integration)
         }
 
-        const transfers = await this.mergeTransfersWithTransferIntent(tx.transfers, ctx)
-
-        const result = { ...tx, transfers }
+        const result = { ...tx, transfers: this.withIntent(tx.transfers) }
 
         await this.transactionEventPublisher.enqueue(TransactionEventMapper.toEvent(result), ctx)
       })

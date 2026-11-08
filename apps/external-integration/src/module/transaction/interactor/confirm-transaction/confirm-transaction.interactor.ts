@@ -3,13 +3,13 @@ import { TransactionEventPublisher } from '../../../../data/publisher/transactio
 import { TransactionNotFoundException } from '../../exception/transaction-not-found.exception'
 import { Injectable } from '@nestjs/common'
 import { BasicTransactionInteractor } from '../basic-transaction.interactor'
-import { TransferIntentRepository } from '../../../../data/repository/transfer-intent/transfer-intent.repository'
 import { IntegrationType, OutboxTxContextRunner } from '@app/shared'
 import { TransactionRepository } from '../../repository/transaction/transaction.repository'
 import { TxContext } from '@app/shared/types/tx-context.type'
-import { TransferRouteRepository } from '../../../../data/repository/transfer-route/transfer-route.repository'
-import { TransactionEventData } from '../../model/transaction-event.model'
 import { TransactionEventMapper } from '../transaction-event.mapper'
+import { TransferRoutePublisher } from '../../../../data/publisher/transfer-route/transfer-route.publisher'
+import { TransferRouteResultExtractorStrategy } from '../../service/transfer-route-result/transfer-route-result-extractor.strategy'
+import { TransferRouteCompletedEvent } from '@app/shared/services/transfer-execution/v1'
 
 export interface ConfirmTransactionParams {
   readonly sourceTxId: SourceTransactionId
@@ -22,11 +22,11 @@ export class ConfirmTransactionInteractor extends BasicTransactionInteractor<Con
   constructor(
     private readonly txRunner: OutboxTxContextRunner,
     private readonly transactionRepository: TransactionRepository,
-    transferIntentRepository: TransferIntentRepository,
-    private readonly transferRouteRepository: TransferRouteRepository,
     private readonly transactionEventPublisher: TransactionEventPublisher,
+    private readonly transferRoutePublisher: TransferRoutePublisher,
+    private readonly transferRouteResultExtractor: TransferRouteResultExtractorStrategy,
   ) {
-    super(transferIntentRepository)
+    super()
   }
 
   async execute({ sourceTxId, integration, ctx }: ConfirmTransactionParams): Promise<void> {
@@ -40,49 +40,22 @@ export class ConfirmTransactionInteractor extends BasicTransactionInteractor<Con
           throw new TransactionNotFoundException(sourceTxId, integration)
         }
 
-        const completedRoutes = await this.transferRouteRepository.markAsCompleted(tx.id, ctx)
+        const result = { ...tx, transfers: this.withIntent(tx.transfers) }
 
-        if (!completedRoutes) {
-          // todo
-          throw new Error(`No one routes not completed for tx id: ${tx.id}`)
-        }
+        await this.transactionEventPublisher.enqueue(TransactionEventMapper.toEvent(result), ctx)
 
-        const completedTransferIntent = await this.transferRouteRepository.getFullyCompletedIntentIdByTxId(tx.id, ctx)
+        // transfers that execute a step: report completion together with the step result to the orchestrator
+        for (const transfer of tx.transfers) {
+          if (transfer.transferRouteId === null) continue
 
-        if (completedTransferIntent) {
-          const changedCompletedIntent = await this.transferIntentRepository.markAsCompleted(
-            { id: completedTransferIntent.transferIntentId },
+          await this.transferRoutePublisher.enqueueCompleted(
+            new TransferRouteCompletedEvent(
+              transfer.transferRouteId,
+              tx.id,
+              this.transferRouteResultExtractor.extract(tx, transfer),
+            ),
             ctx,
           )
-
-          if (!changedCompletedIntent) {
-            throw new Error(
-              `Transfer intent not marked as Completed! transfer intent id: ${completedTransferIntent.transferIntentId}`,
-            )
-          }
-        }
-
-        const transfers = await this.mergeTransfersWithTransferIntent(tx.transfers, ctx)
-
-        const result: TransactionEventData[] = [{ ...tx, transfers }]
-
-        // send next tx of transfer intent
-        if (!completedTransferIntent) {
-          const nextRoutes = await this.transferRouteRepository.claimNextPendingRoutesByTxId(tx.id, ctx)
-
-          if (nextRoutes.length > 0) {
-            const transactionIntentIds = new Set(nextRoutes.map((r) => r.transactionIntentId!))
-            const nextTransactions = await this.transactionRepository.findByIds(transactionIntentIds, ctx)
-
-            for (const nextTx of nextTransactions) {
-              const transfers = await this.mergeTransfersWithTransferIntent(nextTx.transfers, ctx)
-              result.push({ ...nextTx, transfers })
-            }
-          }
-        }
-
-        for (const event of result) {
-          await this.transactionEventPublisher.enqueue(TransactionEventMapper.toEvent(event), ctx)
         }
       })
       .execute()

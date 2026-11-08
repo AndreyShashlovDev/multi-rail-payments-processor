@@ -1,7 +1,7 @@
 import { AbstractInteractor } from '@app/types'
 import { TransferIntentData } from '../../model/transfer-intent.model'
 import { Injectable } from '@nestjs/common'
-import { TransferIntentRepository } from '../../../../data/repository/transfer-intent/transfer-intent.repository'
+import { TransferIntentRepository } from '../../repository/transfer-intent/transfer-intent.repository'
 import { InboxRepository } from '../../../../data/repository/inbox/inbox.repository'
 import { TxContextRunner } from '@app/shared'
 

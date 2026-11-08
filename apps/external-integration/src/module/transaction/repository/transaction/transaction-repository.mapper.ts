@@ -12,6 +12,8 @@ import {
   TransactionStatus,
   executionTypeToDomain,
   executionTypeFromDomain,
+  intentTypeToDomain,
+  intentTypeFromDomain,
 } from '@app/shared'
 import { TransactionRawEntity } from '../../../../data/data-source/postgres/entities/transaction-raw.entity'
 import { TransferEntity, OperationEntityType } from '../../../../data/data-source/postgres/entities/transfer.entity'
@@ -128,6 +130,9 @@ export class TransactionRepositoryMapper {
       amountRaw: entity.amountRaw,
       currency: entity.currency,
       transferIntentId: entity.transferIntentId,
+      transferRouteId: entity.transferRouteId,
+      intentType: entity.intentType !== null ? intentTypeToDomain(entity.intentType) : null,
+      intentId: entity.intentId,
       metadata: entity.metadata,
       createdAt: entity.createdAt,
     }
@@ -146,6 +151,9 @@ export class TransactionRepositoryMapper {
       amountRaw: transfer.amountRaw,
       currency: transfer.currency,
       transferIntentId: transfer.transferIntentId,
+      transferRouteId: transfer.transferRouteId,
+      intentType: transfer.intentType !== null ? intentTypeFromDomain(transfer.intentType) : null,
+      intentId: transfer.intentId,
       metadata: transfer.metadata,
     })
   }

@@ -8,7 +8,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { ConfirmTransactionInteractor } from '../../../module/transaction/interactor/confirm-transaction/confirm-transaction.interactor'
 import { randomBytes } from 'node:crypto'
 import { InternalBlockRepository } from '../../../data/repository/internal-block/internal-block.repository'
-import { TransferRouteRepository } from '../../../data/repository/transfer-route/transfer-route.repository'
+import { TransactionRepository } from '../../../module/transaction/repository/transaction/transaction.repository'
 
 /**
  * @deprecated remove it in real project! just for example. simulation finalize tx
@@ -26,7 +26,7 @@ export class FinalizePayoutFlowInteractor extends AbstractInteractor<never, Prom
     private readonly acceptTransactionInteractor: WebhookAcceptTransactionInteractor,
     private readonly confirmTransactionInteractor: ConfirmTransactionInteractor,
     private readonly internalBlockRepository: InternalBlockRepository,
-    private readonly transferRouteRepository: TransferRouteRepository,
+    private readonly transactionRepository: TransactionRepository,
   ) {
     super()
     this.logger.warn(`Enabled FinalizePayoutFlowInteractor! Remove it!!`)
@@ -42,12 +42,6 @@ export class FinalizePayoutFlowInteractor extends AbstractInteractor<never, Prom
           return
         }
 
-        // check transferIntents on PREPARED and mark tx intent as ReadyForSigning
-        await Promise.all(
-          txIntents.map(
-            async (intent) => await this.transactionIntentRepository.markReadyForSigning({ id: intent.id }, ctx),
-          ),
-        )
         // send query to custody service for sign payload
         await Promise.all(
           txIntents.map(async (intent) => await this.signTransactionInteractor.execute({ id: intent.id, ctx })),
@@ -77,13 +71,6 @@ export class FinalizePayoutFlowInteractor extends AbstractInteractor<never, Prom
           ),
         )
 
-        const routes = await this.transferRouteRepository.getByTransactionIntent(
-          new Set(txIntents.map((item) => item.id)),
-          ctx,
-        )
-
-        const routesByTransaction = Map.groupBy(routes, (item) => item.transactionIntentId)
-
         // webhook/event from blockchain simulation
         await Promise.all(
           txIntents.map(async (intent) => {
@@ -93,23 +80,27 @@ export class FinalizePayoutFlowInteractor extends AbstractInteractor<never, Prom
                 ? await this.internalBlockRepository.incrementAndGet(intent.integration, ctx)
                 : '33'
 
-            // fixme single route by transaction (skip batch flow)
-            const transfer = (routesByTransaction.get(intent.id) ?? [])[0]
+            // fixme single transfer by transaction (skip batch flow)
+            const transaction = await this.transactionRepository.get(
+              { sourceTxId: intent.sourceTxId, integration: intent.integration },
+              ctx,
+            )
+            const transfer = transaction!.transfers[0]
 
             await this.acceptTransactionInteractor.execute({
               integration: intent.integration,
               source: 'webhook',
               raw: {
                 chain: 'ethereum',
-                from: IntegrationAccount.create(intent.integration, transfer.fromAccount) as EvmAddress,
-                to: IntegrationAccount.create(intent.integration, transfer.toAccount) as EvmAddress,
+                from: IntegrationAccount.create(intent.integration, transfer.from) as EvmAddress,
+                to: IntegrationAccount.create(intent.integration, transfer.to) as EvmAddress,
                 currency: transfer.currency,
                 fee:
                   intent.executionType === ExecutionType.INTERNAL
                     ? Numeric.ZERO.toString()
                     : Numeric.create('0.1').mul(Numeric.create(10).pow(18)).toString(),
                 index: 0,
-                amount: transfer.rawAmount.toFixed(Numeric.DECIMALS),
+                amount: transfer.amountRaw,
                 success: true,
                 blockNumber,
                 blockHash: randomBytes(32).toString('hex') as EvmHashType,

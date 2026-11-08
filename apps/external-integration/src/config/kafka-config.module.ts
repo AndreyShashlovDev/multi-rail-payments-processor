@@ -6,7 +6,8 @@ import { AppKafkaConfig } from './kafka.config'
 const Provider: FactoryProvider = {
   provide: AppKafkaConfig,
   inject: [EnvironmentVariables],
-  useFactory: (env: EnvironmentVariables) => new AppKafkaConfig(env.KAFKA_BROKERS, env.KAFKA_CLIENT_ID),
+  useFactory: (env: EnvironmentVariables) =>
+    new AppKafkaConfig(env.KAFKA_BROKERS, env.KAFKA_CLIENT_ID, env.KAFKA_GROUP_ID_PREFIX),
 }
 
 @Module({

@@ -5,6 +5,8 @@ import { OutboxRepository } from '../../../data/repository/outbox/outbox.reposit
 import { OutboxModel, OutboxUniqueKey } from '../../../data/repository/outbox/outbox-repository.types'
 import { TransactionEventPublisher } from '../../../data/publisher/transaction-event/transaction-event.publisher'
 import { TransactionEvent } from '@app/shared/services/external-integration/v1'
+import { TransferRoutePublisher } from '../../../data/publisher/transfer-route/transfer-route.publisher'
+import { BasicEvent, JsonObject } from '@app/types'
 
 @Injectable()
 export class OutboxPublishInteractor extends AbstractInteractor<never, Promise<void>> {
@@ -17,6 +19,7 @@ export class OutboxPublishInteractor extends AbstractInteractor<never, Promise<v
     private readonly txRunner: TxContextRunner,
     private readonly outboxRepository: OutboxRepository,
     private readonly transactionEventPublisher: TransactionEventPublisher,
+    private readonly transferRoutePublisher: TransferRoutePublisher,
   ) {
     super()
   }
@@ -65,6 +68,12 @@ export class OutboxPublishInteractor extends AbstractInteractor<never, Promise<v
   private async route(entry: OutboxModel): Promise<void> {
     if (this.transactionEventPublisher.isSupportEvent(entry.event)) {
       await this.transactionEventPublisher.publish(JSON.parse(entry.payload) as TransactionEvent)
+
+      return
+    }
+
+    if (this.transferRoutePublisher.isSupportEvent(entry.event)) {
+      await this.transferRoutePublisher.publish(entry.event, JSON.parse(entry.payload) as JsonObject<BasicEvent>)
 
       return
     }

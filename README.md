@@ -121,15 +121,37 @@ This project demonstrates a clean, scalable payment infrastructure built with Ev
 **Responsibility**: Communication with external systems
 
 - Integrations with CEX (Centralized Exchanges), DEX (Decentralized Exchanges), Banking, Blockchain
-- Receives `TransferIntent` events from Core and builds actual transactions
+- Receives `TransferIntent` events from Core and executes them as one or more transactions
 - Parses incoming blockchain transactions via webhooks
-- Manages `TransferIntent` → `TransactionIntent` → `Transaction` lifecycle
-- Determines transaction execution strategy (single/batch/bridge)
 - Publishes `TRANSACTION` events back to Core for pipeline processing
+
+Inside, the service is split into two roles that talk only through messages, so each role can later become
+its own service (the executor — one per network):
+
+**Orchestrator** (`module/transfer-intent`) — *what* has to happen and in which order
+- Accepts `TransferIntent` from Core and plans its steps (`TransferRoutePlanner`): single/cross transfer,
+  execution type of each step, relayer selection
+- Starts one step at a time with an `ExecuteTransferRoute` command
+- Follows the steps by the executor events: `TransferRouteCompleted` stores the step result and starts the
+  next step (or completes the intent), `TransferRouteFailed` fails the step and the intent
+- Resolves each next step right before starting it from the results of the completed ones
+  (`TransferRoutePlanner.resolveNext`) — a step can depend on what the previous one produced
+- Owns `transfer_intent`, `transfer_route`
+
+**Executor** (`module/transaction`) — *how* to do one step in a network
+- Builds the step transaction on `ExecuteTransferRoute` (at that moment — fresh nonce and fee)
+- Unlocks signing when Core confirms the hold (`TransferIntent HELD`), signs, promotes, confirms
+- Knows nothing about intents and routes: the intent and route references from the command are stored with
+  the transfer; the intent reference is echoed back to Core in `TRANSACTION` events
+- Reports a confirmed step with `TransferRouteCompleted` and its result (`TransferRouteResultExtractor`,
+  per integration: transferred amount and fee today; e.g. a bridge `depositId` from the logs tomorrow)
+- Reports a step that could not even start (no transaction exists) with `TransferRouteFailed`
+- Owns `transaction_intent`, `transaction`, `transfer`
 
 **Key Entities**:
 - `transfer_intent` — requested transfer from Core (what needs to happen)
-- `transaction_intent` — built but not yet confirmed transaction (how to do it)
+- `transfer_route` — one step of a transfer intent (`txIndex`); steps of an intent run strictly one after another
+- `transaction_intent` — built but not yet confirmed transaction of a step (how to do it)
 - `transaction` / `transfer` — actual on-chain transactions and their transfers
 
 ### 5. Custody
@@ -208,11 +230,12 @@ user → relayer (INTERNAL) → bridge contract (NATIVE)
 For all two-step transfers:
 - Two `transfer_route` entries (`txIndex: 0` and `txIndex: 1`)
 - Two `transaction_intent` entries executed **sequentially**
-- `txIndex: 1` is only initiated after `txIndex: 0` is CONFIRMED
+- `txIndex: 1` is only started (`ExecuteTransferRoute`) after `txIndex: 0` is CONFIRMED,
+  so its transaction is built at that moment, not upfront
 
 > **Note**: For case 3 where both steps are INTERNAL on the same chain (currency swap),
 > a future optimization could combine both into a single `transaction_intent`.
-> Currently two separate intents are always created. See `TransferRouteExecutionPlanner`.
+> Currently two separate intents are always created. See `TransferRoutePlanner`.
 ---
 
 ## Data Flow Diagrams
@@ -268,7 +291,7 @@ sequenceDiagram
     Note over ExtInt: Webhook: incoming transaction
     ExtInt->>ExtInt: Parse transaction (TransactionParserStrategy)
     ExtInt->>ExtInt: Save transaction + transfers<br/>status: ACCEPTED
-    ExtInt->>ExtInt: Publish TRANSACTION event<br/>(JetStream)
+    ExtInt->>ExtInt: Publish TRANSACTION event<br/>(Kafka)
 
     Note over Core: Pipeline: ACCEPTED
     Core->>Core: AcceptedHandler:<br/>find payments by (to, currency)<br/>mark payments → CONFIRMING
@@ -310,7 +333,7 @@ sequenceDiagram
 
 **Phase 2: Transaction Detected → ACCEPTED Pipeline (Asynchronous)**
 5. External Integration receives a webhook with a blockchain transaction
-6. It parses the transaction, saves it with transfers, and publishes a JetStream `TRANSACTION` event with status `ACCEPTED`
+6. It parses the transaction, saves it with transfers, and publishes a Kafka `TRANSACTION` event with status `ACCEPTED`
 7. Core receives the event and runs the **pipeline**:
     - **Handler** (`AcceptedHandler`): finds payments matching transfers by `(to, currency)` in status `CREATED`, marks them `CONFIRMING`
     - **Projector** (`AcceptedProjector`): filters transfers to only those involving known integration accounts, then runs `PaymentConverterEngine`
@@ -363,7 +386,8 @@ sequenceDiagram
     participant User
     participant BFF
     participant Core
-    participant ExtInt as External Integration
+    participant Orch as EIS Orchestrator
+    participant Exec as EIS Executor
     participant Ledger
     participant Custody
 
@@ -374,8 +398,8 @@ sequenceDiagram
     Core->>Ledger: gRPC: getBalances<br/>(user + hot account)
     Ledger-->>Core: balances
 
-    Core->>ExtInt: gRPC: getEstimatedTransferFee
-    ExtInt-->>Core: { fee, currency }
+    Core->>Orch: gRPC: getEstimatedTransferFee
+    Orch-->>Core: { fee, currency }
     Core->>Core: Convert fee currency if needed<br/>(CurrencyConverterProvider)
 
     Core->>Core: getPlatformHotAccount() — select<br/>source integration account (from)
@@ -383,16 +407,18 @@ sequenceDiagram
 
     Core->>Core: Create PayoutIntent<br/>status: CREATED
 
-    Core->>ExtInt: JetStream: TransferIntent CREATE<br/>(intentId, intentType=PAYOUT,<br/>from, to, amount, estimatedFee)
+    Core->>Orch: JetStream: TransferIntent CREATE<br/>(intentId, intentType=PAYOUT,<br/>from, to, amount, estimatedFee)
     Core-->>BFF: Payout created
     BFF-->>User: Payout info
 
-    Note over ExtInt: Phase 2: Build Transaction (async, cron) - (strategy: one transfer per transaction)
-    ExtInt->>ExtInt: Cron: claimOne() TransferIntent
-    ExtInt->>ExtInt: Build transaction<br/>(EvmSingleTransferBuilder)
-    ExtInt->>ExtInt: Save TransactionIntent<br/>status: HOLD_PENDING
-    ExtInt->>ExtInt: Save Transaction<br/>status: PREPARED
-    ExtInt->>ExtInt: Publish TRANSACTION event<br/>(PREPARED + transfer intents)
+    Note over Orch,Exec: Phase 2: Plan & Build (async) - (strategy: one transfer per transaction)
+    Orch->>Orch: Cron: claimOne() TransferIntent
+    Orch->>Orch: TransferRoutePlanner:<br/>steps (transfer_route)
+    Orch->>Exec: Kafka: ExecuteTransferRoute<br/>(step, intent reference)
+    Exec->>Exec: Build transaction<br/>(EvmSingleTransferBuilder)
+    Exec->>Exec: Save TransactionIntent<br/>status: HOLD_PENDING
+    Exec->>Exec: Save Transaction<br/>status: PREPARED
+    Exec->>Core: Kafka: TRANSACTION event<br/>(PREPARED + transfer intents)
 
     Note over Core: Pipeline: PREPARED
     Core->>Core: PreparedHandler:<br/>find payouts by intentId,<br/>mark → PREPARED<br/>(set integrationFee, feePayer)
@@ -402,34 +428,35 @@ sequenceDiagram
     Ledger->>Core: JetStream: BALANCE_UPDATED
 
     Core->>Core: ChangePayoutStatusInteractor:<br/>mark payout → HELD
-    Core->>ExtInt: JetStream: TransferIntent HELD<br/>(intentIds)
+    Core->>Exec: JetStream: TransferIntent HELD<br/>(intentId, txId)
 
-    Note over ExtInt: Phase 3: Sign & Promote (async)
-    ExtInt->>ExtInt: markAsPrepared(transferIntents)
-    ExtInt->>ExtInt: Find READY_FOR_SIGN intents (cron)
-    ExtInt->>ExtInt: markReadyForSigning
-    ExtInt->>Custody: Sign transaction
-    Custody-->>ExtInt: Signed payload
-    ExtInt->>ExtInt: makeReadyToPromote
+    Note over Exec: Phase 3: Sign & Promote (async)
+    Exec->>Exec: markReadyForSigning<br/>(HOLD_PENDING → READY_FOR_SIGNING)
+    Exec->>Exec: Find READY_FOR_SIGNING intents (cron)
+    Exec->>Custody: Sign transaction
+    Custody-->>Exec: Signed payload
+    Exec->>Exec: makeReadyToPromote
 
-    ExtInt->>ExtInt: Promote: markPromoted<br/>(transactionIntent + transaction)
-    ExtInt->>ExtInt: Publish TRANSACTION event<br/>(PROMOTED + transfer intents)
+    Exec->>Exec: Promote: markPromoted<br/>(transactionIntent + transaction)
+    Exec->>Core: Kafka: TRANSACTION event<br/>(PROMOTED + transfer intents)
 
     Note over Core: Pipeline: PROMOTED
     Core->>Core: PromotedHandler:<br/>mark payouts → PROCESSING
 
-    Note over ExtInt: Phase 4: Blockchain Confirmation (async)
-    Note over ExtInt: Webhook: transaction accepted on-chain
-    ExtInt->>ExtInt: Parse & save ACCEPTED tx
-    ExtInt->>ExtInt: markCompleted(transactionIntent)
-    ExtInt->>ExtInt: Publish TRANSACTION event<br/>(ACCEPTED + transfer intents)
+    Note over Exec: Phase 4: Blockchain Confirmation (async)
+    Note over Exec: Webhook: transaction accepted on-chain
+    Exec->>Exec: Parse & save ACCEPTED tx
+    Exec->>Exec: markCompleted(transactionIntent)
+    Exec->>Core: Kafka: TRANSACTION event<br/>(ACCEPTED + transfer intents)
 
     Note over Core: Pipeline: ACCEPTED
     Core->>Core: AcceptedHandler:<br/>mark payouts → CONFIRMING<br/>(set actual integrationFee,<br/>feePayerAccount)
 
-    Note over ExtInt: Transaction confirmed
-    ExtInt->>ExtInt: markAsConfirmed
-    ExtInt->>ExtInt: Publish TRANSACTION event<br/>(CONFIRMED + transfer intents)
+    Note over Exec: Transaction confirmed
+    Exec->>Exec: markAsConfirmed
+    Exec->>Core: Kafka: TRANSACTION event<br/>(CONFIRMED + transfer intents)
+    Exec->>Orch: Kafka: TransferRouteCompleted<br/>(step, txId, result)
+    Orch->>Orch: step → COMPLETED (+ result)<br/>last step: TransferIntent → COMPLETED<br/>otherwise: resolveNext(next step, results)<br/>→ ExecuteTransferRoute (next step)
 
     Note over Core: Pipeline: CONFIRMED
     Core->>Core: ConfirmedProjector:<br/>PayoutConverter →<br/>RELEASE_HOLD + DEBIT +<br/>PLATFORM_FEE_ACCRUED<br/>balance changes
@@ -451,11 +478,11 @@ sequenceDiagram
 6. **Publish TransferIntent**: Core publishes a `TransferIntent CREATE` event to EIS via JetStream with all transfer details (from, to, amounts, fee)
 7. **Response**: User receives confirmation that payout is created and queued
 
-**Phase 2: Build Transaction (Asynchronous — Cron in EIS)**
+**Phase 2: Plan & Build (Asynchronous — EIS Orchestrator → Executor)**
 
-8. EIS cron (`CreateTransactionIntentInteractor`) claims a pending `TransferIntent`
-9. Builds an unsigned transaction (`EvmSingleTransferBuilder`)
-10. Saves `TransactionIntent` (status: `HOLD_PENDING`) and `Transaction` (status: `PREPARED`)
+8. Orchestrator cron (`DispatchTransferIntentInteractor`) claims a pending `TransferIntent`, plans its steps (`TransferRoutePlanner` → `transfer_route`) and sends `ExecuteTransferRoute` for the first step
+9. Executor (`ExecuteTransferRouteInteractor`) builds an unsigned transaction (`EvmSingleTransferBuilder`)
+10. Saves `TransactionIntent` (status: `HOLD_PENDING`) and `Transaction` (status: `PREPARED`); the transfer keeps the intent reference from the command
 11. Publishes `TRANSACTION` event with status `PREPARED` and transfer intent metadata
 
 **Pipeline: PREPARED**
@@ -464,12 +491,12 @@ sequenceDiagram
 13. **Projector** (`PreparedProjector`): runs `PayoutHoldConverter` which produces `HOLD` balance changes — holds on user's platform account (amount + platform fee) and on hot integration account (amount + estimated integration fee)
 14. Core sends all holds to Ledger → Ledger applies → publishes `BALANCE_UPDATED`
 15. `ChangePayoutStatusInteractor`: detects HOLD events with `txStatus=TX_PREPARED`, marks payout `HELD`
-16. Core publishes `TransferIntent HELD` event back to EIS
+16. Core publishes `TransferIntent HELD` event back to EIS (consumed by the executor: the `txId` is its own transaction)
 
 **Phase 3: Sign & Promote (Asynchronous — Finalize flow in EIS)**
 
-17. EIS receives HELD event → marks transfer intents as `PREPARED`
-18. Cron finds `READY_FOR_SIGN` transaction intents → signs via Custody
+17. Executor receives HELD event → marks the transaction intent `READY_FOR_SIGNING`
+18. Cron finds `READY_FOR_SIGNING` transaction intents (one in signing per initiator) → signs via Custody
 19. After signing: marks `READY_TO_PROMOTE`, then promotes (sends to blockchain)
 20. Publishes `TRANSACTION` event with status `PROMOTED`
 
@@ -486,7 +513,7 @@ sequenceDiagram
 
 24. **Handler** (`AcceptedHandler`): marks payouts `CONFIRMING`, sets actual `integrationFee`, `integrationFeePayerAccount`
 
-25. Once confirmed on-chain → EIS publishes `CONFIRMED` event
+25. Once confirmed on-chain → EIS publishes `CONFIRMED` event to Core and `TransferRouteCompleted` with the step result to the orchestrator. The orchestrator stores the result and completes the step: for the last step the `TransferIntent` becomes `COMPLETED`, otherwise the next step is resolved from the results so far (`TransferRoutePlanner.resolveNext`), started (`ExecuteTransferRoute`) and goes through the same PREPARED → … → CONFIRMED cycle
 
 **Pipeline: CONFIRMED**
 
@@ -496,7 +523,9 @@ sequenceDiagram
 
 **Payout Status Progression**: `CREATED` → `PREPARED` → `HELD` → `PROCESSING` → `CONFIRMING` → `SUCCESS`
 
-**TransferIntent Status Progression**: `CREATED` → `ACCEPTED` → `PREPARED` → `PROCESSING` → `COMPLETED`
+**TransferIntent Status Progression**: `CREATED` → `PROCESSING` → `COMPLETED` (or `FAILED`)
+
+**TransferRoute (step) Status Progression**: `CREATED` → `IN_PROGRESS` → `COMPLETED` (or `FAILED`)
 
 **TransactionIntent Status Progression**: `HOLD_PENDING` → `READY_FOR_SIGNING` → `SIGNING` → `READY_TO_PROMOTE` → `PROMOTED` → `COMPLETED`
 
@@ -507,7 +536,7 @@ sequenceDiagram
 Both payment and payout share the same processing pipeline in Core:
 
 ```
-TRANSACTION event (JetStream)
+TRANSACTION event (Kafka)
   → TransactionHandlerStrategy (status-based dispatch)
     → Handler: update intent statuses, set metadata
   → TransactionBalanceProjectorStrategy (status-based dispatch)
@@ -541,7 +570,7 @@ flowchart TD
     subgraph EIS["External Integration Service"]
         PARSE["Parse & Normalize"]
         SAVE["Save Transaction + Transfers"]
-        PUB["Publish TRANSACTION event<br/>(JetStream)"]
+        PUB["Publish TRANSACTION event<br/>(Kafka)"]
     end
 
     EVM --> PARSE
@@ -589,7 +618,7 @@ pie title Development effort distribution
 
 The pipeline in Core is a stable core. It doesn't change when adding new integrations. All new work happens either at the edges of the system (EIS, BFF, Custody) or by adding new converters and handlers into the existing pipeline — without modifying existing code.
 
-A new integration (Solana, SWIFT, CEX) means a new parser, transaction builder, and controller in External Integration. The pipeline stays untouched. A new business scenario (batch payout etc.) means a new `Strategy` in External integration service.
+A new integration (Solana, SWIFT, CEX) means a new parser, transaction builder, and controller in the External Integration executor. The pipeline stays untouched. A new business scenario (batch payout etc.) means a new routing strategy in the External Integration orchestrator (`TransferRoutePlanner`).
 To add internal translations, it is also mainly only affected EIS.
 ---
 
@@ -605,6 +634,13 @@ To add internal translations, it is also mainly only affected EIS.
 - Domain events (business facts that happened)
 - Integration events (cross-service notifications)
 - Command events (requests for actions)
+
+**Via Kafka** (External Integration):
+- `transaction` — `TRANSACTION` events for Core, keyed by network
+- `transfer-route.command` — orchestrator → executors (`ExecuteTransferRoute`), keyed by `executionType:integration`, so a per-network executor owns its partitions
+- `transfer-route.completed` — executors → orchestrator (`TransferRouteCompleted`: the step is confirmed, with its result)
+- `transfer-route.failed` — executors → orchestrator (`TransferRouteFailed`: a step failed before any transaction exists)
+- All published through the transactional outbox, consumed with inbox idempotency; DLQ topic per topic
 
 ### Synchronous Communication (Secondary)
 

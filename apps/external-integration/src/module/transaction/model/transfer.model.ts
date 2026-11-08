@@ -1,5 +1,5 @@
-import { IntegrationAccount, Id, IntegrationCurrency, RawNumeric } from '@app/types'
-import { IntegrationType } from '@app/shared'
+import { IntegrationAccount, Id, IntegrationCurrency, RawNumeric, UUID } from '@app/types'
+import { IntegrationType, IntentType } from '@app/shared'
 
 export enum OperationType {
   NATIVE_TRANSFER = 'NATIVE_TRANSFER',
@@ -21,6 +21,9 @@ export interface TransferData {
   readonly amountRaw: RawNumeric
   readonly currency: IntegrationCurrency
   readonly transferIntentId: Id | null
+  readonly transferRouteId: Id | null
+  readonly intentType: IntentType | null
+  readonly intentId: UUID | Id | null
   readonly metadata: TransferMetadata | null
 }
 
